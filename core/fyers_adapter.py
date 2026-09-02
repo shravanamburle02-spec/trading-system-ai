@@ -1,7 +1,7 @@
 ﻿"""
 Master Trading System - Fyers API v3 Adapter
-Connects to Fyers API v3 for 100% Free Live Quotes, Free Historical Candles,
-and Free Real-Time Option Chain.
+Connects to Fyers API v3 for 100% Real-Time Live Quotes, Historical Candles,
+and Live NSE Option Chain.
 """
 
 import datetime
@@ -13,13 +13,15 @@ class FyersAdapter:
         'NIFTY': 'NSE:NIFTY50-INDEX',
         'BANKNIFTY': 'NSE:NIFTYBANK-INDEX',
         'FINNIFTY': 'NSE:FINNIFTY-INDEX',
+        'MIDCPNIFTY': 'NSE:MIDCPNIFTY-INDEX',
         'RELIANCE': 'NSE:RELIANCE-EQ',
         'HDFCBANK': 'NSE:HDFCBANK-EQ',
         'ICICIBANK': 'NSE:ICICIBANK-EQ',
         'INFY': 'NSE:INFY-EQ',
         'TCS': 'NSE:TCS-EQ',
         'SBIN': 'NSE:SBIN-EQ',
-        'TATAMOTORS': 'NSE:TATAMOTORS-EQ'
+        'TATAMOTORS': 'NSE:TATAMOTORS-EQ',
+        'ASIANPAINT': 'NSE:ASIANPAINT-EQ'
     }
 
     def __init__(self, client_id=None, access_token=None):
@@ -42,7 +44,7 @@ class FyersAdapter:
             self.fyers_model = None
 
     def is_connected(self):
-        return self.fyers_model is not None
+        return self.fyers_model is not None and bool(self.access_token)
 
     def get_quote(self, symbol="NIFTY"):
         """Fetches real-time quotes using Fyers API v3."""
@@ -70,6 +72,24 @@ class FyersAdapter:
                     'day_high': round(high, 2),
                     'day_low': round(low, 2)
                 }
+        except Exception as e:
+            return None
+        return None
+
+    def get_option_chain(self, symbol="NIFTY", strikecount=15):
+        """Fetches 100% Real-Time Live Option Chain via Fyers API v3."""
+        if not self.is_connected():
+            return None
+
+        fyers_sym = self.FYERS_SYMBOLS.get(symbol.upper(), 'NSE:NIFTY50-INDEX')
+        try:
+            data = {
+                "symbol": fyers_sym,
+                "strikecount": strikecount
+            }
+            response = self.fyers_model.optionchain(data=data)
+            if response.get("s") == "ok" and response.get("data"):
+                return response["data"]
         except Exception as e:
             return None
         return None
