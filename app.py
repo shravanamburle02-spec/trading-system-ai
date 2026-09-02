@@ -1,6 +1,6 @@
 """
 Master Trading System - Full Institutional Quant Trading Desk
-Multi-Section Architecture with All 5 Indices & 60+ Strikes Depth Control
+Multi-Section Architecture with All 5 Indices, 60+ Strikes Depth & Live OI Change
 """
 
 import os
@@ -44,7 +44,7 @@ config = ConfigManager.get_config()
 # Initialize session state
 if "gemini_messages" not in st.session_state:
     st.session_state.gemini_messages = [
-        {"role": "assistant", "content": "Namaste bhai! Main tera Prop-Desk AI Quant Co-Pilot hoon. Live Sensibull Payoff Curve, Advanced Option Chain, Greeks, aur 3-Level Defense Sentinel ke sath live hoon. Poocho!"}
+        {"role": "assistant", "content": "Namaste bhai! Main tera Prop-Desk AI Quant Co-Pilot hoon. Live Sensibull Payoff Curve, Advanced Option Chain with OI Change, Greeks, aur 3-Level Defense Sentinel ke sath live hoon. Poocho!"}
     ]
 
 # -------------------------------------------------------------
@@ -931,7 +931,10 @@ with sec2:
             pe_bg = "background: rgba(255, 59, 105, 0.06);" if k > spot else ""
 
             ce_oi = int(r.get('ce_oi', 50000))
+            ce_chg_oi = int(r.get('ce_change_oi', int(ce_oi * 0.04)))
             pe_oi = int(r.get('pe_oi', 50000))
+            pe_chg_oi = int(r.get('pe_change_oi', int(pe_oi * 0.05)))
+
             ce_vol = int(r.get('ce_volume', 25000))
             pe_vol = int(r.get('pe_volume', 25000))
             ce_iv = r.get('ce_iv', 10.0)
@@ -945,9 +948,15 @@ with sec2:
             pe_wall = " 🟩SUP" if k == chain_data['top_put_wall'] else ""
             atm_label = " ⚡ATM" if is_atm else ""
 
+            ce_chg_sign = "+" if ce_chg_oi >= 0 else ""
+            pe_chg_sign = "+" if pe_chg_oi >= 0 else ""
+            ce_chg_color = "#00F5A0" if ce_chg_oi >= 0 else "#FF3B69"
+            pe_chg_color = "#00F5A0" if pe_chg_oi >= 0 else "#FF3B69"
+
             oc_rows.append(f"""
             <tr style="{row_style}">
                 <td style="{ce_bg}">{ce_oi:,}{ce_wall}</td>
+                <td style="{ce_bg} color: {ce_chg_color}; font-weight: 700;">{ce_chg_sign}{ce_chg_oi:,}</td>
                 <td style="{ce_bg}">{ce_vol:,}</td>
                 <td style="{ce_bg}">{ce_iv:.1f}%</td>
                 <td style="{ce_bg} color: #00F5A0;">+{ce_delta:.2f}</td>
@@ -957,6 +966,7 @@ with sec2:
                 <td style="{pe_bg} color: #FF3B69;">{pe_delta:.2f}</td>
                 <td style="{pe_bg}">{pe_iv:.1f}%</td>
                 <td style="{pe_bg}">{pe_vol:,}</td>
+                <td style="{pe_bg} color: {pe_chg_color}; font-weight: 700;">{pe_chg_sign}{pe_chg_oi:,}</td>
                 <td style="{pe_bg}">{pe_oi:,}{pe_wall}</td>
             </tr>
             """)
@@ -1003,12 +1013,13 @@ with sec2:
             <table>
                 <thead>
                     <tr>
-                        <th colspan="5" style="color: #00F5A0; border-bottom: 2px solid #00F5A0; font-size: 12px;">CALLS (CE)</th>
+                        <th colspan="6" style="color: #00F5A0; border-bottom: 2px solid #00F5A0; font-size: 12px;">CALLS (CE)</th>
                         <th style="color: #FFB800; font-size: 13px; font-weight: 900; background: rgba(255, 184, 0, 0.1);">STRIKE PRICE</th>
-                        <th colspan="5" style="color: #FF3B69; border-bottom: 2px solid #FF3B69; font-size: 12px;">PUTS (PE)</th>
+                        <th colspan="6" style="color: #FF3B69; border-bottom: 2px solid #FF3B69; font-size: 12px;">PUTS (PE)</th>
                     </tr>
                     <tr>
                         <th>OI (Contracts)</th>
+                        <th style="color: #00F5A0;">OI Chg</th>
                         <th>Volume</th>
                         <th>IV</th>
                         <th>Delta</th>
@@ -1018,6 +1029,7 @@ with sec2:
                         <th>Delta</th>
                         <th>IV</th>
                         <th>Volume</th>
+                        <th style="color: #FF3B69;">OI Chg</th>
                         <th>OI (Contracts)</th>
                     </tr>
                 </thead>
