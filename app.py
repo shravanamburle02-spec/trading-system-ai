@@ -1,6 +1,6 @@
 """
 Master Trading System - Full Institutional Quant Trading Desk
-Multi-Section Architecture with Crystal-Clear Option Chain & ATM Focused View
+Multi-Section Architecture with 1-Click Live Fyers Integration
 """
 
 import os
@@ -434,11 +434,12 @@ with t_col3:
 with t_col4:
     pcr_v = chain_data['pcr']
     pcr_c = "#00F5A0" if pcr_v >= 1.0 else "#FF3B69"
+    api_badge = "🟢 FYERS LIVE" if data_eng.fyers.is_connected() else "🟠 CALIBRATED"
     st.markdown(f"""
     <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 8px; padding: 4px 10px; height: 38px; display: flex; align-items: center; justify-content: space-between;">
-        <span style="font-size: 0.72rem; color: #8B949E; font-weight: 600;">PCR / VIX</span>
+        <span style="font-size: 0.72rem; color: #8B949E; font-weight: 600;">FEED / PCR</span>
+        <span class="mono" style="font-size: 0.75rem; font-weight: 800; color: #00D2FF;">{api_badge}</span>
         <span class="mono" style="font-size: 0.82rem; font-weight: 800; color: {pcr_c};">{pcr_v:.2f}</span>
-        <span class="mono" style="font-size: 0.75rem; color: #FFB800;">{chain_data['india_vix']:.1f}</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -516,7 +517,7 @@ with sec1:
         <div class="cockpit-card">
             <div class="card-header">
                 <span>📊 LAYER 1: DERIVATIVES DYNAMICS</span>
-                <span class="glow-pill-cyan">FII: {fii_dii['institutional_bias']}</span>
+                <span class="glow-pill-cyan">FEED: {chain_data.get('feed_source', 'LIVE')}</span>
             </div>
             <div style="display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 700;">
                 <span style="color: #00F5A0;">Put OI Support: {pe_pct}%</span>
@@ -540,8 +541,8 @@ with sec1:
                     <span class="badge-cell-val" style="color: #FFB800;">{chain_data['max_pain']}</span>
                 </div>
                 <div class="badge-cell">
-                    <span class="badge-cell-label">IV Rank / Liquidity</span>
-                    <span class="badge-cell-val" style="color: #00D2FF;">{chain_data['iv_rank']:.0f} / {liq_audit['liquidity_score']}</span>
+                    <span class="badge-cell-label">IV / India VIX</span>
+                    <span class="badge-cell-val" style="color: #00D2FF;">{chain_data['atm_iv']:.1f}% / {chain_data['india_vix']:.2f}</span>
                 </div>
             </div>
         </div>
@@ -850,12 +851,13 @@ with sec2:
             atm_pe_p = float(atm_row.iloc[0].get('pe_ltp', 115.0))
 
     straddle_p = atm_ce_p + atm_pe_p
+    source_label = "🟢 LIVE FYERS BROKER FEED" if data_eng.fyers.is_connected() else "🟠 CALIBRATED LOW-VIX ENGINE"
 
     st.markdown(f"""
     <div class="cockpit-card">
         <div class="card-header">
             <span>📊 {symbol} ADVANCED OPTION CHAIN (EXPIRY: {exp_info['expiry_date_str']})</span>
-            <span class="glow-pill-emerald">SPOT: ₹{spot:,.1f}</span>
+            <span class="glow-pill-emerald">{source_label} | SPOT: ₹{spot:,.1f}</span>
         </div>
         <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; text-align: center; margin-top: 6px;">
             <div style="background: rgba(255, 184, 0, 0.08); border: 1px solid rgba(255, 184, 0, 0.3); padding: 6px; border-radius: 8px;">
@@ -910,8 +912,8 @@ with sec2:
             pe_oi = int(r.get('pe_oi', 50000))
             ce_vol = int(r.get('ce_volume', 25000))
             pe_vol = int(r.get('pe_volume', 25000))
-            ce_iv = r.get('ce_iv', 14.5)
-            pe_iv = r.get('pe_iv', 14.5)
+            ce_iv = r.get('ce_iv', 10.0)
+            pe_iv = r.get('pe_iv', 10.0)
             ce_delta = r.get('ce_delta', 0.5)
             pe_delta = r.get('pe_delta', -0.5)
             ce_ltp = r.get('ce_ltp', 120.0)
@@ -1152,30 +1154,88 @@ with sec5:
 # SECTION 6: FYERS & API GATEWAY
 # =============================================================
 with sec6:
-    st.markdown("""
+    conn_status = "🟢 CONNECTED & LIVE TICKING" if data_eng.fyers.is_connected() else "🔴 DISCONNECTED (TOKEN REQUIRED)"
+    conn_pill = "glow-pill-emerald" if data_eng.fyers.is_connected() else "glow-pill-rose"
+
+    st.markdown(f"""
     <div class="cockpit-card">
         <div class="card-header">
-            <span>⚙️ BROKER & AI CONFIGURATION GATEWAY</span>
-            <span class="glow-pill-cyan">FYERS V3 + GOOGLE GEMINI</span>
+            <span>⚙️ 1-CLICK FYERS API V3 LIVE BROKER GATEWAY</span>
+            <span class="{conn_pill}">{conn_status}</span>
         </div>
+        <p style="font-size: 0.8rem; color: #8B949E; margin-bottom: 8px;">
+            Fyers API connect hone par NIFTY, BANKNIFTY, SENSEX, FINNIFTY, MIDCPNIFTY ka <b>100% official live tick-by-tick option chain</b> direct Fyers ke server se aayega.
+        </p>
     </div>
     """, unsafe_allow_html=True)
 
-    cfg_col1, cfg_col2 = st.columns(2)
-    with cfg_col1:
-        st.subheader("Fyers API v3 Gateway")
-        f_app = st.text_input("Fyers App ID", value=config.get("FYERS_APP_ID", ""))
-        f_sec = st.text_input("Fyers Secret ID", type="password", value=config.get("FYERS_SECRET_ID", ""))
-        f_tok = st.text_input("Access Token", type="password", value=config.get("FYERS_ACCESS_TOKEN", ""))
-        if st.button("💾 Save Fyers Credentials", use_container_width=True):
-            ConfigManager.save_config({"FYERS_APP_ID": f_app, "FYERS_SECRET_ID": f_sec, "FYERS_ACCESS_TOKEN": f_tok})
-            st.success("✅ Fyers Credentials Saved Permanently!")
-            st.rerun()
+    f_col1, f_col2 = st.columns([1.2, 1])
 
-    with cfg_col2:
-        st.subheader("Google Gemini AI API")
+    with f_col1:
+        st.markdown("#### 🔑 Step 1: 1-Click Fyers Auth Generator")
+        f_app = st.text_input("Fyers App ID", value=config.get("FYERS_APP_ID", "2O4CWNTG7T-100"))
+        f_sec = st.text_input("Fyers Secret ID", type="password", value=config.get("FYERS_SECRET_ID", "5NAJDN8GG9"))
+        f_red = st.text_input("Redirect URI", value=config.get("FYERS_REDIRECT_URI", "https://trade.fyers.in/api-login/"))
+
+        auth_url = f"https://api-t1.fyers.in/api/v3/generate-authcode?client_id={f_app}&redirect_uri=https%3A%2F%2Ftrade.fyers.in%2Fapi-login%2F&response_type=code&state=None"
+
+        st.markdown(f"""
+        <div style="background: rgba(0, 210, 255, 0.08); border: 1px solid rgba(0, 210, 255, 0.3); border-radius: 8px; padding: 10px; margin: 8px 0;">
+            <b>👉 Step 1:</b> Neeche diye link ko open karke Fyers me login karo:<br>
+            <a href="{auth_url}" target="_blank" style="color: #00F5A0; font-weight: 800; font-size: 0.9rem; word-break: break-all;">🔗 Click Here to Login to Fyers</a>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("#### ⚡ Step 2: Paste Redirect URL & Activate")
+        redirect_input = st.text_input("Login ke baad browser me jo URL aayi wo yaha paste karo", placeholder="https://trade.fyers.in/api-login/?s=ok&code=...&auth_code=eyJ...")
+
+        if st.button("🚀 Activate Live Fyers Broker Feed", use_container_width=True):
+            if redirect_input:
+                try:
+                    from fyers_apiv3 import fyersModel
+                    match = re.search(r"auth_code=([^&]+)", redirect_input)
+                    auth_code = match.group(1) if match else redirect_input.strip()
+
+                    session = fyersModel.SessionModel(
+                        client_id=f_app,
+                        secret_key=f_sec,
+                        redirect_uri=f_red,
+                        response_type="code",
+                        grant_type="authorization_code"
+                    )
+                    session.set_token(auth_code)
+                    resp = session.generate_token()
+
+                    if "access_token" in resp:
+                        tok = resp["access_token"]
+                        ConfigManager.save_config({
+                            "FYERS_APP_ID": f_app,
+                            "FYERS_SECRET_ID": f_sec,
+                            "FYERS_REDIRECT_URI": f_red,
+                            "FYERS_ACCESS_TOKEN": tok
+                        })
+                        st.success("🎉 CONGRATULATIONS! 100% Live Fyers Broker Feed is now CONNECTED!")
+                        st.balloons()
+                        st.rerun()
+                    else:
+                        st.error(f"❌ Fyers Error: {resp.get('message', 'Invalid Auth Code')}")
+                except Exception as e:
+                    st.error(f"❌ Error: {str(e)}")
+            else:
+                st.warning("⚠️ Pehle Fyers login ke baad browser ka URL yaha paste karo.")
+
+    with f_col2:
+        st.markdown("#### 🤖 Google Gemini AI API")
         g_key = st.text_input("Gemini API Key", type="password", value=config.get("GEMINI_API_KEY", ""))
         if st.button("💾 Save Gemini Key", use_container_width=True):
             ConfigManager.save_config({"GEMINI_API_KEY": g_key})
             st.success("✅ Gemini Key Saved Permanently!")
+            st.rerun()
+
+        st.markdown("---")
+        st.markdown("#### 🛠️ Direct Access Token Paste (Optional)")
+        direct_tok = st.text_input("Direct Access Token (agar already hai)", type="password", value=config.get("FYERS_ACCESS_TOKEN", ""))
+        if st.button("💾 Save Token Directly", use_container_width=True):
+            ConfigManager.save_config({"FYERS_ACCESS_TOKEN": direct_tok})
+            st.success("✅ Access Token Saved Permanently!")
             st.rerun()
