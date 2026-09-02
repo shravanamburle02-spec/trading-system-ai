@@ -1394,26 +1394,34 @@ with sec4:
 with sec5:
     acc_s5 = paper_eng.get_account()
     spot_s5 = data_eng.get_market_quote(symbol)['current_price']
-    st.markdown(f"""
-    <div class="cockpit-card">
-        <div class="card-header">
-            <span>💼 3-5 MONTH INCUBATION SUITE (BENCHMARK CAPITAL: ₹3,00,000.00)</span>
-            <span class="glow-pill-emerald">BALANCE: ₹{acc_s5['balance']:,.2f}</span>
+    
+    hdr_c1, hdr_c2 = st.columns([7, 3])
+    with hdr_c1:
+        st.markdown(f"""
+        <div class="cockpit-card" style="margin-bottom: 0;">
+            <div class="card-header">
+                <span>💼 3-5 MONTH INCUBATION SUITE (BENCHMARK CAPITAL: ₹3,00,000.00)</span>
+                <span class="glow-pill-emerald">BALANCE: ₹{acc_s5['balance']:,.2f}</span>
+            </div>
         </div>
-    </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
+    with hdr_c2:
+        if st.button("🔄 Reset Portfolio to ₹3,00,000", use_container_width=True, help="Wipes paper journal and resets balance to ₹3,00,000"):
+            paper_eng.reset_account(300000.0)
+            st.toast("✅ Portfolio successfully reset to clean ₹3,00,000.00!")
+            st.rerun()
 
+    st.markdown("<div style='margin-top: 8px;'></div>", unsafe_allow_html=True)
     pos_df = paper_eng.get_open_positions()
     if pos_df.empty:
         st.info("No open positions in portfolio. Deploy a strategy from Section 1 or Section 3!")
     else:
         for _, r in pos_df.iterrows():
-            pts_diff = spot_s5 - r['entry_spot'] if 'Bullish' in r['strategy_type'] else r['entry_spot'] - spot_s5
-            mtm = pts_diff * r['lot_size'] * 0.4
+            mtm, elapsed_mins = AutoRebalancerSentinel.calculate_realistic_mtm(r, spot_s5)
             pnl_c = "#00F5A0" if mtm >= 0 else "#FF3B69"
             col_a, col_b, col_c = st.columns([3, 2, 1])
             with col_a:
-                st.markdown(f"**#{r['id']} {r['strategy_name']}** ({r['symbol']}) | Lots: `{r['lot_size']}`")
+                st.markdown(f"**#{r['id']} {r['strategy_name']}** ({r['symbol']}) | Lots: `{r['lot_size']}` | Active: `{elapsed_mins:.1f}m`")
             with col_b:
                 st.markdown(f"<span class='mono' style='font-size: 1.1rem; font-weight: 800; color: {pnl_c};'>MTM: ₹{mtm:+,.2f}</span>", unsafe_allow_html=True)
             with col_c:
