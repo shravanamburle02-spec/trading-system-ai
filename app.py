@@ -1,6 +1,6 @@
 """
 Master Trading System - Full Institutional Quant Trading Desk
-Multi-Section Architecture with 1-Click Live Fyers Integration
+Multi-Section Architecture with All 5 Indices & 60+ Strikes Depth Control
 """
 
 import os
@@ -357,7 +357,7 @@ function updateClock() {
         const h = Math.floor(diffSec / 3600);
         const m = Math.floor((diffSec % 3600) / 60);
         const s = diffSec % 60;
-        countdown.innerText = `⏳ Closes in ${String(h).padStart(2,'0')}h ${String(m).padStart(2,'0')}m ${String(s).padStart(2,'0')}s`;
+        countdown.innerText = `⏳ Closes in ${String(h).padStart(2,'0')}h ${String(m).padStart(2,'0')}s`;
     } else {
         pill.innerText = '● MARKET CLOSED';
         pill.style.background = 'rgba(255, 59, 105, 0.15)';
@@ -390,7 +390,11 @@ t_col1, t_col2, t_col3, t_col4, t_col5, t_col6 = st.columns([1.8, 1.8, 1.5, 1.5,
 with t_col1:
     symbol = st.selectbox(
         "Asset",
-        ["NIFTY", "BANKNIFTY", "SENSEX", "FINNIFTY", "MIDCPNIFTY", "RELIANCE", "HDFCBANK", "INFY", "TCS", "ASIANPAINT"],
+        [
+            "NIFTY", "BANKNIFTY", "SENSEX", "FINNIFTY", "MIDCPNIFTY",
+            "RELIANCE", "HDFCBANK", "ICICIBANK", "INFY", "TCS",
+            "SBIN", "TATAMOTORS", "ASIANPAINT", "ITC", "BHARTIARTL"
+        ],
         index=0,
         label_visibility="collapsed"
     )
@@ -885,15 +889,33 @@ with sec2:
     """, unsafe_allow_html=True)
 
     if df_oc is not None and not df_oc.empty:
-        filter_col1, filter_col2 = st.columns([3, 7])
+        filter_col1, filter_col2 = st.columns([4, 6])
         with filter_col1:
             strike_depth = st.selectbox(
-                "Strike Filter",
-                ["🎯 Active Trading Zone (ATM ± 5 Strikes)", "📊 Standard Depth (ATM ± 10 Strikes)", "🌐 Full Chain (ATM ± 15 Strikes)"],
-                index=0
+                "Strike Filter Depth",
+                [
+                    "🎯 Active Trading Zone (ATM ± 5 Strikes / 11 Total)",
+                    "📊 Standard Depth (ATM ± 10 Strikes / 21 Total)",
+                    "🌐 Extended Depth (ATM ± 15 Strikes / 31 Total)",
+                    "⚡ Deep Matrix (ATM ± 20 Strikes / 41 Total)",
+                    "🔥 Complete Option Chain (ATM ± 30 Strikes / 61 Total)"
+                ],
+                index=1
             )
         
-        n_strikes = 5 if "5" in strike_depth else 10 if "10" in strike_depth else 15
+        if "5" in strike_depth:
+            n_strikes = 5
+        elif "10" in strike_depth:
+            n_strikes = 10
+        elif "15" in strike_depth:
+            n_strikes = 15
+        elif "20" in strike_depth:
+            n_strikes = 20
+        elif "30" in strike_depth:
+            n_strikes = 30
+        else:
+            n_strikes = 15
+
         df_oc_sorted = df_oc.sort_values(by='strike').reset_index(drop=True)
         atm_idx = (df_oc_sorted['strike'] - spot).abs().idxmin()
         start_i = max(0, atm_idx - n_strikes)
@@ -1007,7 +1029,8 @@ with sec2:
         </body>
         </html>
         """
-        components.html(full_oc_table, height=480, scrolling=True)
+        table_height = min(680, max(380, len(sub_oc) * 32 + 80))
+        components.html(full_oc_table, height=table_height, scrolling=True)
     else:
         st.info("Generating live Option Chain data...")
 

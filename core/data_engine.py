@@ -1,5 +1,5 @@
-﻿"""
-Master Trading System - Data Engine with Automated Fyers Live API Ingestion
+"""
+Master Trading System - Data Engine with Full 5 Indices & 60+ Strikes Architecture
 """
 
 import math
@@ -198,23 +198,23 @@ class DataEngine:
         }
 
     def get_option_chain(self, symbol='NIFTY', days_to_expiry=6):
-        """Fetches full Option Chain via Direct Fyers API v3 or Dynamic Low-VIX Engine."""
+        """Fetches full Option Chain with 60+ Strikes for All 5 Indices."""
         quote = self.get_market_quote(symbol)
         spot = quote['current_price']
         step = self.STRIKE_INTERVALS.get(symbol.upper(), 50)
         atm_strike = round(spot / step) * step
 
-        # 1. LIVE FYERS API V3 DIRECT INGESTION
+        # 1. LIVE FYERS API V3 DIRECT INGESTION (If connected)
         if self.fyers.is_connected():
-            fyers_raw = self.fyers.get_option_chain(symbol, strikecount=25)
+            fyers_raw = self.fyers.get_option_chain(symbol, strikecount=35)
             if fyers_raw:
                 fyers_df = FyersOptionChainParser.parse_fyers_response(fyers_raw, spot)
-                if fyers_df is not None and not fyers_df.empty:
+                if fyers_df is not None and not fyers_df.empty and len(fyers_df) >= 10:
                     tot_ce = int(fyers_df['ce_oi'].sum())
                     tot_pe = int(fyers_df['pe_oi'].sum())
-                    top_ce = int(fyers_df.loc[fyers_df['ce_oi'].idxmax()]['strike']) if tot_ce > 0 else atm_strike + step
-                    top_pe = int(fyers_df.loc[fyers_df['pe_oi'].idxmax()]['strike']) if tot_pe > 0 else atm_strike - step
-                    pcr_val = round(tot_pe / tot_ce, 2) if tot_ce > 0 else 1.0
+                    top_ce = int(fyers_df.loc[fyers_df['ce_oi'].idxmax()]['strike']) if tot_ce > 0 else atm_strike + step * 2
+                    top_pe = int(fyers_df.loc[fyers_df['pe_oi'].idxmax()]['strike']) if tot_pe > 0 else atm_strike - step * 2
+                    pcr_val = round(tot_pe / tot_ce, 2) if tot_ce > 0 else 0.75
 
                     return {
                         'symbol': symbol,
@@ -235,12 +235,13 @@ class DataEngine:
                         'feed_source': 'LIVE_FYERS_API_V3'
                     }
 
-        # 2. CALIBRATED DYNAMIC LOW-VIX ENGINE (VIX 11.49 / IV ~9.8%-10.2%)
+        # 2. CALIBRATED DYNAMIC 60+ STRIKES ENGINE FOR ALL 5 INDICES
         T = max(0.002, days_to_expiry / 365.0)
         r = 0.065
         base_iv = 0.102
 
-        num_strikes = 12
+        # 30 strikes above ATM, 30 strikes below ATM = 61 strikes total!
+        num_strikes = 30
         strikes = [atm_strike + i * step for i in range(-num_strikes, num_strikes + 1)]
         chain = []
         total_ce_oi = 0
@@ -259,16 +260,16 @@ class DataEngine:
             pe_greeks = BlackScholes.calculate_greeks(spot, k, T, r, pe_iv, 'PE')
 
             is_major_round = (k % (step * 5) == 0)
-            round_multiplier = 2.0 if is_major_round else 1.0
-            dist_factor = math.exp(-0.5 * ((k - spot) / (step * 5)) ** 2)
+            round_multiplier = 2.2 if is_major_round else 1.0
+            dist_factor = math.exp(-0.5 * ((k - spot) / (step * 6)) ** 2)
 
             # Realistic Multi-Lakh OI Distribution
             if k >= spot:
-                ce_oi = int((4500000 * dist_factor * round_multiplier) + 800000)
-                pe_oi = int((1800000 * dist_factor) + 400000)
+                ce_oi = int((5500000 * dist_factor * round_multiplier) + 300000)
+                pe_oi = int((1800000 * dist_factor) + 150000)
             else:
-                ce_oi = int((1200000 * dist_factor) + 350000)
-                pe_oi = int((5000000 * dist_factor * round_multiplier) + 900000)
+                ce_oi = int((1400000 * dist_factor) + 150000)
+                pe_oi = int((6000000 * dist_factor * round_multiplier) + 350000)
 
             total_ce_oi += ce_oi
             total_pe_oi += pe_oi
@@ -325,7 +326,7 @@ class DataEngine:
             'iv_percentile': 32.0,
             'india_vix': 11.49,
             'days_to_expiry': days_to_expiry,
-            'feed_source': 'LOW_VIX_CALIBRATED_ENGINE'
+            'feed_source': 'CALIBRATED_ENGINE_60_STRIKES'
         }
 
     def get_fii_dii_sentiment(self):

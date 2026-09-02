@@ -1,7 +1,6 @@
-﻿"""
+"""
 Master Trading System - Fyers API v3 Adapter
-Connects to Fyers API v3 for 100% Real-Time Live Quotes, Historical Candles,
-and Live NSE Option Chain.
+Full Symbol Mapping for NIFTY, BANKNIFTY, SENSEX, FINNIFTY, MIDCPNIFTY and Top Equities.
 """
 
 import datetime
@@ -14,6 +13,7 @@ class FyersAdapter:
         'BANKNIFTY': 'NSE:NIFTYBANK-INDEX',
         'FINNIFTY': 'NSE:FINNIFTY-INDEX',
         'MIDCPNIFTY': 'NSE:MIDCPNIFTY-INDEX',
+        'SENSEX': 'BSE:SENSEX-INDEX',
         'RELIANCE': 'NSE:RELIANCE-EQ',
         'HDFCBANK': 'NSE:HDFCBANK-EQ',
         'ICICIBANK': 'NSE:ICICIBANK-EQ',
@@ -21,7 +21,12 @@ class FyersAdapter:
         'TCS': 'NSE:TCS-EQ',
         'SBIN': 'NSE:SBIN-EQ',
         'TATAMOTORS': 'NSE:TATAMOTORS-EQ',
-        'ASIANPAINT': 'NSE:ASIANPAINT-EQ'
+        'ASIANPAINT': 'NSE:ASIANPAINT-EQ',
+        'ITC': 'NSE:ITC-EQ',
+        'BHARTIARTL': 'NSE:BHARTIARTL-EQ',
+        'KOTAKBANK': 'NSE:KOTAKBANK-EQ',
+        'AXISBANK': 'NSE:AXISBANK-EQ',
+        'LT': 'NSE:LT-EQ'
     }
 
     def __init__(self, client_id=None, access_token=None):
@@ -40,7 +45,7 @@ class FyersAdapter:
                 is_async=False,
                 log_path=""
             )
-        except Exception as e:
+        except Exception:
             self.fyers_model = None
 
     def is_connected(self):
@@ -72,11 +77,11 @@ class FyersAdapter:
                     'day_high': round(high, 2),
                     'day_low': round(low, 2)
                 }
-        except Exception as e:
+        except Exception:
             return None
         return None
 
-    def get_option_chain(self, symbol="NIFTY", strikecount=15):
+    def get_option_chain(self, symbol="NIFTY", strikecount=30):
         """Fetches 100% Real-Time Live Option Chain via Fyers API v3."""
         if not self.is_connected():
             return None
@@ -90,7 +95,7 @@ class FyersAdapter:
             response = self.fyers_model.optionchain(data=data)
             if response.get("s") == "ok" and response.get("data"):
                 return response["data"]
-        except Exception as e:
+        except Exception:
             return None
         return None
 
@@ -119,6 +124,6 @@ class FyersAdapter:
                 df['datetime'] = pd.to_datetime(df['timestamp'], unit='s')
                 df.set_index('datetime', inplace=True)
                 return df
-        except Exception as e:
+        except Exception:
             return None
         return None
