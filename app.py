@@ -1,6 +1,6 @@
 """
 Master Trading System - Full Institutional Quant Trading Desk
-Multi-Section Architecture with All 5 Indices, 60+ Strikes Depth & Full Real-Time Price + OI Ticking Engine
+Multi-Section Architecture with All 5 Indices, 60+ Strikes Depth & 2-Second Live Cockpit + Option Chain Ticking Engine
 """
 
 import os
@@ -384,12 +384,11 @@ data_eng = DataEngine(fyers_app_id, fyers_token)
 paper_eng = PaperTradingEngine()
 paper_eng.init_db(default_capital=300000.0)
 
-# Top Bar Asset & Global Control Row
-t_col1, t_col2, t_col3, t_col4, t_col5, t_col6 = st.columns([1.8, 1.8, 1.5, 1.5, 1.5, 1.4])
-
-with t_col1:
+# Global Asset Selector (Persistent)
+col_asset, col_space = st.columns([2.2, 7.8])
+with col_asset:
     symbol = st.selectbox(
-        "Asset",
+        "Asset Selection",
         [
             "NIFTY", "BANKNIFTY", "SENSEX", "FINNIFTY", "MIDCPNIFTY",
             "RELIANCE", "HDFCBANK", "ICICIBANK", "INFY", "TCS",
@@ -403,66 +402,67 @@ exp_info = LiquidityShield.get_detailed_expiry_info(symbol)
 dte = exp_info['days_left']
 default_lot = DataEngine.LOT_SIZES.get(symbol, 75)
 
-quote = data_eng.get_market_quote(symbol)
-spot = quote['current_price']
-df_candles = quote['df']
-chain_data = data_eng.get_option_chain(symbol, days_to_expiry=dte)
-fii_dii = data_eng.get_fii_dii_sentiment()
-
-ind_res = IndicatorEngine.analyze(df_candles)
-smc_res = SMCEngine.analyze(df_candles)
-confluence = ConfluenceEngine.evaluate(chain_data, ind_res, smc_res, fii_dii)
-liq_audit = LiquidityShield.validate_option_liquidity(symbol, chain_data.get('chain_df'), spot)
-market_regime = StrategyOptimizer.classify_market_regime(spot, chain_data, ind_res, smc_res)
-acc = paper_eng.get_account()
-
-with t_col2:
-    chg_c = "#00F5A0" if quote['p_change'] >= 0 else "#FF3B69"
-    chg_sign = "+" if quote['p_change'] >= 0 else ""
-    st.markdown(f"""
-    <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 8px; padding: 4px 10px; height: 38px; display: flex; align-items: center; justify-content: space-between;">
-        <span style="font-size: 0.75rem; color: #8B949E; font-weight: 700;">{symbol}</span>
-        <span class="mono" style="font-size: 0.95rem; font-weight: 800; color: #FFFFFF;">₹{spot:,.1f}</span>
-        <span class="mono" style="font-size: 0.75rem; font-weight: 700; color: {chg_c};">{chg_sign}{quote['p_change']:.2f}%</span>
-    </div>
-    """, unsafe_allow_html=True)
-
-with t_col3:
-    st.markdown(f"""
-    <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 8px; padding: 4px 10px; height: 38px; display: flex; align-items: center; justify-content: space-between;">
-        <span style="font-size: 0.72rem; color: #8B949E; font-weight: 600;">EXPIRY</span>
-        <span class="mono" style="font-size: 0.8rem; font-weight: 800; color: #00D2FF;">{exp_info['dte_badge']}</span>
-    </div>
-    """, unsafe_allow_html=True)
-
-with t_col4:
+# -------------------------------------------------------------
+# REAL-TIME 2S AUTO-STREAMING TOP TICKER BAR FRAGMENT
+# -------------------------------------------------------------
+@st.fragment(run_every=2)
+def render_live_top_bar(selected_symbol):
+    quote = data_eng.get_market_quote(selected_symbol)
+    spot = quote['current_price']
+    chain_data = data_eng.get_option_chain(selected_symbol, days_to_expiry=dte)
+    acc = paper_eng.get_account()
     pcr_v = chain_data['pcr']
-    pcr_c = "#00F5A0" if pcr_v >= 1.0 else "#FF3B69"
-    api_badge = "🟢 FYERS LIVE" if data_eng.fyers.is_connected() else "🔴 LIVE TICK ENGINE"
-    st.markdown(f"""
-    <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 8px; padding: 4px 10px; height: 38px; display: flex; align-items: center; justify-content: space-between;">
-        <span style="font-size: 0.72rem; color: #8B949E; font-weight: 600;">FEED / PCR</span>
-        <span class="mono" style="font-size: 0.75rem; font-weight: 800; color: #00D2FF;">{api_badge}</span>
-        <span class="mono" style="font-size: 0.82rem; font-weight: 800; color: {pcr_c};">{pcr_v:.2f}</span>
-    </div>
-    """, unsafe_allow_html=True)
 
-with t_col5:
-    st.markdown(f"""
-    <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 8px; padding: 4px 10px; height: 38px; display: flex; align-items: center; justify-content: space-between;">
-        <span style="font-size: 0.72rem; color: #8B949E; font-weight: 600;">CAPITAL</span>
-        <span class="mono" style="font-size: 0.82rem; font-weight: 800; color: #00F5A0;">₹{acc['balance']:,.0f}</span>
-    </div>
-    """, unsafe_allow_html=True)
+    t_col1, t_col2, t_col3, t_col4, t_col5 = st.columns([2.2, 1.8, 1.8, 1.8, 1.4])
 
-with t_col6:
-    if st.button("🚨 PANIC EXIT", use_container_width=True, help="Square-off all open paper positions instantly!"):
-        open_p = paper_eng.get_open_positions()
-        if not open_p.empty:
-            for _, r in open_p.iterrows():
-                paper_eng.close_position(r['id'], spot, 0.0, exit_reason="EMERGENCY PANIC EXIT")
-            st.toast("🚨 All active positions squared off successfully!")
-            st.rerun()
+    with t_col1:
+        chg_c = "#00F5A0" if quote['p_change'] >= 0 else "#FF3B69"
+        chg_sign = "+" if quote['p_change'] >= 0 else ""
+        st.markdown(f"""
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 8px; padding: 4px 10px; height: 38px; display: flex; align-items: center; justify-content: space-between;">
+            <span style="font-size: 0.75rem; color: #8B949E; font-weight: 700;">{selected_symbol}</span>
+            <span class="mono" style="font-size: 0.95rem; font-weight: 800; color: #FFFFFF;">₹{spot:,.1f}</span>
+            <span class="mono" style="font-size: 0.75rem; font-weight: 700; color: {chg_c};">{chg_sign}{quote['p_change']:.2f}%</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with t_col2:
+        st.markdown(f"""
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 8px; padding: 4px 10px; height: 38px; display: flex; align-items: center; justify-content: space-between;">
+            <span style="font-size: 0.72rem; color: #8B949E; font-weight: 600;">EXPIRY</span>
+            <span class="mono" style="font-size: 0.8rem; font-weight: 800; color: #00D2FF;">{exp_info['dte_badge']}</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with t_col3:
+        pcr_c = "#00F5A0" if pcr_v >= 1.0 else "#FF3B69"
+        api_badge = "🟢 FYERS LIVE" if data_eng.fyers.is_connected() else "🔴 REAL-TIME TICK"
+        st.markdown(f"""
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 8px; padding: 4px 10px; height: 38px; display: flex; align-items: center; justify-content: space-between;">
+            <span style="font-size: 0.72rem; color: #8B949E; font-weight: 600;">FEED / PCR</span>
+            <span class="mono" style="font-size: 0.75rem; font-weight: 800; color: #00D2FF;">{api_badge}</span>
+            <span class="mono" style="font-size: 0.82rem; font-weight: 800; color: {pcr_c};">{pcr_v:.2f}</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with t_col4:
+        st.markdown(f"""
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 8px; padding: 4px 10px; height: 38px; display: flex; align-items: center; justify-content: space-between;">
+            <span style="font-size: 0.72rem; color: #8B949E; font-weight: 600;">CAPITAL</span>
+            <span class="mono" style="font-size: 0.82rem; font-weight: 800; color: #00F5A0;">₹{acc['balance']:,.0f}</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with t_col5:
+        if st.button("🚨 PANIC EXIT", use_container_width=True, help="Square-off all open paper positions instantly!"):
+            open_p = paper_eng.get_open_positions()
+            if not open_p.empty:
+                for _, r in open_p.iterrows():
+                    paper_eng.close_position(r['id'], spot, 0.0, exit_reason="EMERGENCY PANIC EXIT")
+                st.toast("🚨 All active positions squared off successfully!")
+                st.rerun()
+
+render_live_top_bar(symbol)
 
 st.markdown("<div style='margin-bottom: 4px;'></div>", unsafe_allow_html=True)
 
@@ -479,371 +479,391 @@ sec1, sec2, sec3, sec4, sec5, sec6 = st.tabs([
 ])
 
 # =============================================================
-# SECTION 1: 3-PANE QUANT COCKPIT
+# SECTION 1: REAL-TIME 2S AUTO-STREAMING 3-PANE COCKPIT
 # =============================================================
 with sec1:
-    left_pane, center_pane, right_pane = st.columns([28, 44, 28])
+    @st.fragment(run_every=2)
+    def render_live_cockpit(selected_symbol):
+        quote = data_eng.get_market_quote(selected_symbol)
+        spot = quote['current_price']
+        df_candles = quote['df']
+        chain_data = data_eng.get_option_chain(selected_symbol, days_to_expiry=dte)
+        fii_dii = data_eng.get_fii_dii_sentiment()
 
-    # --- LEFT PANE (28%) ---
-    with left_pane:
-        conf_score = confluence['confluence_pct']
-        bias_text = confluence['market_bias']
-        bias_pill = "glow-pill-emerald" if "BULLISH" in bias_text else "glow-pill-rose" if "BEARISH" in bias_text else "glow-pill-gold"
-        
-        st.markdown(f"""
-        <div class="cockpit-card">
-            <div class="card-header">
-                <span>🎯 3-LAYER CONFLUENCE RADAR</span>
-                <span class="{bias_pill}">{bias_text}</span>
-            </div>
-            <div style="display: flex; align-items: center; justify-content: space-between; padding: 4px 6px;">
-                <div>
-                    <div class="mono" style="font-size: 2.2rem; font-weight: 900; color: #FFFFFF; line-height: 1;">
-                        {conf_score:.0f}<span style="font-size: 1.1rem; color: #00D2FF;">%</span>
+        ind_res = IndicatorEngine.analyze(df_candles)
+        smc_res = SMCEngine.analyze(df_candles)
+        confluence = ConfluenceEngine.evaluate(chain_data, ind_res, smc_res, fii_dii)
+        market_regime = StrategyOptimizer.classify_market_regime(spot, chain_data, ind_res, smc_res)
+        acc = paper_eng.get_account()
+
+        left_pane, center_pane, right_pane = st.columns([28, 44, 28])
+
+        # --- LEFT PANE (28%) ---
+        with left_pane:
+            conf_score = confluence['confluence_pct']
+            bias_text = confluence['market_bias']
+            bias_pill = "glow-pill-emerald" if "BULLISH" in bias_text else "glow-pill-rose" if "BEARISH" in bias_text else "glow-pill-gold"
+            
+            st.markdown(f"""
+            <div class="cockpit-card">
+                <div class="card-header">
+                    <span>🎯 3-LAYER CONFLUENCE RADAR</span>
+                    <span class="{bias_pill}">{bias_text}</span>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 4px 6px;">
+                    <div>
+                        <div class="mono" style="font-size: 2.2rem; font-weight: 900; color: #FFFFFF; line-height: 1;">
+                            {conf_score:.0f}<span style="font-size: 1.1rem; color: #00D2FF;">%</span>
+                        </div>
+                        <div style="font-size: 0.72rem; color: #8B949E; margin-top: 4px;">Institutional Agreement Score</div>
                     </div>
-                    <div style="font-size: 0.72rem; color: #8B949E; margin-top: 4px;">Institutional Agreement Score</div>
-                </div>
-                <div style="text-align: right;">
-                    <span class="glow-pill-purple" style="font-size: 0.75rem;">REGIME: {market_regime['regime']}</span>
-                    <div style="font-size: 0.7rem; color: #E0AAFF; margin-top: 4px;">{market_regime['recommended_strategy']}</div>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        ce_oi_total = max(1, chain_data.get('total_ce_oi', 100000))
-        pe_oi_total = max(1, chain_data.get('total_pe_oi', 100000))
-        tot_oi = ce_oi_total + pe_oi_total
-        pe_pct = int((pe_oi_total / tot_oi) * 100)
-        ce_pct = 100 - pe_pct
-
-        st.markdown(f"""
-        <div class="cockpit-card">
-            <div class="card-header">
-                <span>📊 LAYER 1: DERIVATIVES DYNAMICS</span>
-                <span class="glow-pill-cyan">FEED: {chain_data.get('feed_source', 'LIVE')}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 700;">
-                <span style="color: #00F5A0;">Put OI Support: {pe_pct}%</span>
-                <span style="color: #FF3B69;">Call OI Resistance: {ce_pct}%</span>
-            </div>
-            <div class="ratio-bar-wrapper">
-                <div class="ratio-bar-put" style="width: {pe_pct}%;"></div>
-                <div class="ratio-bar-call" style="width: {ce_pct}%;"></div>
-            </div>
-            <div class="badge-grid" style="margin-top: 8px;">
-                <div class="badge-cell">
-                    <span class="badge-cell-label">Call Wall (Resistance)</span>
-                    <span class="badge-cell-val" style="color: #FF3B69;">{chain_data['top_call_wall']}</span>
-                </div>
-                <div class="badge-cell">
-                    <span class="badge-cell-label">Put Wall (Support)</span>
-                    <span class="badge-cell-val" style="color: #00F5A0;">{chain_data['top_put_wall']}</span>
-                </div>
-                <div class="badge-cell">
-                    <span class="badge-cell-label">Max Pain Pin</span>
-                    <span class="badge-cell-val" style="color: #FFB800;">{chain_data['max_pain']}</span>
-                </div>
-                <div class="badge-cell">
-                    <span class="badge-cell-label">IV / India VIX</span>
-                    <span class="badge-cell-val" style="color: #00D2FF;">{chain_data['atm_iv']:.1f}% / {chain_data['india_vix']:.2f}</span>
+                    <div style="text-align: right;">
+                        <span class="glow-pill-purple" style="font-size: 0.75rem;">REGIME: {market_regime['regime']}</span>
+                        <div style="font-size: 0.7rem; color: #E0AAFF; margin-top: 4px;">{market_regime['recommended_strategy']}</div>
+                    </div>
                 </div>
             </div>
-        </div>
-        """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
 
-        st.markdown(f"""
-        <div class="cockpit-card">
-            <div class="card-header">
-                <span>📈 LAYER 2: MOMENTUM & TECHNICAL MATRIX</span>
-                <span class="glow-pill-emerald">{ind_res['supertrend']}</span>
-            </div>
-            <div class="badge-grid">
-                <div class="badge-cell">
-                    <span class="badge-cell-label">VWAP Status</span>
-                    <span class="badge-cell-val" style="color: #FFB800;">₹{ind_res['vwap']:,.1f}</span>
-                </div>
-                <div class="badge-cell">
-                    <span class="badge-cell-label">RSI (14) Momentum</span>
-                    <span class="badge-cell-val" style="color: #00D2FF;">{ind_res['rsi']:.1f} ({ind_res['rsi_divergence']})</span>
-                </div>
-                <div class="badge-cell">
-                    <span class="badge-cell-label">Fast EMA 9</span>
-                    <span class="badge-cell-val">₹{ind_res['ema_9']:,.1f}</span>
-                </div>
-                <div class="badge-cell">
-                    <span class="badge-cell-label">Trend EMA 21</span>
-                    <span class="badge-cell-val">₹{ind_res['ema_21']:,.1f}</span>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+            ce_oi_total = max(1, chain_data.get('total_ce_oi', 100000))
+            pe_oi_total = max(1, chain_data.get('total_pe_oi', 100000))
+            tot_oi = ce_oi_total + pe_oi_total
+            pe_pct = int((pe_oi_total / tot_oi) * 100)
+            ce_pct = 100 - pe_pct
 
-        st.markdown(f"""
-        <div class="cockpit-card">
-            <div class="card-header">
-                <span>🏦 LAYER 3: SMART MONEY (SMC) MATRIX</span>
-                <span class="glow-pill-gold">{smc_res['structure']['structure']}</span>
-            </div>
-            <div class="badge-grid">
-                <div class="badge-cell">
-                    <span class="badge-cell-label">Pricing Zone</span>
-                    <span class="badge-cell-val" style="color: #00F5A0;">{smc_res['premium_discount']['zone'].split('(')[0]}</span>
+            st.markdown(f"""
+            <div class="cockpit-card">
+                <div class="card-header">
+                    <span>📊 LAYER 1: DERIVATIVES DYNAMICS</span>
+                    <span class="glow-pill-cyan">FEED: {chain_data.get('feed_source', 'LIVE')}</span>
                 </div>
-                <div class="badge-cell">
-                    <span class="badge-cell-label">50% Equilibrium</span>
-                    <span class="badge-cell-val">₹{smc_res['premium_discount']['fib_50']:,.1f}</span>
+                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 700;">
+                    <span style="color: #00F5A0;">Put OI Support: {pe_pct}%</span>
+                    <span style="color: #FF3B69;">Call OI Resistance: {ce_pct}%</span>
                 </div>
-                <div class="badge-cell" style="grid-column: span 2;">
-                    <span class="badge-cell-label">Liquidity Sweep</span>
-                    <span class="badge-cell-val" style="font-size: 0.75rem; color: #E0AAFF;">{smc_res['liquidity_sweep'][:35]}</span>
+                <div class="ratio-bar-wrapper">
+                    <div class="ratio-bar-put" style="width: {pe_pct}%;"></div>
+                    <div class="ratio-bar-call" style="width: {ce_pct}%;"></div>
+                </div>
+                <div class="badge-grid" style="margin-top: 8px;">
+                    <div class="badge-cell">
+                        <span class="badge-cell-label">Call Wall (Resistance)</span>
+                        <span class="badge-cell-val" style="color: #FF3B69;">{chain_data['top_call_wall']}</span>
+                    </div>
+                    <div class="badge-cell">
+                        <span class="badge-cell-label">Put Wall (Support)</span>
+                        <span class="badge-cell-val" style="color: #00F5A0;">{chain_data['top_put_wall']}</span>
+                    </div>
+                    <div class="badge-cell">
+                        <span class="badge-cell-label">Max Pain Pin</span>
+                        <span class="badge-cell-val" style="color: #FFB800;">{chain_data['max_pain']}</span>
+                    </div>
+                    <div class="badge-cell">
+                        <span class="badge-cell-label">IV / India VIX</span>
+                        <span class="badge-cell-val" style="color: #00D2FF;">{chain_data['atm_iv']:.1f}% / {chain_data['india_vix']:.2f}</span>
+                    </div>
                 </div>
             </div>
-        </div>
-        """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
 
-    # --- CENTER PANE (44%) ---
-    with center_pane:
-        strat_choices = [
-            "🦎 The Big Lizard (Zero Upside Risk)",
-            "🦋 Broken Wing Butterfly (1:4 RRR)",
-            "⏳ Long Double Calendar (Low IV King)",
-            "🛡️ Classic Iron Condor (Wings Armor)",
-            "🎯 Iron Butterfly (IV Crush)"
-        ]
-        selected_strat_label = st.selectbox(
-            "Choose Strategy",
-            strat_choices,
-            index=0 if "Big Lizard" in market_regime['recommended_strategy'] else 1 if "Broken Wing" in market_regime['recommended_strategy'] else 2 if "Calendar" in market_regime['recommended_strategy'] else 3,
-            label_visibility="collapsed"
-        )
-
-        if "Big Lizard" in selected_strat_label:
-            active_strat = StrategyOptimizer.generate_big_lizard(symbol, spot, chain_data, dte=dte, lot_size=default_lot, account_capital=acc['balance'])
-        elif "Broken Wing" in selected_strat_label:
-            active_strat = StrategyOptimizer.generate_broken_wing_butterfly(symbol, spot, chain_data, dte=dte, lot_size=default_lot, account_capital=acc['balance'])
-        elif "Calendar" in selected_strat_label:
-            active_strat = StrategyOptimizer.generate_double_calendar(symbol, spot, chain_data, dte=dte, lot_size=default_lot, account_capital=acc['balance'])
-        elif "Iron Butterfly" in selected_strat_label:
-            active_strat = StrategyOptimizer.generate_iron_butterfly(symbol, spot, chain_data, dte=dte, lot_size=default_lot, account_capital=acc['balance'])
-        else:
-            active_strat = StrategyOptimizer.generate_classic_iron_condor(symbol, spot, chain_data, dte=dte, lot_size=default_lot, account_capital=acc['balance'])
-
-        # Plotly Sensibull Payoff Curve
-        spot_range = np.linspace(spot * 0.94, spot * 1.06, 120)
-        pnl_curve = []
-        for s_price in spot_range:
-            total_pnl = 0.0
-            for leg in active_strat['legs']:
-                k = leg['strike']
-                p = leg['ltp']
-                q = leg['qty']
-                is_call = 'CE' in leg['option']
-                is_buy = leg['type'] == 'BUY'
-                payoff = max(0.0, s_price - k) if is_call else max(0.0, k - s_price)
-                leg_pnl = (payoff - p) * q if is_buy else (p - payoff) * q
-                total_pnl += leg_pnl
-            pnl_curve.append(total_pnl)
-
-        pnl_array = np.array(pnl_curve)
-        fig_payoff = go.Figure()
-        fig_payoff.add_hline(y=0, line_dash="solid", line_color="rgba(255,255,255,0.2)", line_width=1)
-        fig_payoff.add_trace(go.Scatter(
-            x=spot_range, y=np.maximum(pnl_array, 0), mode='lines', line=dict(color='#00F5A0', width=0),
-            fill='tozeroy', fillcolor='rgba(0, 245, 160, 0.18)', name='Profit Zone', hoverinfo='skip'
-        ))
-        fig_payoff.add_trace(go.Scatter(
-            x=spot_range, y=np.minimum(pnl_array, 0), mode='lines', line=dict(color='#FF3B69', width=0),
-            fill='tozeroy', fillcolor='rgba(255, 59, 105, 0.18)', name='Loss Zone', hoverinfo='skip'
-        ))
-        fig_payoff.add_trace(go.Scatter(
-            x=spot_range, y=pnl_array, mode='lines', line=dict(color='#00D2FF', width=2.5),
-            name='Expiry P&L', hovertemplate='Spot: ₹%{x:,.0f}<br>P&L: ₹%{y:+,.0f}<extra></extra>'
-        ))
-        fig_payoff.add_vline(
-            x=spot, line_dash="dash", line_color="#FFB800", line_width=1.5,
-            annotation_text=f"Spot ₹{spot:,.0f}", annotation_position="top right",
-            annotation_font=dict(color="#FFB800", family="JetBrains Mono", size=10)
-        )
-        fig_payoff.update_layout(
-            template='plotly_dark', height=260, margin=dict(l=10, r=10, t=10, b=10),
-            plot_bgcolor='#07090E', paper_bgcolor='#07090E', showlegend=False,
-            font=dict(family='JetBrains Mono', color='#8B949E', size=9),
-            xaxis=dict(gridcolor='rgba(255,255,255,0.04)', tickprefix='₹'),
-            yaxis=dict(gridcolor='rgba(255,255,255,0.04)', tickprefix='₹', side='right')
-        )
-        st.plotly_chart(fig_payoff, use_container_width=True, config={'displayModeBar': False})
-
-        # Top Strikes Bar Chart
-        df_chain = chain_data.get('chain_df')
-        if df_chain is not None and not df_chain.empty:
-            near_df = df_chain[(df_chain['strike'] >= spot * 0.97) & (df_chain['strike'] <= spot * 1.03)].head(6)
-            if not near_df.empty:
-                fig_oi = go.Figure()
-                fig_oi.add_trace(go.Bar(
-                    x=near_df['strike'], y=near_df['pe_oi'] if 'pe_oi' in near_df.columns else [50000]*len(near_df),
-                    name='Put OI (Support)', marker_color='#00F5A0', opacity=0.85
-                ))
-                fig_oi.add_trace(go.Bar(
-                    x=near_df['strike'], y=near_df['ce_oi'] if 'ce_oi' in near_df.columns else [50000]*len(near_df),
-                    name='Call OI (Resistance)', marker_color='#FF3B69', opacity=0.85
-                ))
-                fig_oi.update_layout(
-                    barmode='group', template='plotly_dark', height=140, margin=dict(l=10, r=10, t=6, b=6),
-                    plot_bgcolor='#07090E', paper_bgcolor='#07090E', showlegend=True,
-                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(size=8)),
-                    font=dict(family='JetBrains Mono', color='#8B949E', size=8),
-                    xaxis=dict(gridcolor='rgba(255,255,255,0.03)', type='category'),
-                    yaxis=dict(gridcolor='rgba(255,255,255,0.03)', side='right')
-                )
-                st.plotly_chart(fig_oi, use_container_width=True, config={'displayModeBar': False})
-
-        # Action Deck Strip
-        st.markdown(f"""
-        <div class="cockpit-card" style="margin-top: 4px; padding: 8px 12px;">
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; text-align: center;">
-                <div style="background: rgba(255,255,255,0.02); padding: 4px; border-radius: 6px;">
-                    <div style="font-size: 0.65rem; color: #8B949E;">NET CREDIT</div>
-                    <div class="mono" style="font-size: 0.85rem; font-weight: 800; color: #00F5A0;">{active_strat['net_credit_debit'].split(' ')[-1]}</div>
+            st.markdown(f"""
+            <div class="cockpit-card">
+                <div class="card-header">
+                    <span>📈 LAYER 2: MOMENTUM & TECHNICAL MATRIX</span>
+                    <span class="glow-pill-emerald">{ind_res['supertrend']}</span>
                 </div>
-                <div style="background: rgba(255,255,255,0.02); padding: 4px; border-radius: 6px;">
-                    <div style="font-size: 0.65rem; color: #8B949E;">MARGIN BLOCKED</div>
-                    <div class="mono" style="font-size: 0.85rem; font-weight: 800; color: #00D2FF;">{active_strat['final_margin_blocked']}</div>
-                </div>
-                <div style="background: rgba(255,255,255,0.02); padding: 4px; border-radius: 6px;">
-                    <div style="font-size: 0.65rem; color: #8B949E;">FUNDS NEEDED</div>
-                    <div class="mono" style="font-size: 0.85rem; font-weight: 800; color: #FFB800;">{active_strat['upfront_funds_needed']}</div>
-                </div>
-                <div style="background: rgba(255,255,255,0.02); padding: 4px; border-radius: 6px;">
-                    <div style="font-size: 0.65rem; color: #8B949E;">WIN PROBABILITY</div>
-                    <div class="mono" style="font-size: 0.85rem; font-weight: 800; color: #C77DFF;">{active_strat['win_probability']}</div>
+                <div class="badge-grid">
+                    <div class="badge-cell">
+                        <span class="badge-cell-label">VWAP Status</span>
+                        <span class="badge-cell-val" style="color: #FFB800;">₹{ind_res['vwap']:,.1f}</span>
+                    </div>
+                    <div class="badge-cell">
+                        <span class="badge-cell-label">RSI (14) Momentum</span>
+                        <span class="badge-cell-val" style="color: #00D2FF;">{ind_res['rsi']:.1f} ({ind_res['rsi_divergence']})</span>
+                    </div>
+                    <div class="badge-cell">
+                        <span class="badge-cell-label">Fast EMA 9</span>
+                        <span class="badge-cell-val">₹{ind_res['ema_9']:,.1f}</span>
+                    </div>
+                    <div class="badge-cell">
+                        <span class="badge-cell-label">Trend EMA 21</span>
+                        <span class="badge-cell-val">₹{ind_res['ema_21']:,.1f}</span>
+                    </div>
                 </div>
             </div>
-        </div>
-        """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
 
-        if st.button(f"🚀 Deploy 1-Click {active_strat['strategy_name']} ({default_lot} Qty)", use_container_width=True):
-            tid = paper_eng.execute_paper_trade(symbol, active_strat, spot, conf_score, lot_size=default_lot)
-            st.toast(f"✅ Trade #{tid} Successfully Deployed into Virtual Portfolio!")
-            st.rerun()
-
-    # --- RIGHT PANE (28%) ---
-    with right_pane:
-        open_trades = paper_eng.get_open_positions()
-        if not open_trades.empty:
-            latest_trade = open_trades.iloc[-1]
-            legs_data = json.loads(latest_trade['legs_json'])
-            adj_eval = AdjustmentEngine.evaluate_active_trade(legs_data, spot, smc_res, chain_data.get('chain_df'))
-            sentinel_pill = "glow-pill-rose" if adj_eval['severity'] == 'HIGH' else "glow-pill-gold" if adj_eval['severity'] == 'WARNING' else "glow-pill-emerald"
-            sentinel_status = adj_eval['status']
-            sentinel_reason = adj_eval['trigger_reason']
-        else:
-            sentinel_pill = "glow-pill-emerald"
-            sentinel_status = "SENTINEL ACTIVE (SAFE)"
-            sentinel_reason = "No open risk. System armed to defend next trade."
-            adj_eval = {'action_plan': []}
-
-        st.markdown(f"""
-        <div class="cockpit-card">
-            <div class="card-header">
-                <span>🛡️ 3-LEVEL DEFENSE SENTINEL</span>
-                <span class="{sentinel_pill}">{sentinel_status}</span>
-            </div>
-            <div style="font-size: 0.75rem; color: #8B949E; margin-bottom: 6px;">{sentinel_reason}</div>
-        """, unsafe_allow_html=True)
-
-        if adj_eval['action_plan']:
-            for act in adj_eval['action_plan']:
-                st.markdown(f"""
-                <div style="background: rgba(255,59,105,0.08); border-left: 2px solid #FF3B69; padding: 4px 8px; border-radius: 4px; font-size: 0.72rem; margin-bottom: 4px;">
-                    <b>Step {act['step']}:</b> {act['action']}
+            st.markdown(f"""
+            <div class="cockpit-card">
+                <div class="card-header">
+                    <span>🏦 LAYER 3: SMART MONEY (SMC) MATRIX</span>
+                    <span class="glow-pill-gold">{smc_res['structure']['structure']}</span>
                 </div>
-                """, unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-
-        st.markdown(f"""
-        <div class="cockpit-card">
-            <div class="card-header">
-                <span>⚡ REAL-TIME GREEKS COCKPIT</span>
-                <span class="glow-pill-cyan">DELTA NEUTRAL</span>
-            </div>
-            <div class="badge-grid">
-                <div class="badge-cell">
-                    <span class="badge-cell-label">Net Delta (Δ)</span>
-                    <span class="badge-cell-val" style="color: #00F5A0;">+0.04</span>
-                </div>
-                <div class="badge-cell">
-                    <span class="badge-cell-label">Daily Theta (Θ)</span>
-                    <span class="badge-cell-val" style="color: #FFB800;">{active_strat['theta_decay_per_day']}</span>
-                </div>
-                <div class="badge-cell">
-                    <span class="badge-cell-label">Gamma Risk (Γ)</span>
-                    <span class="badge-cell-val" style="color: #00D2FF;">0.0014</span>
-                </div>
-                <div class="badge-cell">
-                    <span class="badge-cell-label">Vega Risk (V)</span>
-                    <span class="badge-cell-val" style="color: #FF3B69;">-₹280 / 1% IV</span>
+                <div class="badge-grid">
+                    <div class="badge-cell">
+                        <span class="badge-cell-label">Pricing Zone</span>
+                        <span class="badge-cell-val" style="color: #00F5A0;">{smc_res['premium_discount']['zone'].split('(')[0]}</span>
+                    </div>
+                    <div class="badge-cell">
+                        <span class="badge-cell-label">50% Equilibrium</span>
+                        <span class="badge-cell-val">₹{smc_res['premium_discount']['fib_50']:,.1f}</span>
+                    </div>
+                    <div class="badge-cell" style="grid-column: span 2;">
+                        <span class="badge-cell-label">Liquidity Sweep</span>
+                        <span class="badge-cell-val" style="font-size: 0.75rem; color: #E0AAFF;">{smc_res['liquidity_sweep'][:35]}</span>
+                    </div>
                 </div>
             </div>
-        </div>
-        """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
 
-        st.markdown(f"""
-        <div class="cockpit-card" style="margin-bottom: 0;">
-            <div class="card-header">
-                <span>🤖 GEMINI QUANT BUDDY</span>
-                <span class="glow-pill-purple">VOICE READY</span>
+        # --- CENTER PANE (44%) ---
+        with center_pane:
+            strat_choices = [
+                "🦎 The Big Lizard (Zero Upside Risk)",
+                "🦋 Broken Wing Butterfly (1:4 RRR)",
+                "⏳ Long Double Calendar (Low IV King)",
+                "🛡️ Classic Iron Condor (Wings Armor)",
+                "🎯 Iron Butterfly (IV Crush)"
+            ]
+            selected_strat_label = st.selectbox(
+                "Choose Strategy",
+                strat_choices,
+                index=0 if "Big Lizard" in market_regime['recommended_strategy'] else 1 if "Broken Wing" in market_regime['recommended_strategy'] else 2 if "Calendar" in market_regime['recommended_strategy'] else 3,
+                label_visibility="collapsed",
+                key="cockpit_strat_selector"
+            )
+
+            if "Big Lizard" in selected_strat_label:
+                active_strat = StrategyOptimizer.generate_big_lizard(selected_symbol, spot, chain_data, dte=dte, lot_size=default_lot, account_capital=acc['balance'])
+            elif "Broken Wing" in selected_strat_label:
+                active_strat = StrategyOptimizer.generate_broken_wing_butterfly(selected_symbol, spot, chain_data, dte=dte, lot_size=default_lot, account_capital=acc['balance'])
+            elif "Calendar" in selected_strat_label:
+                active_strat = StrategyOptimizer.generate_double_calendar(selected_symbol, spot, chain_data, dte=dte, lot_size=default_lot, account_capital=acc['balance'])
+            elif "Iron Butterfly" in selected_strat_label:
+                active_strat = StrategyOptimizer.generate_iron_butterfly(selected_symbol, spot, chain_data, dte=dte, lot_size=default_lot, account_capital=acc['balance'])
+            else:
+                active_strat = StrategyOptimizer.generate_classic_iron_condor(selected_symbol, spot, chain_data, dte=dte, lot_size=default_lot, account_capital=acc['balance'])
+
+            # Plotly Sensibull Payoff Curve
+            spot_range = np.linspace(spot * 0.94, spot * 1.06, 120)
+            pnl_curve = []
+            for s_price in spot_range:
+                total_pnl = 0.0
+                for leg in active_strat['legs']:
+                    k = leg['strike']
+                    p = leg['ltp']
+                    q = leg['qty']
+                    is_call = 'CE' in leg['option']
+                    is_buy = leg['type'] == 'BUY'
+                    payoff = max(0.0, s_price - k) if is_call else max(0.0, k - s_price)
+                    leg_pnl = (payoff - p) * q if is_buy else (p - payoff) * q
+                    total_pnl += leg_pnl
+                pnl_curve.append(total_pnl)
+
+            pnl_array = np.array(pnl_curve)
+            fig_payoff = go.Figure()
+            fig_payoff.add_hline(y=0, line_dash="solid", line_color="rgba(255,255,255,0.2)", line_width=1)
+            fig_payoff.add_trace(go.Scatter(
+                x=spot_range, y=np.maximum(pnl_array, 0), mode='lines', line=dict(color='#00F5A0', width=0),
+                fill='tozeroy', fillcolor='rgba(0, 245, 160, 0.18)', name='Profit Zone', hoverinfo='skip'
+            ))
+            fig_payoff.add_trace(go.Scatter(
+                x=spot_range, y=np.minimum(pnl_array, 0), mode='lines', line=dict(color='#FF3B69', width=0),
+                fill='tozeroy', fillcolor='rgba(255, 59, 105, 0.18)', name='Loss Zone', hoverinfo='skip'
+            ))
+            fig_payoff.add_trace(go.Scatter(
+                x=spot_range, y=pnl_array, mode='lines', line=dict(color='#00D2FF', width=2.5),
+                name='Expiry P&L', hovertemplate='Spot: ₹%{x:,.0f}<br>P&L: ₹%{y:+,.0f}<extra></extra>'
+            ))
+            fig_payoff.add_vline(
+                x=spot, line_dash="dash", line_color="#FFB800", line_width=1.5,
+                annotation_text=f"Spot ₹{spot:,.1f}", annotation_position="top right",
+                annotation_font=dict(color="#FFB800", family="JetBrains Mono", size=10)
+            )
+            fig_payoff.update_layout(
+                template='plotly_dark', height=260, margin=dict(l=10, r=10, t=10, b=10),
+                plot_bgcolor='#07090E', paper_bgcolor='#07090E', showlegend=False,
+                font=dict(family='JetBrains Mono', color='#8B949E', size=9),
+                xaxis=dict(gridcolor='rgba(255,255,255,0.04)', tickprefix='₹'),
+                yaxis=dict(gridcolor='rgba(255,255,255,0.04)', tickprefix='₹', side='right')
+            )
+            st.plotly_chart(fig_payoff, use_container_width=True, config={'displayModeBar': False})
+
+            # Top Strikes Bar Chart
+            df_chain = chain_data.get('chain_df')
+            if df_chain is not None and not df_chain.empty:
+                near_df = df_chain[(df_chain['strike'] >= spot * 0.97) & (df_chain['strike'] <= spot * 1.03)].head(6)
+                if not near_df.empty:
+                    fig_oi = go.Figure()
+                    fig_oi.add_trace(go.Bar(
+                        x=near_df['strike'], y=near_df['pe_oi'] if 'pe_oi' in near_df.columns else [50000]*len(near_df),
+                        name='Put OI (Support)', marker_color='#00F5A0', opacity=0.85
+                    ))
+                    fig_oi.add_trace(go.Bar(
+                        x=near_df['strike'], y=near_df['ce_oi'] if 'ce_oi' in near_df.columns else [50000]*len(near_df),
+                        name='Call OI (Resistance)', marker_color='#FF3B69', opacity=0.85
+                    ))
+                    fig_oi.update_layout(
+                        barmode='group', template='plotly_dark', height=140, margin=dict(l=10, r=10, t=6, b=6),
+                        plot_bgcolor='#07090E', paper_bgcolor='#07090E', showlegend=True,
+                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(size=8)),
+                        font=dict(family='JetBrains Mono', color='#8B949E', size=8),
+                        xaxis=dict(gridcolor='rgba(255,255,255,0.03)', type='category'),
+                        yaxis=dict(gridcolor='rgba(255,255,255,0.03)', side='right')
+                    )
+                    st.plotly_chart(fig_oi, use_container_width=True, config={'displayModeBar': False})
+
+            # Action Deck Strip
+            st.markdown(f"""
+            <div class="cockpit-card" style="margin-top: 4px; padding: 8px 12px;">
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; text-align: center;">
+                    <div style="background: rgba(255,255,255,0.02); padding: 4px; border-radius: 6px;">
+                        <div style="font-size: 0.65rem; color: #8B949E;">NET CREDIT</div>
+                        <div class="mono" style="font-size: 0.85rem; font-weight: 800; color: #00F5A0;">{active_strat['net_credit_debit'].split(' ')[-1]}</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.02); padding: 4px; border-radius: 6px;">
+                        <div style="font-size: 0.65rem; color: #8B949E;">MARGIN BLOCKED</div>
+                        <div class="mono" style="font-size: 0.85rem; font-weight: 800; color: #00D2FF;">{active_strat['final_margin_blocked']}</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.02); padding: 4px; border-radius: 6px;">
+                        <div style="font-size: 0.65rem; color: #8B949E;">FUNDS NEEDED</div>
+                        <div class="mono" style="font-size: 0.85rem; font-weight: 800; color: #FFB800;">{active_strat['upfront_funds_needed']}</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.02); padding: 4px; border-radius: 6px;">
+                        <div style="font-size: 0.65rem; color: #8B949E;">WIN PROBABILITY</div>
+                        <div class="mono" style="font-size: 0.85rem; font-weight: 800; color: #C77DFF;">{active_strat['win_probability']}</div>
+                    </div>
+                </div>
             </div>
-        </div>
-        """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
 
-        q1, q2 = st.columns(2)
-        quick_q = None
-        with q1:
-            if st.button("💬 Bhai kya karu?", use_container_width=True):
-                quick_q = f"Bhai {symbol} par current spot {spot} aur {market_regime['regime']} regime me kaunsi strategy best hai aur kyu?"
-        with q2:
-            if st.button("🛡️ Sentinel Status?", use_container_width=True):
-                quick_q = f"Bhai {symbol} par adjustment sentinel trigger points aur breakevens kya hain?"
+            if st.button(f"🚀 Deploy 1-Click {active_strat['strategy_name']} ({default_lot} Qty)", use_container_width=True):
+                tid = paper_eng.execute_paper_trade(selected_symbol, active_strat, spot, conf_score, lot_size=default_lot)
+                st.toast(f"✅ Trade #{tid} Successfully Deployed into Virtual Portfolio!")
+                st.rerun()
 
-        chat_box = st.container(height=170)
-        with chat_box:
-            for m in st.session_state.gemini_messages[-4:]:
-                if m["role"] == "user":
-                    st.markdown(f"<div class='chat-msg-u'><b>You:</b> {m['content']}</div>", unsafe_allow_html=True)
-                else:
-                    st.markdown(f"<div class='chat-msg-a'><b>🤖 Bhai:</b> {m['content']}</div>", unsafe_allow_html=True)
+        # --- RIGHT PANE (28%) ---
+        with right_pane:
+            open_trades = paper_eng.get_open_positions()
+            if not open_trades.empty:
+                latest_trade = open_trades.iloc[-1]
+                legs_data = json.loads(latest_trade['legs_json'])
+                adj_eval = AdjustmentEngine.evaluate_active_trade(legs_data, spot, smc_res, chain_data.get('chain_df'))
+                sentinel_pill = "glow-pill-rose" if adj_eval['severity'] == 'HIGH' else "glow-pill-gold" if adj_eval['severity'] == 'WARNING' else "glow-pill-emerald"
+                sentinel_status = adj_eval['status']
+                sentinel_reason = adj_eval['trigger_reason']
+            else:
+                sentinel_pill = "glow-pill-emerald"
+                sentinel_status = "SENTINEL ACTIVE (SAFE)"
+                sentinel_reason = "No open risk. System armed to defend next trade."
+                adj_eval = {'action_plan': []}
 
-        u_input = st.chat_input("Poocho bhai se...")
-        act_q = quick_q or u_input
+            st.markdown(f"""
+            <div class="cockpit-card">
+                <div class="card-header">
+                    <span>🛡️ 3-LEVEL DEFENSE SENTINEL</span>
+                    <span class="{sentinel_pill}">{sentinel_status}</span>
+                </div>
+                <div style="font-size: 0.75rem; color: #8B949E; margin-bottom: 6px;">{sentinel_reason}</div>
+            """, unsafe_allow_html=True)
 
-        if act_q:
-            st.session_state.gemini_messages.append({"role": "user", "content": act_q})
-            m_context = {
-                'symbol': symbol, 'spot': spot, 'regime': market_regime['regime'],
-                'conf_score': conf_score, 'bias': bias_text, 'pcr': pcr_v, 'vix': chain_data['india_vix'],
-                'active_strat': active_strat['strategy_name'], 'balance': acc['balance']
-            }
-            with st.spinner("Analyzing..."):
-                reply = GeminiLiveChat.query_gemini(act_q, m_context, st.session_state.gemini_messages, api_key=config.get("GEMINI_API_KEY"))
-            st.session_state.gemini_messages.append({"role": "assistant", "content": reply})
-            st.rerun()
+            if adj_eval['action_plan']:
+                for act in adj_eval['action_plan']:
+                    st.markdown(f"""
+                    <div style="background: rgba(255,59,105,0.08); border-left: 2px solid #FF3B69; padding: 4px 8px; border-radius: 4px; font-size: 0.72rem; margin-bottom: 4px;">
+                        <b>Step {act['step']}:</b> {act['action']}
+                    </div>
+                    """, unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
-        if st.session_state.gemini_messages and len(st.session_state.gemini_messages) > 1:
-            last_rep = st.session_state.gemini_messages[-1]["content"]
-            if st.button("🔊 Voice Suno", key="play_voice_btn", use_container_width=True):
-                with st.spinner("Speaking..."):
-                    a_file = VoiceAICopilot.speak_text(last_rep, "gemini_voice.mp3")
-                    if a_file and os.path.exists(a_file):
-                        st.audio(a_file, format="audio/mp3")
+            st.markdown(f"""
+            <div class="cockpit-card">
+                <div class="card-header">
+                    <span>⚡ REAL-TIME GREEKS COCKPIT</span>
+                    <span class="glow-pill-cyan">DELTA NEUTRAL</span>
+                </div>
+                <div class="badge-grid">
+                    <div class="badge-cell">
+                        <span class="badge-cell-label">Net Delta (Δ)</span>
+                        <span class="badge-cell-val" style="color: #00F5A0;">+0.04</span>
+                    </div>
+                    <div class="badge-cell">
+                        <span class="badge-cell-label">Daily Theta (Θ)</span>
+                        <span class="badge-cell-val" style="color: #FFB800;">{active_strat['theta_decay_per_day']}</span>
+                    </div>
+                    <div class="badge-cell">
+                        <span class="badge-cell-label">Gamma Risk (Γ)</span>
+                        <span class="badge-cell-val" style="color: #00D2FF;">0.0014</span>
+                    </div>
+                    <div class="badge-cell">
+                        <span class="badge-cell-label">Vega Risk (V)</span>
+                        <span class="badge-cell-val" style="color: #FF3B69;">-₹280 / 1% IV</span>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            st.markdown(f"""
+            <div class="cockpit-card" style="margin-bottom: 0;">
+                <div class="card-header">
+                    <span>🤖 GEMINI QUANT BUDDY</span>
+                    <span class="glow-pill-purple">VOICE READY</span>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            q1, q2 = st.columns(2)
+            quick_q = None
+            with q1:
+                if st.button("💬 Bhai kya karu?", use_container_width=True):
+                    quick_q = f"Bhai {selected_symbol} par current spot {spot} aur {market_regime['regime']} regime me kaunsi strategy best hai aur kyu?"
+            with q2:
+                if st.button("🛡️ Sentinel Status?", use_container_width=True):
+                    quick_q = f"Bhai {selected_symbol} par adjustment sentinel trigger points aur breakevens kya hain?"
+
+            chat_box = st.container(height=170)
+            with chat_box:
+                for m in st.session_state.gemini_messages[-4:]:
+                    if m["role"] == "user":
+                        st.markdown(f"<div class='chat-msg-u'><b>You:</b> {m['content']}</div>", unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"<div class='chat-msg-a'><b>🤖 Bhai:</b> {m['content']}</div>", unsafe_allow_html=True)
+
+            u_input = st.chat_input("Poocho bhai se...")
+            act_q = quick_q or u_input
+
+            if act_q:
+                st.session_state.gemini_messages.append({"role": "user", "content": act_q})
+                m_context = {
+                    'symbol': selected_symbol, 'spot': spot, 'regime': market_regime['regime'],
+                    'conf_score': conf_score, 'bias': bias_text, 'pcr': chain_data['pcr'], 'vix': chain_data['india_vix'],
+                    'active_strat': active_strat['strategy_name'], 'balance': acc['balance']
+                }
+                with st.spinner("Analyzing..."):
+                    reply = GeminiLiveChat.query_gemini(act_q, m_context, st.session_state.gemini_messages, api_key=config.get("GEMINI_API_KEY"))
+                st.session_state.gemini_messages.append({"role": "assistant", "content": reply})
+                st.rerun()
+
+            if st.session_state.gemini_messages and len(st.session_state.gemini_messages) > 1:
+                last_rep = st.session_state.gemini_messages[-1]["content"]
+                if st.button("🔊 Voice Suno", key="play_voice_btn", use_container_width=True):
+                    with st.spinner("Speaking..."):
+                        a_file = VoiceAICopilot.speak_text(last_rep, "gemini_voice.mp3")
+                        if a_file and os.path.exists(a_file):
+                            st.audio(a_file, format="audio/mp3")
+
+    render_live_cockpit(symbol)
 
 
 # =============================================================
 # SECTION 2: HIGH-FREQUENCY REAL-TIME TICKING OPTION CHAIN (PRICE + OI)
 # =============================================================
 with sec2:
-    atm_k = chain_data['atm_strike']
-    df_oc = chain_data.get('chain_df')
+    chain_data_s2 = data_eng.get_option_chain(symbol, days_to_expiry=dte)
+    atm_k = chain_data_s2['atm_strike']
+    df_oc = chain_data_s2.get('chain_df')
+    quote_s2 = data_eng.get_market_quote(symbol)
+    spot_s2 = quote_s2['current_price']
     
     atm_ce_p = 110.90
     atm_pe_p = 154.30
@@ -886,7 +906,7 @@ with sec2:
             n_strikes = 15
 
         df_oc_sorted = df_oc.sort_values(by='strike').reset_index(drop=True)
-        atm_idx = (df_oc_sorted['strike'] - spot).abs().idxmin()
+        atm_idx = (df_oc_sorted['strike'] - spot_s2).abs().idxmin()
         start_i = max(0, atm_idx - n_strikes)
         end_i = min(len(df_oc_sorted), atm_idx + n_strikes + 1)
         sub_oc = df_oc_sorted.iloc[start_i:end_i].copy()
@@ -895,7 +915,7 @@ with sec2:
         js_rows_data = []
         for _, r in sub_oc.iterrows():
             k = int(r['strike'])
-            is_atm = bool(abs(k - spot) < (df_oc_sorted['strike'].diff().abs().min() or 50) / 2)
+            is_atm = bool(abs(k - spot_s2) < (df_oc_sorted['strike'].diff().abs().min() or 50) / 2)
             js_rows_data.append({
                 "strike": k,
                 "is_atm": is_atm,
@@ -911,8 +931,8 @@ with sec2:
                 "pe_vol": int(r.get('pe_volume', 25000)),
                 "pe_iv": float(r.get('pe_iv', 10.0)),
                 "pe_delta": float(r.get('pe_delta', -0.5)),
-                "ce_wall": " 🟥RES" if k == chain_data['top_call_wall'] else "",
-                "pe_wall": " 🟩SUP" if k == chain_data['top_put_wall'] else ""
+                "ce_wall": " 🟥RES" if k == chain_data_s2['top_call_wall'] else "",
+                "pe_wall": " 🟩SUP" if k == chain_data_s2['top_put_wall'] else ""
             })
 
         js_data_json = json.dumps(js_rows_data)
@@ -1026,7 +1046,7 @@ with sec2:
                     📊 {symbol} REAL-TIME LIVE TICKING OPTION CHAIN ({exp_info['expiry_date_str']})
                 </span>
                 <span style="font-size: 0.72rem; color: #00F5A0; font-weight: 700; background: rgba(0,245,160,0.12); padding: 2px 8px; border-radius: 12px; border: 1px solid rgba(0,245,160,0.3);">
-                    {source_label} | SPOT: <span id="header-spot">₹{spot:,.2f}</span>
+                    {source_label} | SPOT: <span id="header-spot">₹{spot_s2:,.2f}</span>
                 </span>
             </div>
 
@@ -1049,7 +1069,7 @@ with sec2:
                 </div>
                 <div class="card-cell" style="background: rgba(157, 78, 221, 0.08); border-color: rgba(157, 78, 221, 0.3);">
                     <div class="card-title">PCR / MAX PAIN</div>
-                    <div class="card-val" id="card-pcr" style="color: #C77DFF;">{pcr_v:.2f} / ₹{chain_data['max_pain']}</div>
+                    <div class="card-val" id="card-pcr" style="color: #C77DFF;">{chain_data_s2['pcr']:.2f} / ₹{chain_data_s2['max_pain']}</div>
                 </div>
             </div>
         </div>
@@ -1086,7 +1106,7 @@ with sec2:
 
         <script>
         const initialData = {js_data_json};
-        let currentSpot = {spot};
+        let currentSpot = {spot_s2};
         const atmStrike = {atm_k};
         const lotSize = {default_lot};
 
@@ -1150,8 +1170,6 @@ with sec2:
             const numUpdates = Math.floor(Math.random() * 3) + 2;
             let atmCePrice = null;
             let atmPePrice = null;
-            let totalCeOiSum = 0;
-            let totalPeOiSum = 0;
 
             for (let i = 0; i < numUpdates; i++) {{
                 const randIdx = Math.floor(Math.random() * initialData.length);
@@ -1282,12 +1300,16 @@ with sec3:
     </div>
     """, unsafe_allow_html=True)
 
+    chain_data_s3 = data_eng.get_option_chain(symbol, days_to_expiry=dte)
+    spot_s3 = data_eng.get_market_quote(symbol)['current_price']
+    acc_s3 = paper_eng.get_account()
+
     all_strats = [
-        StrategyOptimizer.generate_big_lizard(symbol, spot, chain_data, dte=dte, lot_size=default_lot, account_capital=acc['balance']),
-        StrategyOptimizer.generate_broken_wing_butterfly(symbol, spot, chain_data, dte=dte, lot_size=default_lot, account_capital=acc['balance']),
-        StrategyOptimizer.generate_double_calendar(symbol, spot, chain_data, dte=dte, lot_size=default_lot, account_capital=acc['balance']),
-        StrategyOptimizer.generate_classic_iron_condor(symbol, spot, chain_data, dte=dte, lot_size=default_lot, account_capital=acc['balance']),
-        StrategyOptimizer.generate_iron_butterfly(symbol, spot, chain_data, dte=dte, lot_size=default_lot, account_capital=acc['balance'])
+        StrategyOptimizer.generate_big_lizard(symbol, spot_s3, chain_data_s3, dte=dte, lot_size=default_lot, account_capital=acc_s3['balance']),
+        StrategyOptimizer.generate_broken_wing_butterfly(symbol, spot_s3, chain_data_s3, dte=dte, lot_size=default_lot, account_capital=acc_s3['balance']),
+        StrategyOptimizer.generate_double_calendar(symbol, spot_s3, chain_data_s3, dte=dte, lot_size=default_lot, account_capital=acc_s3['balance']),
+        StrategyOptimizer.generate_classic_iron_condor(symbol, spot_s3, chain_data_s3, dte=dte, lot_size=default_lot, account_capital=acc_s3['balance']),
+        StrategyOptimizer.generate_iron_butterfly(symbol, spot_s3, chain_data_s3, dte=dte, lot_size=default_lot, account_capital=acc_s3['balance'])
     ]
 
     for s_idx, st_data in enumerate(all_strats):
@@ -1321,7 +1343,7 @@ with sec3:
         """, unsafe_allow_html=True)
 
         if st.button(f"⚡ Deploy {st_data['strategy_name']}", key=f"vault_btn_{s_idx}", use_container_width=True):
-            tid = paper_eng.execute_paper_trade(symbol, st_data, spot, conf_score, lot_size=default_lot)
+            tid = paper_eng.execute_paper_trade(symbol, st_data, spot_s3, 75.0, lot_size=default_lot)
             st.toast(f"✅ Trade #{tid} ({st_data['strategy_name']}) Deployed!")
             st.rerun()
 
@@ -1370,11 +1392,13 @@ with sec4:
 # SECTION 5: ₹3,00,000 PORTFOLIO & TRADE JOURNAL
 # =============================================================
 with sec5:
+    acc_s5 = paper_eng.get_account()
+    spot_s5 = data_eng.get_market_quote(symbol)['current_price']
     st.markdown(f"""
     <div class="cockpit-card">
         <div class="card-header">
             <span>💼 3-5 MONTH INCUBATION SUITE (BENCHMARK CAPITAL: ₹3,00,000.00)</span>
-            <span class="glow-pill-emerald">BALANCE: ₹{acc['balance']:,.2f}</span>
+            <span class="glow-pill-emerald">BALANCE: ₹{acc_s5['balance']:,.2f}</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -1384,7 +1408,7 @@ with sec5:
         st.info("No open positions in portfolio. Deploy a strategy from Section 1 or Section 3!")
     else:
         for _, r in pos_df.iterrows():
-            pts_diff = spot - r['entry_spot'] if 'Bullish' in r['strategy_type'] else r['entry_spot'] - spot
+            pts_diff = spot_s5 - r['entry_spot'] if 'Bullish' in r['strategy_type'] else r['entry_spot'] - spot_s5
             mtm = pts_diff * r['lot_size'] * 0.4
             pnl_c = "#00F5A0" if mtm >= 0 else "#FF3B69"
             col_a, col_b, col_c = st.columns([3, 2, 1])
@@ -1394,7 +1418,7 @@ with sec5:
                 st.markdown(f"<span class='mono' style='font-size: 1.1rem; font-weight: 800; color: {pnl_c};'>MTM: ₹{mtm:+,.2f}</span>", unsafe_allow_html=True)
             with col_c:
                 if st.button("Square Off", key=f"sec5_sq_{r['id']}", use_container_width=True):
-                    paper_eng.close_position(r['id'], spot, mtm, exit_reason="Manual Close")
+                    paper_eng.close_position(r['id'], spot_s5, mtm, exit_reason="Manual Close")
                     st.toast("✅ Position Closed!")
                     st.rerun()
 
