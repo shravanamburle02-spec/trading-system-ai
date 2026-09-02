@@ -9,6 +9,7 @@ import json
 import datetime
 import calendar
 import streamlit as st
+import importlib
 import streamlit.components.v1 as components
 import pandas as pd
 import numpy as np
@@ -27,6 +28,24 @@ from core.paper_trading import PaperTradingEngine
 from core.voice_ai_copilot import VoiceAICopilot
 from core.gemini_live_chat import GeminiLiveChat
 from core.auto_rebalancer_daemon import AutoRebalancerSentinel
+
+import sys
+import importlib
+
+# Force flush and reload all core modules on every run to eliminate any stale module cache in Streamlit Cloud
+core_modules = [
+    'core.config_manager', 'core.data_engine', 'core.indicator_engine',
+    'core.smc_engine', 'core.confluence_engine', 'core.strategy_optimizer',
+    'core.adjustment_engine', 'core.liquidity_shield', 'core.risk_shield',
+    'core.paper_trading', 'core.auto_rebalancer_daemon', 'core.voice_ai_copilot',
+    'core.gemini_live_chat'
+]
+for mod in core_modules:
+    if mod in sys.modules:
+        try:
+            importlib.reload(sys.modules[mod])
+        except Exception:
+            pass
 
 st.set_page_config(
     page_title="QUANT CORE | Institutional Prop-Desk",
