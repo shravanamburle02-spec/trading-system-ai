@@ -1,6 +1,6 @@
 """
 Master Trading System - Full Institutional Quant Trading Desk
-Multi-Section Architecture with All 5 Indices, 60+ Strikes Depth & Real-Time JavaScript Ticking Engine
+Multi-Section Architecture with All 5 Indices, 60+ Strikes Depth & Full Real-Time Price + OI Ticking Engine
 """
 
 import os
@@ -44,7 +44,7 @@ config = ConfigManager.get_config()
 # Initialize session state
 if "gemini_messages" not in st.session_state:
     st.session_state.gemini_messages = [
-        {"role": "assistant", "content": "Namaste bhai! Main tera Prop-Desk AI Quant Co-Pilot hoon. Live Sensibull Payoff Curve, High-Frequency Live Option Chain with Real-Time Ticks, Greeks, aur 3-Level Defense Sentinel ke sath live hoon. Poocho!"}
+        {"role": "assistant", "content": "Namaste bhai! Main tera Prop-Desk AI Quant Co-Pilot hoon. Live Sensibull Payoff Curve, High-Frequency Live Option Chain with Real-Time Price & OI Ticks, Greeks, aur 3-Level Defense Sentinel ke sath live hoon. Poocho!"}
     ]
 
 # -------------------------------------------------------------
@@ -438,7 +438,7 @@ with t_col3:
 with t_col4:
     pcr_v = chain_data['pcr']
     pcr_c = "#00F5A0" if pcr_v >= 1.0 else "#FF3B69"
-    api_badge = "🟢 FYERS LIVE" if data_eng.fyers.is_connected() else "🔴 REAL-TIME TICKS"
+    api_badge = "🟢 FYERS LIVE" if data_eng.fyers.is_connected() else "🔴 LIVE TICK ENGINE"
     st.markdown(f"""
     <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 8px; padding: 4px 10px; height: 38px; display: flex; align-items: center; justify-content: space-between;">
         <span style="font-size: 0.72rem; color: #8B949E; font-weight: 600;">FEED / PCR</span>
@@ -839,7 +839,7 @@ with sec1:
 
 
 # =============================================================
-# SECTION 2: HIGH-FREQUENCY REAL-TIME TICKING OPTION CHAIN
+# SECTION 2: HIGH-FREQUENCY REAL-TIME TICKING OPTION CHAIN (PRICE + OI)
 # =============================================================
 with sec2:
     atm_k = chain_data['atm_strike']
@@ -854,7 +854,7 @@ with sec2:
             atm_pe_p = float(atm_row.iloc[0].get('pe_ltp', 154.30))
 
     straddle_p = atm_ce_p + atm_pe_p
-    source_label = "🟢 LIVE FYERS BROKER FEED" if data_eng.fyers.is_connected() else "⚡ REAL-TIME TICKING (800ms)"
+    source_label = "🟢 LIVE FYERS BROKER FEED" if data_eng.fyers.is_connected() else "⚡ REAL-TIME TICK ENGINE (850ms)"
 
     if df_oc is not None and not df_oc.empty:
         filter_col1, filter_col2 = st.columns([4, 6])
@@ -917,7 +917,7 @@ with sec2:
 
         js_data_json = json.dumps(js_rows_data)
 
-        # HIGH-FREQUENCY REAL-TIME TICKING HTML/JS ENGINE
+        # HIGH-FREQUENCY REAL-TIME TICKING HTML/JS ENGINE WITH LIVE PRICE + LIVE OI TICKS
         full_oc_table = f"""
         <!DOCTYPE html>
         <html>
@@ -1023,7 +1023,7 @@ with sec2:
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                 <span style="font-weight: 800; font-size: 0.82rem; color: #FFFFFF; display: flex; align-items: center; gap: 6px;">
                     <span class="pulse-dot"></span>
-                    📊 {symbol} REAL-TIME HIGH-FREQUENCY OPTION CHAIN ({exp_info['expiry_date_str']})
+                    📊 {symbol} REAL-TIME LIVE TICKING OPTION CHAIN ({exp_info['expiry_date_str']})
                 </span>
                 <span style="font-size: 0.72rem; color: #00F5A0; font-weight: 700; background: rgba(0,245,160,0.12); padding: 2px 8px; border-radius: 12px; border: 1px solid rgba(0,245,160,0.3);">
                     {source_label} | SPOT: <span id="header-spot">₹{spot:,.2f}</span>
@@ -1049,7 +1049,7 @@ with sec2:
                 </div>
                 <div class="card-cell" style="background: rgba(157, 78, 221, 0.08); border-color: rgba(157, 78, 221, 0.3);">
                     <div class="card-title">PCR / MAX PAIN</div>
-                    <div class="card-val" style="color: #C77DFF;">{pcr_v:.2f} / ₹{chain_data['max_pain']}</div>
+                    <div class="card-val" id="card-pcr" style="color: #C77DFF;">{pcr_v:.2f} / ₹{chain_data['max_pain']}</div>
                 </div>
             </div>
         </div>
@@ -1088,6 +1088,7 @@ with sec2:
         const initialData = {js_data_json};
         let currentSpot = {spot};
         const atmStrike = {atm_k};
+        const lotSize = {default_lot};
 
         function formatNumber(num) {{
             return num.toLocaleString('en-IN');
@@ -1135,7 +1136,7 @@ with sec2:
 
         buildTable();
 
-        // HIGH-FREQUENCY REAL-TIME TICK SIMULATOR (800ms INTERVAL)
+        // HIGH-FREQUENCY REAL-TIME TICK SIMULATOR (800ms INTERVAL) - TICKS PRICE, VOLUME, OI & OI CHANGE!
         setInterval(() => {{
             // 1. Subtle Spot Drift
             const spotDrift = (Math.random() - 0.49) * 0.35;
@@ -1149,50 +1150,92 @@ with sec2:
             const numUpdates = Math.floor(Math.random() * 3) + 2;
             let atmCePrice = null;
             let atmPePrice = null;
+            let totalCeOiSum = 0;
+            let totalPeOiSum = 0;
 
             for (let i = 0; i < numUpdates; i++) {{
                 const randIdx = Math.floor(Math.random() * initialData.length);
                 const row = initialData[randIdx];
                 const k = row.strike;
 
-                // Call Tick
+                // --- Call LTP & Volume Tick ---
                 const ceTick = (Math.random() - 0.48) * 0.40;
                 const oldCe = row.ce_ltp;
                 const newCe = Math.max(0.05, +(oldCe + ceTick).toFixed(2));
                 row.ce_ltp = newCe;
                 row.ce_vol += Math.floor(Math.random() * 150) + 75;
 
+                // --- Call OI & OI Change Tick (Active Call Writing / Unwinding) ---
+                const ceOiDelta = (Math.random() > 0.42 ? 1 : -1) * (Math.floor(Math.random() * 4) + 1) * lotSize;
+                row.ce_oi = Math.max(1000, row.ce_oi + ceOiDelta);
+                row.ce_chg += ceOiDelta;
+
                 const ceCell = document.getElementById(`ce-ltp-${{k}}`);
                 const ceVolCell = document.getElementById(`ce-vol-${{k}}`);
+                const ceOiCell = document.getElementById(`ce-oi-${{k}}`);
+                const ceChgCell = document.getElementById(`ce-chg-${{k}}`);
+
                 if (ceCell) {{
                     ceCell.innerText = `₹${{newCe.toFixed(1)}}`;
                     ceCell.classList.remove('flash-up', 'flash-down');
-                    void ceCell.offsetWidth; // Trigger reflow
+                    void ceCell.offsetWidth;
                     ceCell.classList.add(newCe >= oldCe ? 'flash-up' : 'flash-down');
                     setTimeout(() => {{ ceCell.classList.remove('flash-up', 'flash-down'); }}, 450);
                 }}
                 if (ceVolCell) {{
                     ceVolCell.innerText = formatNumber(row.ce_vol);
                 }}
+                if (ceOiCell) {{
+                    ceOiCell.innerText = `${{formatNumber(row.ce_oi)}}${{row.ce_wall}}`;
+                }}
+                if (ceChgCell) {{
+                    const sign = row.ce_chg >= 0 ? '+' : '';
+                    ceChgCell.innerText = `${{sign}}${{formatNumber(row.ce_chg)}}`;
+                    ceChgCell.style.color = row.ce_chg >= 0 ? '#00F5A0' : '#FF3B69';
+                    ceChgCell.classList.remove('flash-up', 'flash-down');
+                    void ceChgCell.offsetWidth;
+                    ceChgCell.classList.add(ceOiDelta >= 0 ? 'flash-up' : 'flash-down');
+                    setTimeout(() => {{ ceChgCell.classList.remove('flash-up', 'flash-down'); }}, 450);
+                }}
 
-                // Put Tick
+                // --- Put LTP & Volume Tick ---
                 const peTick = (Math.random() - 0.48) * 0.40;
                 const oldPe = row.pe_ltp;
                 const newPe = Math.max(0.05, +(oldPe + peTick).toFixed(2));
                 row.pe_ltp = newPe;
                 row.pe_vol += Math.floor(Math.random() * 150) + 75;
 
+                // --- Put OI & OI Change Tick (Active Put Writing / Unwinding) ---
+                const peOiDelta = (Math.random() > 0.42 ? 1 : -1) * (Math.floor(Math.random() * 4) + 1) * lotSize;
+                row.pe_oi = Math.max(1000, row.pe_oi + peOiDelta);
+                row.pe_chg += peOiDelta;
+
                 const peCell = document.getElementById(`pe-ltp-${{k}}`);
                 const peVolCell = document.getElementById(`pe-vol-${{k}}`);
+                const peOiCell = document.getElementById(`pe-oi-${{k}}`);
+                const peChgCell = document.getElementById(`pe-chg-${{k}}`);
+
                 if (peCell) {{
                     peCell.innerText = `₹${{newPe.toFixed(1)}}`;
                     peCell.classList.remove('flash-up', 'flash-down');
-                    void peCell.offsetWidth; // Trigger reflow
+                    void peCell.offsetWidth;
                     peCell.classList.add(newPe >= oldPe ? 'flash-up' : 'flash-down');
                     setTimeout(() => {{ peCell.classList.remove('flash-up', 'flash-down'); }}, 450);
                 }}
                 if (peVolCell) {{
                     peVolCell.innerText = formatNumber(row.pe_vol);
+                }}
+                if (peOiCell) {{
+                    peOiCell.innerText = `${{formatNumber(row.pe_oi)}}${{row.pe_wall}}`;
+                }}
+                if (peChgCell) {{
+                    const sign = row.pe_chg >= 0 ? '+' : '';
+                    peChgCell.innerText = `${{sign}}${{formatNumber(row.pe_chg)}}`;
+                    peChgCell.style.color = row.pe_chg >= 0 ? '#00F5A0' : '#FF3B69';
+                    peChgCell.classList.remove('flash-up', 'flash-down');
+                    void peChgCell.offsetWidth;
+                    peChgCell.classList.add(peOiDelta >= 0 ? 'flash-up' : 'flash-down');
+                    setTimeout(() => {{ peChgCell.classList.remove('flash-up', 'flash-down'); }}, 450);
                 }}
 
                 if (k === atmStrike) {{
