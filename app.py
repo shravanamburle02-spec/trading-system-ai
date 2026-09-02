@@ -2,7 +2,7 @@
 Master Trading System - Full Institutional Quant Trading Desk
 Multi-Section Architecture:
 1. 💠 LIVE QUANT COCKPIT (3-Pane Layout with Sensibull Payoff Curve, Confluence Matrix & Greeks)
-2. 📊 ADVANCED OPTION CHAIN (Full Sensibull/NSE Live Greeks, OI Walls, Volume & PCR Matrix)
+2. 📊 ADVANCED OPTION CHAIN (Sensibull/NSE Live Greeks, OI Walls, Volume & PCR Matrix)
 3. 🦎 NON-DIRECTIONAL STRATEGY LAB (Big Lizard, Broken Wing Butterfly, Calendar, Iron Condor with Margin vs Funds)
 4. 🛡️ DEFENSE SENTINEL (3-Level Profit Recovery & Dynamic Morphing Rebalancer)
 5. 💼 ₹3,00,000 PORTFOLIO JOURNAL (Live Positions, Incubation Statistics & CSV Export)
@@ -220,41 +220,6 @@ st.markdown("""
         background: #FF3B69;
         height: 100%;
         box-shadow: 0 0 8px #FF3B69;
-    }
-
-    /* Option Chain Styling */
-    .oc-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.75rem;
-        text-align: center;
-    }
-    .oc-table th {
-        background: #0D111A;
-        padding: 8px 4px;
-        color: #8B949E;
-        font-weight: 700;
-        border-bottom: 2px solid rgba(255, 255, 255, 0.1);
-    }
-    .oc-table td {
-        padding: 6px 4px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-    }
-    .oc-table tr:hover {
-        background: rgba(0, 210, 255, 0.05);
-    }
-    .oc-itm-ce {
-        background: rgba(0, 245, 160, 0.04);
-    }
-    .oc-itm-pe {
-        background: rgba(255, 59, 105, 0.04);
-    }
-    .oc-atm {
-        background: rgba(255, 184, 0, 0.15) !important;
-        font-weight: 800 !important;
-        border-top: 1px solid #FFB800 !important;
-        border-bottom: 1px solid #FFB800 !important;
     }
 
     .stButton > button {
@@ -907,14 +872,14 @@ with sec2:
         end_i = min(len(df_oc_sorted), atm_idx + n_strikes + 1)
         sub_oc = df_oc_sorted.iloc[start_i:end_i].copy()
 
-        # HTML Option Chain Generator
-        rows_html = ""
+        # Pure HTML Option Chain via components.html to ensure 100% proper rendering
+        oc_rows = []
         for _, r in sub_oc.iterrows():
             k = r['strike']
             is_atm = abs(k - spot) < (df_oc_sorted['strike'].diff().abs().min() or 50) / 2
-            row_class = "oc-atm" if is_atm else ""
-            ce_itm = "oc-itm-ce" if k < spot else ""
-            pe_itm = "oc-itm-pe" if k > spot else ""
+            row_style = "background: rgba(255, 184, 0, 0.15); font-weight: 800; border-top: 1px solid #FFB800; border-bottom: 1px solid #FFB800;" if is_atm else ""
+            ce_bg = "background: rgba(0, 245, 160, 0.05);" if k < spot else ""
+            pe_bg = "background: rgba(255, 59, 105, 0.05);" if k > spot else ""
 
             ce_oi = int(r.get('ce_oi', 50000))
             pe_oi = int(r.get('pe_oi', 50000))
@@ -927,33 +892,71 @@ with sec2:
             ce_ltp = r.get('ce_ltp', 120.0)
             pe_ltp = r.get('pe_ltp', 110.0)
 
-            ce_wall_badge = " 🟥" if k == chain_data['top_call_wall'] else ""
-            pe_wall_badge = " 🟩" if k == chain_data['top_put_wall'] else ""
+            ce_wall = " 🟥" if k == chain_data['top_call_wall'] else ""
+            pe_wall = " 🟩" if k == chain_data['top_put_wall'] else ""
+            atm_label = " ⚡ATM" if is_atm else ""
 
-            rows_html += f"""
-            <tr class="{row_class}">
-                <td class="{ce_itm}">{ce_oi:,}{ce_wall_badge}</td>
-                <td class="{ce_itm}">{ce_vol:,}</td>
-                <td class="{ce_itm}">{ce_iv:.1f}%</td>
-                <td class="{ce_itm}" style="color: #00F5A0;">+{ce_delta:.2f}</td>
-                <td class="{ce_itm}" style="color: #FFFFFF; font-weight: 700;">₹{ce_ltp:.1f}</td>
-                <td style="color: #FFB800; font-weight: 800; font-size: 0.85rem; background: rgba(255,255,255,0.02);">₹{k:,.0f}</td>
-                <td class="{pe_itm}" style="color: #FFFFFF; font-weight: 700;">₹{pe_ltp:.1f}</td>
-                <td class="{pe_itm}" style="color: #FF3B69;">{pe_delta:.2f}</td>
-                <td class="{pe_itm}">{pe_iv:.1f}%</td>
-                <td class="{pe_itm}">{pe_vol:,}</td>
-                <td class="{pe_itm}">{pe_oi:,}{pe_wall_badge}</td>
+            oc_rows.append(f"""
+            <tr style="{row_style}">
+                <td style="{ce_bg}">{ce_oi:,}{ce_wall}</td>
+                <td style="{ce_bg}">{ce_vol:,}</td>
+                <td style="{ce_bg}">{ce_iv:.1f}%</td>
+                <td style="{ce_bg} color: #00F5A0;">+{ce_delta:.2f}</td>
+                <td style="{ce_bg} color: #FFFFFF; font-weight: 700;">₹{ce_ltp:.1f}</td>
+                <td style="color: #FFB800; font-weight: 800; font-size: 0.88rem; background: rgba(255,255,255,0.03);">₹{k:,.0f}{atm_label}</td>
+                <td style="{pe_bg} color: #FFFFFF; font-weight: 700;">₹{pe_ltp:.1f}</td>
+                <td style="{pe_bg} color: #FF3B69;">{pe_delta:.2f}</td>
+                <td style="{pe_bg}">{pe_iv:.1f}%</td>
+                <td style="{pe_bg}">{pe_vol:,}</td>
+                <td style="{pe_bg}">{pe_oi:,}{pe_wall}</td>
             </tr>
-            """
+            """)
 
-        table_html = f"""
-        <div style="overflow-x: auto; background: var(--bg-card); border: 1px solid var(--glass-border); border-radius: 10px; padding: 6px;">
-            <table class="oc-table">
+        full_oc_table = f"""
+        <html>
+        <head>
+        <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&display=swap" rel="stylesheet">
+        <style>
+            body {{
+                margin: 0;
+                padding: 0;
+                background: #05070B;
+                color: #F0F4F8;
+                font-family: 'JetBrains Mono', monospace;
+                font-size: 11px;
+            }}
+            table {{
+                width: 100%;
+                border-collapse: collapse;
+                text-align: center;
+            }}
+            th {{
+                background: #0D111A;
+                padding: 7px 4px;
+                color: #8B949E;
+                font-weight: 700;
+                position: sticky;
+                top: 0;
+                border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+                z-index: 10;
+            }}
+            td {{
+                padding: 5px 4px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            }}
+            tr:hover {{
+                background: rgba(0, 210, 255, 0.08) !important;
+            }}
+        </style>
+        </head>
+        <body>
+        <div style="border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; overflow: hidden;">
+            <table>
                 <thead>
                     <tr>
-                        <th colspan="5" style="color: #00F5A0; border-bottom: 2px solid #00F5A0;">CALLS (CE)</th>
-                        <th style="color: #FFB800;">STRIKE</th>
-                        <th colspan="5" style="color: #FF3B69; border-bottom: 2px solid #FF3B69;">PUTS (PE)</th>
+                        <th colspan="5" style="color: #00F5A0; border-bottom: 2px solid #00F5A0; font-size: 12px;">CALLS (CE)</th>
+                        <th style="color: #FFB800; font-size: 12px;">STRIKE</th>
+                        <th colspan="5" style="color: #FF3B69; border-bottom: 2px solid #FF3B69; font-size: 12px;">PUTS (PE)</th>
                     </tr>
                     <tr>
                         <th>OI (Contracts)</th>
@@ -970,12 +973,14 @@ with sec2:
                     </tr>
                 </thead>
                 <tbody>
-                    {rows_html}
+                    {''.join(oc_rows)}
                 </tbody>
             </table>
         </div>
+        </body>
+        </html>
         """
-        st.markdown(table_html, unsafe_allow_html=True)
+        components.html(full_oc_table, height=520, scrolling=True)
     else:
         st.info("Generating live Option Chain data...")
 
