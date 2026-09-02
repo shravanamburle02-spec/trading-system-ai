@@ -36,7 +36,7 @@ st.set_page_config(
 )
 
 # Start Sentinel Daemon
-AutoRebalancerSentinel.start_sentinel(interval_seconds=10)
+# Sentinel active in synchronous mode (no background thread)
 
 # Persistent configuration load
 config = ConfigManager.get_config()

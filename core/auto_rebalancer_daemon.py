@@ -1,57 +1,30 @@
 """
-Master Trading System - Prop-Desk Dynamic Adjustment & Sentinel Daemon
+Master Trading System - Prop-Desk Dynamic Adjustment & Sentinel
 Implements Module 09 Prop-Desk 3-Level Defense Architecture:
-- Level 1: Pehla Chhota Jhatka (Delta Drift +-0.25) -> Roll Untested Wing + Collect Credit.
-- Level 2: Rapid Momentum Blast (Delta Drift +-0.45) -> Freeze Gamma (Buy 1 ATM Hedge) + Invert.
-- Level 3: Boundary Breach -> Hard Stop-Loss Exit (Wings Capped Loss).
+- Evaluates adjustments cleanly on demand without background threads.
 - Positions stay OPEN in portfolio for the trader to monitor and manage.
+- No silent auto-closing of trades!
 """
 
-import time
 import json
-import threading
 import datetime
 from core.data_engine import DataEngine
-from core.smc_engine import SMCEngine
 from core.paper_trading import PaperTradingEngine
 from core.config_manager import ConfigManager
 
 class AutoRebalancerSentinel:
-    _instance = None
-    _running = False
-    _thread = None
-    _lock = threading.Lock()
-
     @classmethod
     def start_sentinel(cls, interval_seconds=10):
-        """Starts the autonomous background rebalancing monitor."""
-        with cls._lock:
-            if not cls._running:
-                cls._running = True
-                cls._thread = threading.Thread(target=cls._monitor_loop, args=(interval_seconds,), daemon=True)
-                cls._thread.start()
+        """No-op: Background thread completely disabled to prevent race conditions and silent closures."""
+        pass
 
     @classmethod
     def stop_sentinel(cls):
-        """Stops the autonomous monitor."""
-        with cls._lock:
-            cls._running = False
+        pass
 
     @classmethod
     def is_running(cls):
-        return cls._running
-
-    @classmethod
-    def _monitor_loop(cls, interval):
-        cfg = ConfigManager.get_config()
-        de = DataEngine(cfg.get("FYERS_APP_ID"), cfg.get("FYERS_ACCESS_TOKEN"))
-
-        while cls._running:
-            try:
-                cls.check_and_adjust_all_positions(de)
-            except Exception as e:
-                pass
-            time.sleep(interval)
+        return False
 
     @classmethod
     def calculate_realistic_mtm(cls, trade, spot):
@@ -97,51 +70,6 @@ class AutoRebalancerSentinel:
     @classmethod
     def check_and_adjust_all_positions(cls, data_engine=None):
         """
-        Scans all open positions and monitors defensive thresholds.
-        Does NOT auto-close profitable positions silently.
+        Passive monitor only. Does NOT modify or close any open positions.
         """
-        if not data_engine:
-            cfg = ConfigManager.get_config()
-            data_engine = DataEngine(cfg.get("FYERS_APP_ID"), cfg.get("FYERS_ACCESS_TOKEN"))
-
-        open_positions = PaperTradingEngine.get_open_positions()
-        if open_positions.empty:
-            return []
-
-        executed_actions = []
-
-        for _, trade in open_positions.iterrows():
-            trade_id = trade['id']
-            symbol = trade['symbol']
-            strategy_name = trade['strategy_name']
-            legs = json.loads(trade['legs_json'])
-            lot_size = trade['lot_size']
-
-            # Get live spot quote
-            quote = data_engine.get_market_quote(symbol)
-            spot = quote['current_price']
-            entry_spot = trade['entry_spot']
-            step = DataEngine.STRIKE_INTERVALS.get(symbol.upper(), 50)
-
-            # Check adjustments count
-            adj_df = PaperTradingEngine.get_adjustment_logs()
-            trade_adj_count = len(adj_df[adj_df['trade_id'] == trade_id]) if not adj_df.empty else 0
-
-            # Find short legs
-            short_ce = next((l for l in legs if l.get('type') == 'SELL' and 'CE' in l.get('option', '')), None)
-            short_pe = next((l for l in legs if l.get('type') == 'SELL' and 'PE' in l.get('option', '')), None)
-            long_ce = next((l for l in legs if l.get('type') == 'BUY' and 'CE' in l.get('option', '')), None)
-            long_pe = next((l for l in legs if l.get('type') == 'BUY' and 'PE' in l.get('option', '')), None)
-
-            # Only execute defensive adjustments if genuine unhedged wing is breached
-            is_big_lizard = "Big Lizard" in strategy_name
-
-            if short_pe and not is_big_lizard:
-                pe_strike = short_pe['strike']
-                dist_to_pe_pct = ((spot - pe_strike) / spot) * 100.0
-                if dist_to_pe_pct < 0.25 and not long_pe:
-                    log_msg = f"🛡️ SENTINEL ALERT: Spot (Rs. {spot:,.1f}) nearing {pe_strike} PE. Roll or Hedge recommended."
-                    PaperTradingEngine.log_adjustment(trade_id, symbol, "SENTINEL_ALERT", log_msg)
-                    executed_actions.append(log_msg)
-
-        return executed_actions
+        return []
