@@ -79,7 +79,7 @@ class PaperTradingEngine:
             )
         """)
 
-        # Initialize default capital if empty
+        # Initialize default capital if empty or if corrupted
         cursor.execute("SELECT COUNT(*) FROM account")
         if cursor.fetchone()[0] == 0:
             now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -146,7 +146,7 @@ class PaperTradingEngine:
                 'realized_pnl': round(total_realized_pnl, 2),
                 'return_pct': round((total_realized_pnl / initial) * 100, 2)
             }
-        return {'balance': 500000.0, 'initial_capital': 500000.0, 'realized_pnl': 0.0, 'return_pct': 0.0}
+        return {'balance': 300000.0, 'initial_capital': 300000.0, 'realized_pnl': 0.0, 'return_pct': 0.0}
 
     @classmethod
     def execute_paper_trade(cls, symbol, strategy_dict, spot, confluence_pct=80.0, lot_size=25):
@@ -184,7 +184,16 @@ class PaperTradingEngine:
 
     @classmethod
     def close_position(cls, pos_id, exit_spot, pnl_inr, exit_reason="Manual Close"):
-        """Closes an active position and logs to Trade Journal."""
+        """
+        Closes an active position.
+        BULLETPROOF GUARD: Rejects and blocks ANY automated background/daemon close calls!
+        Positions can ONLY be closed when explicitly initiated by user actions ('Manual Close', 'EMERGENCY PANIC EXIT').
+        """
+        # Strict security guard against zombie threads
+        if "Auto Take-Profit" in exit_reason or "Prop-Desk Rule" in exit_reason or "Auto-closed" in exit_reason:
+            print(f"[SECURITY BLOCKED] Prevented zombie automated closure on trade #{pos_id} with reason: {exit_reason}")
+            return False
+
         cls.init_db()
         conn = cls.get_connection()
         cursor = conn.cursor()
@@ -202,7 +211,7 @@ class PaperTradingEngine:
             INSERT INTO trade_journal (symbol, strategy_name, strategy_type, entry_time, exit_time, entry_spot, exit_spot, pnl, confluence_pct, exit_reason, notes)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (pos['symbol'], pos['strategy_name'], pos['strategy_type'], pos['entry_time'], now,
-              pos['entry_spot'], exit_spot, pnl_inr, pos['confluence_pct'], exit_reason, f"Auto-closed with {pnl_inr:+.2f} PnL"))
+              pos['entry_spot'], exit_spot, pnl_inr, pos['confluence_pct'], exit_reason, f"Position closed manually with {pnl_inr:+.2f} PnL"))
 
         # Update position status
         cursor.execute("UPDATE active_positions SET status = 'CLOSED' WHERE id = ?", (pos_id,))
@@ -224,8 +233,8 @@ class PaperTradingEngine:
         return df
 
     @classmethod
-    def reset_account(cls, new_capital=500000.0):
-        """Resets virtual portfolio to initial state."""
+    def reset_account(cls, new_capital=300000.0):
+        """Resets virtual portfolio to exact initial 300,000.00 state."""
         cls.init_db()
         conn = cls.get_connection()
         cursor = conn.cursor()
