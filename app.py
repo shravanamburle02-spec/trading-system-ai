@@ -1830,15 +1830,17 @@ with sec2:
 
             top_call_w = chain_data_s2.get('top_call_wall', atm_k + 200)
             top_put_w = chain_data_s2.get('top_put_wall', atm_k - 200)
-            shift_events = data_eng.get_expiry_shift_events(symbol, spot=spot_s2, top_ce=top_call_w, top_pe=top_put_w, max_pain=mp_live)
+            shift_res = data_eng.get_expiry_shift_events(symbol, spot=spot_s2, top_ce=top_call_w, top_pe=top_put_w, max_pain=mp_live, dte=dte)
+            cycle_info = shift_res['cycle_info']
+            shift_events = shift_res['events']
 
             j1, j2, j3, j4 = st.columns(4)
             with j1:
                 st.markdown(f"""
                 <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 8px 12px;">
                     <div style="font-size: 0.68rem; color: #8B949E; font-weight: 700;">📅 ACTIVE EXPIRY CYCLE</div>
-                    <div style="font-size: 1.05rem; font-weight: 900; color: #00D2FF; margin-top: 2px;">{exp_info['expiry_date_str']}</div>
-                    <div style="font-size: 0.68rem; color: #8B949E; margin-top: 2px;">Remaining: <strong style="color: #FFB800;">{dte} DTE</strong></div>
+                    <div style="font-size: 0.92rem; font-weight: 900; color: #00D2FF; margin-top: 2px;">{cycle_info['cycle_name']}</div>
+                    <div style="font-size: 0.68rem; color: #8B949E; margin-top: 2px;">Expiry: <strong style="color: #FFB800;">{cycle_info['end_date_str']} ({dte} DTE)</strong></div>
                 </div>
                 """, unsafe_allow_html=True)
             with j2:
