@@ -1229,7 +1229,7 @@ with sec2:
                 for _, vr in top_ce_vel_df.iterrows():
                     v_stat = "⚡ ROCKET COVERING" if vr['ce_velocity_rpm'] <= -15000 else "⚠️ UNWINDING" if vr['ce_velocity_rpm'] < 0 else "📥 FRESH WALL"
                     v_color = "#FF3B69" if vr['ce_velocity_rpm'] < 0 else "#00F5A0"
-                    top_ce_vel_rows.append(f"<div style='display: flex; justify-content: space-between; padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.05); font-family: monospace; font-size: 0.75rem;'><span>₹{int(vr['strike'])} CE (LTP ₹{vr['ce_ltp']:.1f})</span><span style='color: {v_color}; font-weight: 800;'>{vr['ce_velocity_rpm']:+,d}/min ({vr['ce_velocity_15m']:+,d} in 15m)</span><span style='font-size: 0.70rem;'>{v_stat}</span></div>")
+                    top_ce_vel_rows.append(f"<div style='display: flex; justify-content: space-between; padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.05); font-family: monospace; font-size: 0.75rem;'><span>₹{int(vr['strike'])} CE (LTP ₹{vr['ce_ltp']:.1f})</span><span style='color: {v_color}; font-weight: 800;'>{int(vr['ce_velocity_rpm']):+,d}/min ({int(vr['ce_velocity_15m']):+,d} in 15m)</span><span style='font-size: 0.70rem;'>{v_stat}</span></div>")
                 st.markdown("".join(top_ce_vel_rows), unsafe_allow_html=True)
 
             with vel_c2:
@@ -1239,7 +1239,7 @@ with sec2:
                 for _, vr in top_pe_vel_df.iterrows():
                     v_stat = "🛡️ HEAVY SUPPORT" if vr['pe_velocity_rpm'] >= 20000 else "🎯 ADDITION" if vr['pe_velocity_rpm'] > 0 else "🚨 FLOOR EXIT"
                     v_color = "#00F5A0" if vr['pe_velocity_rpm'] > 0 else "#FF3B69"
-                    top_pe_vel_rows.append(f"<div style='display: flex; justify-content: space-between; padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.05); font-family: monospace; font-size: 0.75rem;'><span>₹{int(vr['strike'])} PE (LTP ₹{vr['pe_ltp']:.1f})</span><span style='color: {v_color}; font-weight: 800;'>{vr['pe_velocity_rpm']:+,d}/min ({vr['pe_velocity_15m']:+,d} in 15m)</span><span style='font-size: 0.70rem;'>{v_stat}</span></div>")
+                    top_pe_vel_rows.append(f"<div style='display: flex; justify-content: space-between; padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.05); font-family: monospace; font-size: 0.75rem;'><span>₹{int(vr['strike'])} PE (LTP ₹{vr['pe_ltp']:.1f})</span><span style='color: {v_color}; font-weight: 800;'>{int(vr['pe_velocity_rpm']):+,d}/min ({int(vr['pe_velocity_15m']):+,d} in 15m)</span><span style='font-size: 0.70rem;'>{v_stat}</span></div>")
                 st.markdown("".join(top_pe_vel_rows), unsafe_allow_html=True)
 
         # =========================================================================
