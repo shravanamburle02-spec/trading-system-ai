@@ -993,24 +993,38 @@ with sec2:
             mp_badge_text = "🔒 Solid Expiry Center Pinning"
             mp_pill = "glow-pill-gold"
 
-        # 15-Minute Velocity Speedometer Metrics
+        # 15-Minute Velocity Speedometer Metrics (All 4 Key Streams: CE Exit, CE Inflow, PE Exit, PE Inflow)
         fastest_ce_exit = df_oc_sorted.loc[df_oc_sorted['ce_velocity_rpm'].idxmin()]
         fastest_ce_add = df_oc_sorted.loc[df_oc_sorted['ce_velocity_rpm'].idxmax()]
+        fastest_pe_exit = df_oc_sorted.loc[df_oc_sorted['pe_velocity_rpm'].idxmin()]
         fastest_pe_add = df_oc_sorted.loc[df_oc_sorted['pe_velocity_rpm'].idxmax()]
 
-        top_sc_k = int(fastest_ce_exit['strike'])
-        top_sc_rpm = int(fastest_ce_exit['ce_velocity_rpm'])
-        top_inflow_k = int(fastest_ce_add['strike'])
-        top_inflow_rpm = int(fastest_ce_add['ce_velocity_rpm'])
+        top_ce_exit_k = int(fastest_ce_exit['strike'])
+        top_ce_exit_rpm = int(fastest_ce_exit['ce_velocity_rpm'])
+        top_ce_inflow_k = int(fastest_ce_add['strike'])
+        top_ce_inflow_rpm = int(fastest_ce_add['ce_velocity_rpm'])
 
-        if abs(top_sc_rpm) >= 20000:
-            vel_status = "⚡ ROCKET SHORT COVERING SQUEEZE"
+        top_pe_exit_k = int(fastest_pe_exit['strike'])
+        top_pe_exit_rpm = int(fastest_pe_exit['pe_velocity_rpm'])
+        top_pe_inflow_k = int(fastest_pe_add['strike'])
+        top_pe_inflow_rpm = int(fastest_pe_add['pe_velocity_rpm'])
+
+        # Multi-Stream Dominance Calculation
+        max_active_rpm = max(abs(top_ce_exit_rpm), abs(top_ce_inflow_rpm), abs(top_pe_exit_rpm), abs(top_pe_inflow_rpm))
+        if abs(top_ce_exit_rpm) >= 15000 and abs(top_ce_exit_rpm) >= abs(top_pe_exit_rpm):
+            vel_status = "⚡ ROCKET SHORT COVERING (BULLISH)"
+            vel_pill = "glow-pill-emerald"
+        elif abs(top_pe_exit_rpm) >= 15000:
+            vel_status = "🚨 FLASH DUMP / PUT UNWIND (BEARISH)"
             vel_pill = "glow-pill-rose"
-        elif abs(top_sc_rpm) >= 8000:
-            vel_status = "🔥 HIGH VELOCITY COVERING"
+        elif top_ce_inflow_rpm >= 35000:
+            vel_status = "🔥 HEAVY CALL WALL INFLOW (CAPPED)"
             vel_pill = "glow-pill-gold"
+        elif top_pe_inflow_rpm >= 35000:
+            vel_status = "🛡️ HEAVY PUT FLOOR INFLOW (SUPPORT)"
+            vel_pill = "glow-pill-emerald"
         else:
-            vel_status = "🚗 STEADY ORDERFLOW"
+            vel_status = "🚗 STEADY TWO-WAY FLOW"
             vel_pill = "glow-pill-cyan"
 
         # Whale Block Deal Strikes Detection (Vol / OI >= 2.0)
@@ -1121,15 +1135,17 @@ with sec2:
 
 <div style="background: rgba(0, 210, 255, 0.05); border: 1px solid rgba(0, 210, 255, 0.3); border-radius: 6px; padding: 6px 10px;">
 <div style="display: flex; justify-content: space-between; align-items: center;">
-<span style="font-size: 0.68rem; color: #00D2FF; font-weight: 800;">⏱️ 15-MIN OI VELOCITY (SPEEDOMETER)</span>
-<span class="{vel_pill}" style="font-size: 0.65rem;">{vel_status}</span>
+<span style="font-size: 0.68rem; color: #00D2FF; font-weight: 800;">⏱️ 15-MIN OI VELOCITY (CALL & PUT SPEEDOMETER)</span>
+<span class="{vel_pill}" style="font-size: 0.65rem;">{vel_status.split('(')[0].strip()}</span>
 </div>
-<div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px; font-size: 0.72rem;">
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 4px; font-size: 0.70rem;">
 <div>
-<span style="color: #8B949E;">Covering:</span> <strong style="color: #FF3B69;">₹{top_sc_k:,} CE ({top_sc_rpm:,}/m)</strong>
+<span style="color: #8B949E;">🔴 CE Exit:</span> <strong style="color: #FF3B69;">₹{top_ce_exit_k:,} ({top_ce_exit_rpm:,}/m)</strong><br>
+<span style="color: #8B949E;">🟢 CE Wall:</span> <strong style="color: #00F5A0;">₹{top_ce_inflow_k:,} ({top_ce_inflow_rpm:+,}/m)</strong>
 </div>
 <div>
-<span style="color: #8B949E;">Wall Inflow:</span> <strong style="color: #00F5A0;">₹{top_inflow_k:,} CE ({top_inflow_rpm:+,}/m)</strong>
+<span style="color: #8B949E;">🔴 PE Exit:</span> <strong style="color: #FF3B69;">₹{top_pe_exit_k:,} ({top_pe_exit_rpm:,}/m)</strong><br>
+<span style="color: #8B949E;">🟢 PE Floor:</span> <strong style="color: #00F5A0;">₹{top_pe_inflow_k:,} ({top_pe_inflow_rpm:+,}/m)</strong>
 </div>
 </div>
 </div>
@@ -1200,6 +1216,31 @@ with sec2:
         start_i = max(0, atm_idx - n_strikes)
         end_i = min(len(df_oc_sorted), atm_idx + n_strikes + 1)
         sub_oc = df_oc_sorted.iloc[start_i:end_i].copy()
+
+        # =========================================================================
+        # MULTI-STRIKE 15-MIN OI VELOCITY SCANNER (ALL STRIKES BREAKDOWN)
+        # =========================================================================
+        with st.expander("⏱️ Multi-Strike 15-Min OI Velocity Scanner (Top Active Strikes)", expanded=False):
+            vel_c1, vel_c2 = st.columns(2)
+            with vel_c1:
+                st.markdown("<strong style='color: #FF3B69; font-size: 0.82rem;'>🔴 TOP CALL VELOCITY STRIKES (Short Covering & Inflows)</strong>", unsafe_allow_html=True)
+                top_ce_vel_df = df_oc_sorted.sort_values(by='ce_velocity_rpm').head(5)[['strike', 'ce_change_oi', 'ce_velocity_rpm', 'ce_velocity_15m', 'ce_ltp']]
+                top_ce_vel_rows = []
+                for _, vr in top_ce_vel_df.iterrows():
+                    v_stat = "⚡ ROCKET COVERING" if vr['ce_velocity_rpm'] <= -15000 else "⚠️ UNWINDING" if vr['ce_velocity_rpm'] < 0 else "📥 FRESH WALL"
+                    v_color = "#FF3B69" if vr['ce_velocity_rpm'] < 0 else "#00F5A0"
+                    top_ce_vel_rows.append(f"<div style='display: flex; justify-content: space-between; padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.05); font-family: monospace; font-size: 0.75rem;'><span>₹{int(vr['strike'])} CE (LTP ₹{vr['ce_ltp']:.1f})</span><span style='color: {v_color}; font-weight: 800;'>{vr['ce_velocity_rpm']:+,d}/min ({vr['ce_velocity_15m']:+,d} in 15m)</span><span style='font-size: 0.70rem;'>{v_stat}</span></div>")
+                st.markdown("".join(top_ce_vel_rows), unsafe_allow_html=True)
+
+            with vel_c2:
+                st.markdown("<strong style='color: #00F5A0; font-size: 0.82rem;'>🟢 TOP PUT VELOCITY STRIKES (Support Building & Unwinding)</strong>", unsafe_allow_html=True)
+                top_pe_vel_df = df_oc_sorted.sort_values(by='pe_velocity_rpm', ascending=False).head(5)[['strike', 'pe_change_oi', 'pe_velocity_rpm', 'pe_velocity_15m', 'pe_ltp']]
+                top_pe_vel_rows = []
+                for _, vr in top_pe_vel_df.iterrows():
+                    v_stat = "🛡️ HEAVY SUPPORT" if vr['pe_velocity_rpm'] >= 20000 else "🎯 ADDITION" if vr['pe_velocity_rpm'] > 0 else "🚨 FLOOR EXIT"
+                    v_color = "#00F5A0" if vr['pe_velocity_rpm'] > 0 else "#FF3B69"
+                    top_pe_vel_rows.append(f"<div style='display: flex; justify-content: space-between; padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.05); font-family: monospace; font-size: 0.75rem;'><span>₹{int(vr['strike'])} PE (LTP ₹{vr['pe_ltp']:.1f})</span><span style='color: {v_color}; font-weight: 800;'>{vr['pe_velocity_rpm']:+,d}/min ({vr['pe_velocity_15m']:+,d} in 15m)</span><span style='font-size: 0.70rem;'>{v_stat}</span></div>")
+                st.markdown("".join(top_pe_vel_rows), unsafe_allow_html=True)
 
         # =========================================================================
         # 1-CLICK DIRECT OPTION CHAIN TRADE PUNCHER
