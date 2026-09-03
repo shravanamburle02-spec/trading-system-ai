@@ -2077,13 +2077,13 @@ with sec_vel:
         </div>
         """, unsafe_allow_html=True)
 
-        # BUILD DEDICATED 11-STRIKE TABLE
+        # BUILD DEDICATED 11-STRIKE TABLE (PURE HTML/JS COMPONENT FOR FLAWLESS RENDERING)
         table_rows_html = []
         for _, row in core_11_df.iterrows():
             k = int(row['strike'])
             is_atm = (k == atm_k_vel)
-            atm_badge = " <span style='color: #FFB800; font-weight: 900; font-size: 0.68rem;'>[ATM]</span>" if is_atm else ""
-            row_bg = "background: rgba(255, 184, 0, 0.12); font-weight: 800; border: 1px solid #FFB800;" if is_atm else ""
+            atm_badge = " <span style='color: #FFB800; font-weight: 900; font-size: 10px;'>[ATM]</span>" if is_atm else ""
+            row_bg = "background: rgba(255, 184, 0, 0.14); font-weight: 800; border-top: 1px solid #FFB800; border-bottom: 1px solid #FFB800;" if is_atm else ""
 
             ce_rpm = int(row['ce_velocity_rpm'])
             pe_rpm = int(row['pe_velocity_rpm'])
@@ -2091,10 +2091,10 @@ with sec_vel:
             pe_15m = pe_rpm * 15
 
             # 4 Separate values per strike
-            ce_exit_val = f"{ce_rpm:,}/m ({ce_15m:,}/15m)" if ce_rpm < 0 else "-"
-            ce_inflow_val = f"+{ce_rpm:,}/m (+{ce_15m:,}/15m)" if ce_rpm > 0 else "-"
-            pe_exit_val = f"{pe_rpm:,}/m ({pe_15m:,}/15m)" if pe_rpm < 0 else "-"
-            pe_inflow_val = f"+{pe_rpm:,}/m (+{pe_15m:,}/15m)" if pe_rpm > 0 else "-"
+            ce_exit_val = f"{ce_rpm:,}/m <span style='font-size: 9px; opacity: 0.8;'>({ce_15m:,}/15m)</span>" if ce_rpm < 0 else "<span style='color: #555;'>-</span>"
+            ce_inflow_val = f"+{ce_rpm:,}/m <span style='font-size: 9px; opacity: 0.8;'>(+{ce_15m:,}/15m)</span>" if ce_rpm > 0 else "<span style='color: #555;'>-</span>"
+            pe_exit_val = f"{pe_rpm:,}/m <span style='font-size: 9px; opacity: 0.8;'>({pe_15m:,}/15m)</span>" if pe_rpm < 0 else "<span style='color: #555;'>-</span>"
+            pe_inflow_val = f"+{pe_rpm:,}/m <span style='font-size: 9px; opacity: 0.8;'>(+{pe_15m:,}/15m)</span>" if pe_rpm > 0 else "<span style='color: #555;'>-</span>"
 
             ce_exit_style = "color: #FF3B69; font-weight: 800;" if ce_rpm < 0 else "color: #8B949E;"
             ce_inflow_style = "color: #00F5A0; font-weight: 800;" if ce_rpm > 0 else "color: #8B949E;"
@@ -2104,11 +2104,11 @@ with sec_vel:
             # Speedometer status
             max_r = max(abs(ce_rpm), abs(pe_rpm))
             if max_r >= 25000:
-                speed_badge = "<span style='background: rgba(255, 59, 105, 0.25); color: #FF3B69; border: 1px solid #FF3B69; padding: 2px 6px; border-radius: 4px; font-size: 0.68rem; font-weight: 900;'>⚡⚡⚡ ROCKET</span>"
+                speed_badge = "<span style='background: rgba(255, 59, 105, 0.25); color: #FF3B69; border: 1px solid #FF3B69; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 900;'>⚡ ROCKET</span>"
             elif max_r >= 10000:
-                speed_badge = "<span style='background: rgba(255, 184, 0, 0.2); color: #FFB800; border: 1px solid #FFB800; padding: 2px 6px; border-radius: 4px; font-size: 0.68rem; font-weight: 800;'>🔥 FAST</span>"
+                speed_badge = "<span style='background: rgba(255, 184, 0, 0.2); color: #FFB800; border: 1px solid #FFB800; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 800;'>🔥 FAST</span>"
             else:
-                speed_badge = "<span style='background: rgba(0, 210, 255, 0.15); color: #00D2FF; border: 1px solid rgba(0, 210, 255, 0.4); padding: 2px 6px; border-radius: 4px; font-size: 0.68rem;'>🚗 STEADY</span>"
+                speed_badge = "<span style='background: rgba(0, 210, 255, 0.15); color: #00D2FF; border: 1px solid rgba(0, 210, 255, 0.4); padding: 2px 6px; border-radius: 4px; font-size: 10px;'>🚗 STEADY</span>"
 
             # Strike Verdict
             if ce_rpm <= -15000:
@@ -2130,46 +2130,50 @@ with sec_vel:
                 verdict = "🔒 BALANCED ORDERFLOW"
                 v_color = "#8B949E"
 
-            table_rows_html.append(f"""
-            <tr style="{row_bg}">
-                <td style="{ce_exit_style} text-align: right; padding: 7px 10px;">{ce_exit_val}</td>
-                <td style="{ce_inflow_style} text-align: right; padding: 7px 10px;">{ce_inflow_val}</td>
-                <td style="color: #FFB800; font-weight: 900; font-size: 0.88rem; text-align: center; background: rgba(255,255,255,0.03); border-left: 1px solid rgba(255,255,255,0.1); border-right: 1px solid rgba(255,255,255,0.1);">₹{k:,}{atm_badge}</td>
-                <td style="{pe_exit_style} text-align: left; padding: 7px 10px;">{pe_exit_val}</td>
-                <td style="{pe_inflow_style} text-align: left; padding: 7px 10px;">{pe_inflow_val}</td>
-                <td style="text-align: center;">{speed_badge}</td>
-                <td style="color: {v_color}; font-weight: 800; font-size: 0.72rem; text-align: left; padding-left: 8px;">{verdict}</td>
-            </tr>
-            """)
+            table_rows_html.append(f"<tr style='{row_bg}'><td style='{ce_exit_style} text-align: right; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.05);'>{ce_exit_val}</td><td style='{ce_inflow_style} text-align: right; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); border-right: 1px solid rgba(255,255,255,0.1);'>{ce_inflow_val}</td><td style='color: #FFB800; font-weight: 900; font-size: 13px; text-align: center; background: rgba(255,255,255,0.03); border-left: 1px solid rgba(255,255,255,0.1); border-right: 1px solid rgba(255,255,255,0.1); border-bottom: 1px solid rgba(255,255,255,0.05);'>₹{k:,}{atm_badge}</td><td style='{pe_exit_style} text-align: left; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); border-left: 1px solid rgba(255,255,255,0.1);'>{pe_exit_val}</td><td style='{pe_inflow_style} text-align: left; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.05);'>{pe_inflow_val}</td><td style='text-align: center; border-left: 1px solid rgba(255,255,255,0.1); border-bottom: 1px solid rgba(255,255,255,0.05);'>{speed_badge}</td><td style='color: {v_color}; font-weight: 800; font-size: 11px; text-align: left; padding: 8px 12px; border-left: 1px solid rgba(255,255,255,0.1); border-bottom: 1px solid rgba(255,255,255,0.05);'>{verdict}</td></tr>")
 
         all_rows_str = "".join(table_rows_html)
 
-        full_table_ui = f"""
-        <div style="border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; overflow-x: auto; background: #080C14; font-family: 'JetBrains Mono', monospace; font-size: 11px;">
-            <table style="width: 100%; border-collapse: collapse;">
-                <thead>
-                    <tr style="background: #0D111A; border-bottom: 2px solid rgba(255,255,255,0.1);">
-                        <th colspan="2" style="color: #00F5A0; padding: 9px; font-size: 12px; border-right: 1px solid rgba(255,255,255,0.1); text-align: center;">🔴/🟢 CALL (CE) VELOCITY</th>
-                        <th style="color: #FFB800; font-size: 13px; font-weight: 900; padding: 9px; text-align: center;">STRIKE</th>
-                        <th colspan="2" style="color: #FF3B69; padding: 9px; font-size: 12px; border-left: 1px solid rgba(255,255,255,0.1); text-align: center;">🔴/🟢 PUT (PE) VELOCITY</th>
-                        <th rowspan="2" style="color: #00D2FF; padding: 9px; text-align: center; border-left: 1px solid rgba(255,255,255,0.1);">SPEEDOMETER</th>
-                        <th rowspan="2" style="color: #F0F4F8; padding: 9px; text-align: left; border-left: 1px solid rgba(255,255,255,0.1);">STRIKE VERDICT</th>
-                    </tr>
-                    <tr style="background: #0D111A; border-bottom: 2px solid rgba(255,255,255,0.1); font-size: 10px; color: #8B949E;">
-                        <th style="text-align: right; padding: 6px 10px; color: #FF3B69;">🔴 CE Exit Rate</th>
-                        <th style="text-align: right; padding: 6px 10px; color: #00F5A0; border-right: 1px solid rgba(255,255,255,0.1);">🟢 CE Inflow Rate</th>
-                        <th style="color: #FFB800; font-weight: 900; text-align: center;">ATM ± 5 STRIKES</th>
-                        <th style="text-align: left; padding: 6px 10px; color: #FF3B69; border-left: 1px solid rgba(255,255,255,0.1);">🔴 PE Exit Rate</th>
-                        <th style="text-align: left; padding: 6px 10px; color: #00F5A0;">🟢 PE Inflow Rate</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {all_rows_str}
-                </tbody>
-            </table>
-        </div>
-        """
-        st.markdown(full_table_ui, unsafe_allow_html=True)
+        full_table_ui = f'''
+        <!DOCTYPE html>
+        <html>
+        <head>
+        <meta charset="utf-8">
+        <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+        <style>
+            * {{ box-sizing: border-box; }}
+            body {{ margin: 0; padding: 4px; background: #05070B; color: #F0F4F8; font-family: 'JetBrains Mono', monospace; font-size: 11px; }}
+            table {{ width: 100%; border-collapse: collapse; min-width: 980px; background: #080C14; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; overflow: hidden; }}
+            th {{ background: #0D111A; padding: 8px 6px; font-weight: 700; position: sticky; top: 0; z-index: 10; }}
+            tr:hover {{ background: rgba(0, 210, 255, 0.08) !important; }}
+        </style>
+        </head>
+        <body>
+        <table>
+            <thead>
+                <tr style="border-bottom: 2px solid rgba(255,255,255,0.1);">
+                    <th colspan="2" style="color: #00F5A0; padding: 10px; font-size: 12px; border-right: 1px solid rgba(255,255,255,0.1); text-align: center;">🔴/🟢 CALL (CE) VELOCITY</th>
+                    <th style="color: #FFB800; font-size: 13px; font-weight: 900; padding: 10px; text-align: center;">STRIKE</th>
+                    <th colspan="2" style="color: #FF3B69; padding: 10px; font-size: 12px; border-left: 1px solid rgba(255,255,255,0.1); text-align: center;">🔴/🟢 PUT (PE) VELOCITY</th>
+                    <th rowspan="2" style="color: #00D2FF; padding: 10px; text-align: center; border-left: 1px solid rgba(255,255,255,0.1);">SPEEDOMETER</th>
+                    <th rowspan="2" style="color: #F0F4F8; padding: 10px; text-align: left; border-left: 1px solid rgba(255,255,255,0.1);">STRIKE VERDICT</th>
+                </tr>
+                <tr style="border-bottom: 2px solid rgba(255,255,255,0.1); font-size: 10px; color: #8B949E;">
+                    <th style="text-align: right; padding: 6px 12px; color: #FF3B69;">🔴 CE Exit Rate</th>
+                    <th style="text-align: right; padding: 6px 12px; color: #00F5A0; border-right: 1px solid rgba(255,255,255,0.1);">🟢 CE Inflow Rate</th>
+                    <th style="color: #FFB800; font-weight: 900; text-align: center;">ATM ± 5 STRIKES</th>
+                    <th style="text-align: left; padding: 6px 12px; color: #FF3B69; border-left: 1px solid rgba(255,255,255,0.1);">🔴 PE Exit Rate</th>
+                    <th style="text-align: left; padding: 6px 12px; color: #00F5A0;">🟢 PE Inflow Rate</th>
+                </tr>
+            </thead>
+            <tbody>
+                {all_rows_str}
+            </tbody>
+        </table>
+        </body>
+        </html>
+        '''
+        components.html(full_table_ui, height=490, scrolling=True)
 
         # VISUAL VELOCITY COMPARISON CHART
         st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
