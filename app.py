@@ -1495,7 +1495,7 @@ with sec2:
                 row.ce_ltp = newCe;
                 row.ce_vol += Math.floor(Math.random() * 150) + 75;
 
-                const ceOiDelta = (Math.random() > 0.42 ? 1 : -1) * (Math.floor(Math.random() * 4) + 1) * lotSize;
+                const ceOiDelta = (Math.random() > 0.45 ? 1 : -1) * (Math.floor(Math.random() * 6) + 1) * lotSize * 8;
                 row.ce_oi = Math.max(1000, row.ce_oi + ceOiDelta);
                 row.ce_chg += ceOiDelta;
 
@@ -1533,7 +1533,7 @@ with sec2:
                 row.pe_ltp = newPe;
                 row.pe_vol += Math.floor(Math.random() * 150) + 75;
 
-                const peOiDelta = (Math.random() > 0.42 ? 1 : -1) * (Math.floor(Math.random() * 4) + 1) * lotSize;
+                const peOiDelta = (Math.random() > 0.45 ? 1 : -1) * (Math.floor(Math.random() * 6) + 1) * lotSize * 8;
                 row.pe_oi = Math.max(1000, row.pe_oi + peOiDelta);
                 row.pe_chg += peOiDelta;
 

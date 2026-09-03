@@ -223,29 +223,44 @@ class DataEngine:
             round_multiplier = 2.2 if is_major_round else 1.0
             dist_factor = math.exp(-0.5 * ((k - spot) / (step * 5)) ** 2)
 
-            # Realistic Institutional Open Interest Distribution
-            if k >= spot:
-                ce_oi = int((6500000 * dist_factor * round_multiplier) + 350000)
-                pe_oi = int((2100000 * dist_factor) + 180000)
-            else:
-                ce_oi = int((1600000 * dist_factor) + 180000)
-                pe_oi = int((7200000 * dist_factor * round_multiplier) + 420000)
+            # Index-specific baseline scaling multiplier
+            scale_mult = {
+                'NIFTY': 1.0,
+                'BANKNIFTY': 0.65,
+                'FINNIFTY': 0.35,
+                'SENSEX': 0.25,
+                'MIDCPNIFTY': 0.20
+            }.get(symbol.upper(), 1.0)
 
-            # Realistic Shifting & Unwinding (Negative OI Change for ITM / Positive for OTM)
-            if k < spot - (step * 2):
-                # Deep ITM Calls: Heavy Unwinding (Short Covering / Exits)
-                ce_change_oi = -int(ce_oi * np.random.uniform(0.12, 0.28))
-                # OTM Puts: Strong Additions (Put Writing Support)
-                pe_change_oi = int(pe_oi * np.random.uniform(0.08, 0.22))
-            elif k > spot + (step * 2):
-                # OTM Calls: Heavy Additions (Call Writing Resistance)
-                ce_change_oi = int(ce_oi * np.random.uniform(0.08, 0.24))
-                # ITM Puts: Heavy Unwinding (Long Unwinding / Exits)
-                pe_change_oi = -int(pe_oi * np.random.uniform(0.10, 0.25))
+            # Institutional Open Interest Distribution matching Real Broker Depth
+            if k >= spot:
+                ce_oi = int(((12000000 * dist_factor * round_multiplier) + 450000) * scale_mult)
+                pe_oi = int(((3500000 * dist_factor) + 250000) * scale_mult)
             else:
-                # Near ATM Strikes: Active Two-Way Volume
-                ce_change_oi = int(ce_oi * np.random.uniform(-0.05, 0.12))
-                pe_change_oi = int(pe_oi * np.random.uniform(-0.05, 0.14))
+                ce_oi = int(((2500000 * dist_factor) + 250000) * scale_mult)
+                pe_oi = int(((11000000 * dist_factor * round_multiplier) + 550000) * scale_mult)
+
+            # Realistic Shifting & Unwinding matching Fyers Orderflow
+            # ITM Calls unwinding (exits) as spot rises, OTM Calls accumulating heavy resistance
+            # OTM Puts accumulating heavy support, ITM Puts unwinding
+            if k <= spot - (step * 2):
+                # Deep ITM Calls: Heavy Unwinding (e.g. -6.4L to -14.6L on Nifty)
+                ce_change_oi = -int(ce_oi * np.random.uniform(0.20, 0.45))
+                # OTM Puts: Heavy Support Inflows (e.g. +5.6L to +21.1L on Nifty)
+                pe_change_oi = int(pe_oi * np.random.uniform(0.15, 0.38))
+            elif k >= spot + (step * 2):
+                # OTM Calls: Heavy Resistance Inflows (e.g. +20.4L to +67.3L on Nifty)
+                ce_change_oi = int(ce_oi * np.random.uniform(0.25, 0.65))
+                # Deep ITM Puts: Unwinding / Profit Booking (e.g. -1.8L to -5.2L on Nifty)
+                pe_change_oi = -int(pe_oi * np.random.uniform(0.12, 0.30))
+            elif k == atm_strike:
+                # ATM Strike: Heavy Straddle Writing Battles (e.g. +20.4L CE / +31.9L PE)
+                ce_change_oi = int(ce_oi * np.random.uniform(0.30, 0.60))
+                pe_change_oi = int(pe_oi * np.random.uniform(0.40, 0.85))
+            else:
+                # Near-ATM Transition Strikes
+                ce_change_oi = int(ce_oi * np.random.uniform(-0.15, 0.35))
+                pe_change_oi = int(pe_oi * np.random.uniform(-0.10, 0.45))
 
             total_ce_oi += ce_oi
             total_pe_oi += pe_oi

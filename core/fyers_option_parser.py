@@ -1,6 +1,7 @@
 """
-Master Trading System - Complete Fyers API v3 Live Option Chain Parser
-Handles Live Real-Time Tick Ingestion with Dynamic Black-Scholes Greeks & OI Change for all indices & equities.
+Master Trading System - Robust Fyers API v3 Live Option Chain Parser
+Extracts exact real-time LTP, OI, OI Change, Volume, IV and calculates Black-Scholes Greeks
+for NIFTY, BANKNIFTY, FINNIFTY, SENSEX, MIDCPNIFTY and Equities.
 """
 
 import math
@@ -36,6 +37,19 @@ class FyersOptionChainParser:
             'vega': round(float(vega), 2)
         }
 
+    @staticmethod
+    def _extract_val(data_dict, keys, default=0):
+        """Safely extracts value across possible Fyers API keys."""
+        if not isinstance(data_dict, dict):
+            return default
+        for k in keys:
+            if k in data_dict and data_dict[k] is not None:
+                try:
+                    return type(default)(data_dict[k])
+                except (ValueError, TypeError):
+                    pass
+        return default
+
     @classmethod
     def parse_fyers_response(cls, fyers_raw_data, spot_price, dte=6):
         """
@@ -53,72 +67,86 @@ class FyersOptionChainParser:
         r = 0.065
 
         for item in chain_list:
-            strike = item.get('strike_price', item.get('strikePrice', item.get('strike', 0)))
+            strike = cls._extract_val(item, ['strike_price', 'strikePrice', 'strike', 'strk'], 0)
             if strike <= 0:
                 continue
 
             if strike not in parsed_rows:
                 parsed_rows[strike] = {
                     'strike': strike,
-                    'ce_ltp': 0.05, 'ce_iv': 10.0, 'ce_oi': 0, 'ce_change_oi': 0, 'ce_volume': 0, 'ce_delta': 0.5, 'ce_theta': -12.0, 'ce_gamma': 0.001, 'ce_vega': 8.0,
-                    'pe_ltp': 0.05, 'pe_iv': 10.0, 'pe_oi': 0, 'pe_change_oi': 0, 'pe_volume': 0, 'pe_delta': -0.5, 'pe_theta': -12.0, 'pe_gamma': 0.001, 'pe_vega': 8.0
+                    'ce_ltp': 0.05, 'ce_iv': 10.0, 'ce_oi': 0, 'ce_change_oi': 0, 'ce_volume': 0,
+                    'ce_delta': 0.5, 'ce_theta': -12.0, 'ce_gamma': 0.001, 'ce_vega': 8.0,
+                    'pe_ltp': 0.05, 'pe_iv': 10.0, 'pe_oi': 0, 'pe_change_oi': 0, 'pe_volume': 0,
+                    'pe_delta': -0.5, 'pe_theta': -12.0, 'pe_gamma': 0.001, 'pe_vega': 8.0
                 }
 
-            if 'call_market_data' in item or 'call_oi' in item or 'call' in item:
-                c_data = item.get('call_market_data', item.get('call', item))
-                p_data = item.get('put_market_data', item.get('put', item))
+            # Nested market data format (Standard Fyers v3 Option Chain API)
+            if 'call_market_data' in item or 'put_market_data' in item:
+                c_data = item.get('call_market_data', {})
+                p_data = item.get('put_market_data', {})
 
-                ce_iv = float(c_data.get('iv', c_data.get('call_iv', 10.0)))
-                pe_iv = float(p_data.get('iv', p_data.get('put_iv', 10.0)))
+                ce_iv = cls._extract_val(c_data, ['iv', 'call_iv', 'implied_volatility'], 10.0)
+                pe_iv = cls._extract_val(p_data, ['iv', 'put_iv', 'implied_volatility'], 10.0)
 
                 ce_greeks = cls.calculate_greeks(spot_price, strike, T, r, ce_iv/100.0, 'CE')
                 pe_greeks = cls.calculate_greeks(spot_price, strike, T, r, pe_iv/100.0, 'PE')
 
-                parsed_rows[strike]['ce_ltp'] = float(c_data.get('ltp', c_data.get('call_ltp', parsed_rows[strike]['ce_ltp'])))
-                parsed_rows[strike]['ce_oi'] = int(c_data.get('oi', c_data.get('call_oi', 0)))
-                parsed_rows[strike]['ce_change_oi'] = int(c_data.get('oichng', c_data.get('oi_change', c_data.get('change_oi', 0))))
-                parsed_rows[strike]['ce_volume'] = int(c_data.get('volume', c_data.get('call_volume', 0)))
-                parsed_rows[strike]['ce_iv'] = ce_iv
+                ce_oi = cls._extract_val(c_data, ['oi', 'open_interest', 'call_oi'], 0)
+                ce_oich = cls._extract_val(c_data, ['oich', 'oichng', 'oi_change', 'change_oi', 'call_oi_change'], 0)
+                ce_vol = cls._extract_val(c_data, ['volume', 'v', 'call_volume', 'vol'], 0)
+                ce_ltp = cls._extract_val(c_data, ['ltp', 'lp', 'call_ltp', 'close'], 0.05)
+
+                pe_oi = cls._extract_val(p_data, ['oi', 'open_interest', 'put_oi'], 0)
+                pe_oich = cls._extract_val(p_data, ['oich', 'oichng', 'oi_change', 'change_oi', 'put_oi_change'], 0)
+                pe_vol = cls._extract_val(p_data, ['volume', 'v', 'put_volume', 'vol'], 0)
+                pe_ltp = cls._extract_val(p_data, ['ltp', 'lp', 'put_ltp', 'close'], 0.05)
+
+                parsed_rows[strike]['ce_ltp'] = round(max(0.05, ce_ltp), 2)
+                parsed_rows[strike]['ce_oi'] = ce_oi
+                parsed_rows[strike]['ce_change_oi'] = ce_oich
+                parsed_rows[strike]['ce_volume'] = ce_vol
+                parsed_rows[strike]['ce_iv'] = round(ce_iv, 2)
                 parsed_rows[strike]['ce_delta'] = ce_greeks['delta']
                 parsed_rows[strike]['ce_theta'] = ce_greeks['theta']
                 parsed_rows[strike]['ce_gamma'] = ce_greeks['gamma']
                 parsed_rows[strike]['ce_vega'] = ce_greeks['vega']
 
-                parsed_rows[strike]['pe_ltp'] = float(p_data.get('ltp', p_data.get('put_ltp', parsed_rows[strike]['pe_ltp'])))
-                parsed_rows[strike]['pe_oi'] = int(p_data.get('oi', p_data.get('put_oi', 0)))
-                parsed_rows[strike]['pe_change_oi'] = int(p_data.get('oichng', p_data.get('oi_change', p_data.get('change_oi', 0))))
-                parsed_rows[strike]['pe_volume'] = int(p_data.get('volume', p_data.get('put_volume', 0)))
-                parsed_rows[strike]['pe_iv'] = pe_iv
+                parsed_rows[strike]['pe_ltp'] = round(max(0.05, pe_ltp), 2)
+                parsed_rows[strike]['pe_oi'] = pe_oi
+                parsed_rows[strike]['pe_change_oi'] = pe_oich
+                parsed_rows[strike]['pe_volume'] = pe_vol
+                parsed_rows[strike]['pe_iv'] = round(pe_iv, 2)
                 parsed_rows[strike]['pe_delta'] = pe_greeks['delta']
                 parsed_rows[strike]['pe_theta'] = pe_greeks['theta']
                 parsed_rows[strike]['pe_gamma'] = pe_greeks['gamma']
                 parsed_rows[strike]['pe_vega'] = pe_greeks['vega']
 
+            # Flat dictionary list format
             else:
-                opt_type = item.get('option_type', item.get('optionType', 'CE')).upper()
-                ltp = float(item.get('ltp', item.get('lp', 0.05)))
-                oi = int(item.get('oi', 0))
-                oi_chg = int(item.get('oichng', item.get('oi_change', item.get('change_oi', 0))))
-                vol = int(item.get('volume', item.get('v', 0)))
-                iv = float(item.get('iv', 10.0))
-                greeks = cls.calculate_greeks(spot_price, strike, T, r, iv/100.0, opt_type)
+                opt_type = str(item.get('option_type', item.get('optionType', item.get('symbol', 'CE')))).upper()
+                ltp = cls._extract_val(item, ['ltp', 'lp', 'close'], 0.05)
+                oi = cls._extract_val(item, ['oi', 'open_interest'], 0)
+                oi_chg = cls._extract_val(item, ['oich', 'oichng', 'oi_change', 'change_oi'], 0)
+                vol = cls._extract_val(item, ['volume', 'v', 'vol'], 0)
+                iv = cls._extract_val(item, ['iv', 'implied_volatility'], 10.0)
+                greeks = cls.calculate_greeks(spot_price, strike, T, r, iv/100.0, 'CE' if 'CE' in opt_type else 'PE')
 
                 if 'CE' in opt_type or 'CALL' in opt_type:
-                    parsed_rows[strike]['ce_ltp'] = ltp
+                    parsed_rows[strike]['ce_ltp'] = round(max(0.05, ltp), 2)
                     parsed_rows[strike]['ce_oi'] = oi
                     parsed_rows[strike]['ce_change_oi'] = oi_chg
                     parsed_rows[strike]['ce_volume'] = vol
-                    parsed_rows[strike]['ce_iv'] = iv
+                    parsed_rows[strike]['ce_iv'] = round(iv, 2)
                     parsed_rows[strike]['ce_delta'] = greeks['delta']
                     parsed_rows[strike]['ce_theta'] = greeks['theta']
                     parsed_rows[strike]['ce_gamma'] = greeks['gamma']
                     parsed_rows[strike]['ce_vega'] = greeks['vega']
                 else:
-                    parsed_rows[strike]['pe_ltp'] = ltp
+                    parsed_rows[strike]['pe_ltp'] = round(max(0.05, ltp), 2)
                     parsed_rows[strike]['pe_oi'] = oi
                     parsed_rows[strike]['pe_change_oi'] = oi_chg
                     parsed_rows[strike]['pe_volume'] = vol
-                    parsed_rows[strike]['pe_iv'] = iv
+                    parsed_rows[strike]['pe_iv'] = round(iv, 2)
                     parsed_rows[strike]['pe_delta'] = greeks['delta']
                     parsed_rows[strike]['pe_theta'] = greeks['theta']
                     parsed_rows[strike]['pe_gamma'] = greeks['gamma']
