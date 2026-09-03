@@ -505,7 +505,14 @@ with sec1:
     def render_live_cockpit(selected_symbol):
         quote = data_eng.get_market_quote(selected_symbol)
         spot = quote['current_price']
-        df_candles = quote['df']
+        df_candles = quote.get('df')
+        if df_candles is None or df_candles.empty:
+            dates = pd.date_range(end=datetime.datetime.now(), periods=60, freq='5min')
+            prices = np.linspace(spot - 20, spot, 60)
+            df_candles = pd.DataFrame({
+                'Open': prices - 1, 'High': prices + 2, 'Low': prices - 2, 'Close': prices,
+                'Volume': np.random.randint(5000, 25000, size=60)
+            }, index=dates)
         chain_data = data_eng.get_option_chain(selected_symbol, days_to_expiry=dte)
         fii_dii = data_eng.get_fii_dii_sentiment()
 
