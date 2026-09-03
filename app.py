@@ -473,7 +473,7 @@ def render_live_top_bar(selected_symbol):
         """, unsafe_allow_html=True)
 
     with t_col5:
-        if st.button("🚨 PANIC EXIT", use_container_width=True, help="Square-off all open paper positions instantly!"):
+        if st.button("🚨 PANIC EXIT", key="top_panic_exit_btn", use_container_width=True, help="Square-off all open paper positions instantly!"):
             open_p = paper_eng.get_open_positions()
             if not open_p.empty:
                 for _, r in open_p.iterrows():
@@ -756,7 +756,7 @@ with sec1:
             </div>
             """, unsafe_allow_html=True)
 
-            if st.button(f"🚀 Deploy 1-Click {active_strat['strategy_name']} ({default_lot} Qty)", use_container_width=True):
+            if st.button(f"🚀 Deploy 1-Click {active_strat['strategy_name']} ({default_lot} Qty)", key=f"deploy_btn_sec1_{selected_symbol}", use_container_width=True):
                 tid = paper_eng.execute_paper_trade(selected_symbol, active_strat, spot, conf_score, lot_size=default_lot)
                 st.toast(f"✅ Trade #{tid} Successfully Deployed into Virtual Portfolio!")
                 st.rerun()
@@ -1425,7 +1425,7 @@ with sec5:
         </div>
         """, unsafe_allow_html=True)
     with hdr_c2:
-        if st.button("🔄 Reset Portfolio to ₹3,00,000", use_container_width=True, help="Wipes paper journal and resets balance to ₹3,00,000"):
+        if st.button("🔄 Reset Portfolio to ₹3,00,000", key="sec5_reset_portfolio_btn", use_container_width=True, help="Wipes paper journal and resets balance to ₹3,00,000"):
             paper_eng.reset_account(300000.0)
             st.toast("✅ Portfolio successfully reset to clean ₹3,00,000.00!")
             st.rerun()

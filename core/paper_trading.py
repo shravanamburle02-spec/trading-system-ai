@@ -14,7 +14,7 @@ DB_FILE = "trading_journal.db"
 class PaperTradingEngine:
     @staticmethod
     def get_connection():
-        conn = sqlite3.connect(DB_FILE)
+        conn = sqlite3.connect(DB_FILE, timeout=15)
         conn.row_factory = sqlite3.Row
         return conn
 
@@ -79,7 +79,6 @@ class PaperTradingEngine:
             )
         """)
 
-        # Initialize default capital if empty or if corrupted
         cursor.execute("SELECT COUNT(*) FROM account")
         if cursor.fetchone()[0] == 0:
             now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -91,7 +90,7 @@ class PaperTradingEngine:
 
     @classmethod
     def update_position_legs(cls, pos_id, new_legs_json, additional_credit=0.0):
-        """Updates position legs after an automated defensive rebalance."""
+        """Updates position legs after a defensive rebalance."""
         cls.init_db()
         conn = cls.get_connection()
         cursor = conn.cursor()
@@ -105,7 +104,7 @@ class PaperTradingEngine:
 
     @classmethod
     def log_adjustment(cls, trade_id, symbol, adjustment_type, description):
-        """Logs an automated defensive adjustment event."""
+        """Logs an adjustment event."""
         cls.init_db()
         conn = cls.get_connection()
         cursor = conn.cursor()
@@ -119,7 +118,7 @@ class PaperTradingEngine:
 
     @classmethod
     def get_adjustment_logs(cls):
-        """Fetches all automated rebalancing logs."""
+        """Fetches all rebalancing logs."""
         cls.init_db()
         conn = cls.get_connection()
         df = pd.read_sql_query("SELECT * FROM adjustment_logs ORDER BY id DESC LIMIT 50", conn)
@@ -186,12 +185,12 @@ class PaperTradingEngine:
     def close_position(cls, pos_id, exit_spot, pnl_inr, exit_reason="Manual Close"):
         """
         Closes an active position.
-        BULLETPROOF GUARD: Rejects and blocks ANY automated background/daemon close calls!
-        Positions can ONLY be closed when explicitly initiated by user actions ('Manual Close', 'EMERGENCY PANIC EXIT').
+        IMMUTABLE RULE: Positions can ONLY be closed when user explicitly clicks Manual Close or Panic Exit.
+        Rejects all other closure attempts.
         """
-        # Strict security guard against zombie threads
-        if "Auto Take-Profit" in exit_reason or "Prop-Desk Rule" in exit_reason or "Auto-closed" in exit_reason:
-            print(f"[SECURITY BLOCKED] Prevented zombie automated closure on trade #{pos_id} with reason: {exit_reason}")
+        valid_reasons = ["Manual Close", "Manual Square Off", "EMERGENCY PANIC EXIT"]
+        if exit_reason not in valid_reasons:
+            print(f"[SECURITY REJECTED] Refused unauthorized close on trade #{pos_id} with reason: '{exit_reason}'")
             return False
 
         cls.init_db()
@@ -211,7 +210,7 @@ class PaperTradingEngine:
             INSERT INTO trade_journal (symbol, strategy_name, strategy_type, entry_time, exit_time, entry_spot, exit_spot, pnl, confluence_pct, exit_reason, notes)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (pos['symbol'], pos['strategy_name'], pos['strategy_type'], pos['entry_time'], now,
-              pos['entry_spot'], exit_spot, pnl_inr, pos['confluence_pct'], exit_reason, f"Position closed manually with {pnl_inr:+.2f} PnL"))
+              pos['entry_spot'], exit_spot, pnl_inr, pos['confluence_pct'], exit_reason, f"Manually closed with {pnl_inr:+.2f} PnL"))
 
         # Update position status
         cursor.execute("UPDATE active_positions SET status = 'CLOSED' WHERE id = ?", (pos_id,))
