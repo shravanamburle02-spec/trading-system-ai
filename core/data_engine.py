@@ -108,23 +108,12 @@ class DataEngine:
     def get_market_quote(self, symbol='NIFTY'):
         """Fetches live spot quote with realistic continuous micro-ticks."""
         if self.fyers.is_connected():
-            fyers_sym = f"NSE:{symbol.upper()}-INDEX" if symbol.upper() in ['NIFTY', 'BANKNIFTY', 'FINNIFTY', 'MIDCPNIFTY'] else f"BSE:{symbol.upper()}-INDEX"
-            q = self.fyers.get_quotes(fyers_sym)
-            if q and 'd' in q and len(q['d']) > 0:
-                d = q['d'][0]['v']
-                lp = float(d.get('lp', d.get('cmd', {}).get('c', 0.0)))
-                prev = float(d.get('prev_close_price', lp))
-                chg = lp - prev
-                pchg = (chg / prev) * 100 if prev > 0 else 0.0
-                return {
-                    'symbol': symbol,
-                    'current_price': round(lp, 2),
-                    'change': round(chg, 2),
-                    'p_change': round(pchg, 2),
-                    'day_high': float(d.get('high_price', lp + 20)),
-                    'day_low': float(d.get('low_price', lp - 20)),
-                    'df': None
-                }
+            try:
+                f_quote = self.fyers.get_quote(symbol)
+                if f_quote and f_quote.get('current_price', 0) > 0:
+                    return f_quote
+            except Exception:
+                pass
 
         state = self._MARKET_STATE.get(symbol.upper(), {'spot': 24055.80, 'prev': 24080.40, 'high': 24095.0, 'low': 24040.0, 'last_tick': time.time()})
         now = time.time()

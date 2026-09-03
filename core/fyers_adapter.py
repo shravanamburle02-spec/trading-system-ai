@@ -127,3 +127,6 @@ class FyersAdapter:
         except Exception:
             return None
         return None
+
+    # Alias for compatibility
+    get_quotes = get_quote
