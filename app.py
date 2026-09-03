@@ -488,10 +488,9 @@ st.markdown("<div style='margin-bottom: 4px;'></div>", unsafe_allow_html=True)
 # -------------------------------------------------------------
 # DEDICATED INSTITUTIONAL SECTIONS & WORKSPACES
 # -------------------------------------------------------------
-sec1, sec2, sec_vel, sec3, sec4, sec5, sec6 = st.tabs([
+sec1, sec2, sec3, sec4, sec5, sec6 = st.tabs([
     "💠 3-Pane Quant Cockpit",
     "📊 Advanced Option Chain",
-    "⚡ 11-Strike OI Velocity Radar",
     "🦎 Non-Directional Strategy Lab",
     "🛡️ Defense Sentinel & Rebalancer",
     "💼 ₹3L Portfolio & Trade Journal",
@@ -883,9 +882,15 @@ with sec1:
 
 
 # =============================================================
-# SECTION 2: SMART MONEY OI SHIFTING RADAR & ULTRA OPTION CHAIN 3.0
+# SECTION 2: ADVANCED OPTION CHAIN & INSTITUTIONAL RADAR DESK
 # =============================================================
 with sec2:
+    sub_tab1, sub_tab2, sub_tab3 = st.tabs([
+        "📊 Complete Option Chain 3.0 & Shift Radar",
+        "⚡ 11-Strike OI Velocity Speedometer (ATM ± 5)",
+        "🧭 Expiry Lifecycle: Event-by-Event S&R Shift Journal"
+    ])
+
     chain_data_s2 = data_eng.get_option_chain(symbol, days_to_expiry=dte)
     atm_k = chain_data_s2['atm_strike']
     df_oc = chain_data_s2.get('chain_df')
@@ -908,7 +913,6 @@ with sec2:
     if df_oc is not None and not df_oc.empty:
         df_oc_sorted = df_oc.sort_values(by='strike').reset_index(drop=True)
         
-        # Helper for Lakhs / Cr format in Python
         def fmt_inr_qty(val):
             abs_v = abs(val)
             sign = "+" if val >= 0 else "-"
@@ -920,7 +924,6 @@ with sec2:
                 return f"{sign}{abs_v/1000:.1f}K"
             return f"{sign}{abs_v:,}"
 
-        # Ensure all columns exist safely on df_oc_sorted
         if 'ce_vol_oi_ratio' not in df_oc_sorted.columns:
             df_oc_sorted['ce_vol_oi_ratio'] = df_oc_sorted['ce_volume'] / df_oc_sorted['ce_oi'].replace(0, 1)
         if 'pe_vol_oi_ratio' not in df_oc_sorted.columns:
@@ -932,11 +935,8 @@ with sec2:
         if 'pe_velocity_rpm' not in df_oc_sorted.columns:
             df_oc_sorted['pe_velocity_rpm'] = (df_oc_sorted['pe_change_oi'] / 140.0).round(0).astype(int)
 
-        # Identify top exit strikes (most negative change)
         top_ce_exit_row = df_oc_sorted.loc[df_oc_sorted['ce_change_oi'].idxmin()]
         top_pe_exit_row = df_oc_sorted.loc[df_oc_sorted['pe_change_oi'].idxmin()]
-        
-        # Identify top inflow strikes (most positive change)
         top_ce_inflow_row = df_oc_sorted.loc[df_oc_sorted['ce_change_oi'].idxmax()]
         top_pe_inflow_row = df_oc_sorted.loc[df_oc_sorted['pe_change_oi'].idxmax()]
 
@@ -953,7 +953,6 @@ with sec2:
         ce_shift_dist = ce_inflow_k - ce_exit_k
         pe_shift_dist = pe_inflow_k - pe_exit_k
 
-        # Aggregate total market exits and inflows
         tot_ce_exit = int(df_oc_sorted[df_oc_sorted['ce_change_oi'] < 0]['ce_change_oi'].sum())
         tot_ce_inflow = int(df_oc_sorted[df_oc_sorted['ce_change_oi'] > 0]['ce_change_oi'].sum())
         tot_pe_exit = int(df_oc_sorted[df_oc_sorted['pe_change_oi'] < 0]['pe_change_oi'].sum())
@@ -979,7 +978,6 @@ with sec2:
             pe_verdict = "🔒 Support Concentrated at Same Strike"
             pe_v_badge = "glow-pill-gold"
 
-        # Max Pain Migration
         mp_live = chain_data_s2.get('max_pain', atm_k)
         mp_morning = chain_data_s2.get('max_pain_morning', mp_live)
         mp_shift_pts = chain_data_s2.get('max_pain_shift_pts', 0)
@@ -994,65 +992,18 @@ with sec2:
             mp_badge_text = "🔒 Solid Expiry Center Pinning"
             mp_pill = "glow-pill-gold"
 
-        # 15-Minute Velocity Speedometer Metrics (All 4 Key Streams: CE Exit, CE Inflow, PE Exit, PE Inflow)
-        fastest_ce_exit = df_oc_sorted.loc[df_oc_sorted['ce_velocity_rpm'].idxmin()]
-        fastest_ce_add = df_oc_sorted.loc[df_oc_sorted['ce_velocity_rpm'].idxmax()]
-        fastest_pe_exit = df_oc_sorted.loc[df_oc_sorted['pe_velocity_rpm'].idxmin()]
-        fastest_pe_add = df_oc_sorted.loc[df_oc_sorted['pe_velocity_rpm'].idxmax()]
-
-        top_ce_exit_k = int(fastest_ce_exit['strike'])
-        top_ce_exit_rpm = int(fastest_ce_exit['ce_velocity_rpm'])
-        top_ce_inflow_k = int(fastest_ce_add['strike'])
-        top_ce_inflow_rpm = int(fastest_ce_add['ce_velocity_rpm'])
-
-        top_pe_exit_k = int(fastest_pe_exit['strike'])
-        top_pe_exit_rpm = int(fastest_pe_exit['pe_velocity_rpm'])
-        top_pe_inflow_k = int(fastest_pe_add['strike'])
-        top_pe_inflow_rpm = int(fastest_pe_add['pe_velocity_rpm'])
-
-        # Multi-Stream Dominance Calculation
-        max_active_rpm = max(abs(top_ce_exit_rpm), abs(top_ce_inflow_rpm), abs(top_pe_exit_rpm), abs(top_pe_inflow_rpm))
-        if abs(top_ce_exit_rpm) >= 15000 and abs(top_ce_exit_rpm) >= abs(top_pe_exit_rpm):
-            vel_status = "⚡ ROCKET SHORT COVERING (BULLISH)"
-            vel_pill = "glow-pill-emerald"
-        elif abs(top_pe_exit_rpm) >= 15000:
-            vel_status = "🚨 FLASH DUMP / PUT UNWIND (BEARISH)"
-            vel_pill = "glow-pill-rose"
-        elif top_ce_inflow_rpm >= 35000:
-            vel_status = "🔥 HEAVY CALL WALL INFLOW (CAPPED)"
-            vel_pill = "glow-pill-gold"
-        elif top_pe_inflow_rpm >= 35000:
-            vel_status = "🛡️ HEAVY PUT FLOOR INFLOW (SUPPORT)"
-            vel_pill = "glow-pill-emerald"
-        else:
-            vel_status = "🚗 STEADY TWO-WAY FLOW"
-            vel_pill = "glow-pill-cyan"
-
-        # Whale Block Deal Strikes Detection (Vol / OI >= 2.0)
-        whale_ce_rows = df_oc_sorted[df_oc_sorted['ce_vol_oi_ratio'] >= 2.0]
-        whale_pe_rows = df_oc_sorted[df_oc_sorted['pe_vol_oi_ratio'] >= 2.0]
-        whale_spikes = []
-        for _, wr in whale_ce_rows.head(2).iterrows():
-            whale_spikes.append(f"🐋 ₹{int(wr['strike'])} CE Vol {wr['ce_vol_oi_ratio']:.1f}x OI")
-        for _, wr in whale_pe_rows.head(2).iterrows():
-            whale_spikes.append(f"🐋 ₹{int(wr['strike'])} PE Vol {wr['pe_vol_oi_ratio']:.1f}x OI")
-        whale_summary_str = " | ".join(whale_spikes) if whale_spikes else "🌊 Normal Volume Flow (No Whale Outliers)"
-
-        # GEX metrics from data_engine
         net_gex_cr = chain_data_s2.get('total_net_gex_cr', 0.0)
         zero_gamma_k = chain_data_s2.get('zero_gamma_strike', atm_k)
-        gex_regime = "🟢 STABLE / VOLATILITY SUPPRESSED" if net_gex_cr >= 0 else "⚡ EXPLOSIVE BREAKOUT ZONE"
-        gex_pill = "glow-pill-emerald" if net_gex_cr >= 0 else "glow-pill-rose"
-
-        # Straddle Decay Metrics
         open_strad = chain_data_s2.get('open_straddle_est', straddle_p)
         strad_decay_pts = chain_data_s2.get('straddle_decay_pts', 0.0)
-        strad_decay_pct = chain_data_s2.get('straddle_decay_pct', 0.0)
         strad_decay_inr = round(strad_decay_pts * default_lot, 0)
         decay_pill = "glow-pill-emerald" if strad_decay_pts >= 0 else "glow-pill-rose"
 
-        # PURE UNINDENTED HTML TO PREVENT STREAMLIT MARKDOWN CODE BLOCK GLITCH
-        radar_html = f"""<div class="cockpit-card" style="margin-bottom: 8px; border-left: 4px solid #00D2FF;">
+        # -------------------------------------------------------------
+        # SUB-TAB 1: COMPLETE OPTION CHAIN 3.0 & SHIFT RADAR
+        # -------------------------------------------------------------
+        with sub_tab1:
+            radar_html = f"""<div class="cockpit-card" style="margin-bottom: 8px; border-left: 4px solid #00D2FF;">
 <div class="card-header" style="border-bottom: 1px solid rgba(0, 210, 255, 0.2); padding-bottom: 6px;">
 <span style="display: flex; align-items: center; gap: 8px;">
 <span style="font-size: 1.1rem;">🧭</span>
@@ -1113,41 +1064,17 @@ with sec2:
 </div>
 </div>
 
-<!-- TOP ANALYTICS DOCK: MAX PAIN MIGRATION & 15-MIN OI VELOCITY SPEEDOMETER -->
-<div style="display: grid; grid-template-columns: 1.1fr 1.1fr 1fr; gap: 8px; margin-top: 8px; font-family: 'JetBrains Mono', monospace;">
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; font-family: 'JetBrains Mono', monospace;">
 <div style="background: rgba(255, 184, 0, 0.05); border: 1px solid rgba(255, 184, 0, 0.3); border-radius: 6px; padding: 6px 10px;">
 <div style="display: flex; justify-content: space-between; align-items: center;">
 <span style="font-size: 0.68rem; color: #FFB800; font-weight: 800;">🎯 MAX PAIN MIGRATION TRACKER</span>
 <span class="{mp_pill}" style="font-size: 0.65rem;">{mp_badge_text.split('(')[0].strip()}</span>
 </div>
 <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px;">
-<div>
-<span style="font-size: 0.65rem; color: #8B949E;">OPEN:</span> <strong style="color: #8B949E;">₹{mp_morning:,}</strong>
-</div>
+<div><span style="font-size: 0.65rem; color: #8B949E;">OPEN:</span> <strong style="color: #8B949E;">₹{mp_morning:,}</strong></div>
 <div style="font-size: 0.9rem; color: #FFB800; font-weight: 900;">➔</div>
-<div>
-<span style="font-size: 0.65rem; color: #8B949E;">LIVE MAGNET:</span> <strong style="color: #00F5A0; font-size: 0.85rem;">₹{mp_live:,}</strong>
-</div>
-<div>
-<span class="badge-tag" style="background: rgba(255,184,0,0.2); color: #FFB800; font-size: 0.68rem;">{mp_shift_pts:+d} Pts Drift</span>
-</div>
-</div>
-</div>
-
-<div style="background: rgba(0, 210, 255, 0.05); border: 1px solid rgba(0, 210, 255, 0.3); border-radius: 6px; padding: 6px 10px;">
-<div style="display: flex; justify-content: space-between; align-items: center;">
-<span style="font-size: 0.68rem; color: #00D2FF; font-weight: 800;">⏱️ 15-MIN OI VELOCITY (CALL & PUT SPEEDOMETER)</span>
-<span class="{vel_pill}" style="font-size: 0.65rem;">{vel_status.split('(')[0].strip()}</span>
-</div>
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 4px; font-size: 0.70rem;">
-<div>
-<span style="color: #8B949E;">🔴 CE Exit:</span> <strong style="color: #FF3B69;">₹{top_ce_exit_k:,} ({top_ce_exit_rpm:,}/m)</strong><br>
-<span style="color: #8B949E;">🟢 CE Wall:</span> <strong style="color: #00F5A0;">₹{top_ce_inflow_k:,} ({top_ce_inflow_rpm:+,}/m)</strong>
-</div>
-<div>
-<span style="color: #8B949E;">🔴 PE Exit:</span> <strong style="color: #FF3B69;">₹{top_pe_exit_k:,} ({top_pe_exit_rpm:,}/m)</strong><br>
-<span style="color: #8B949E;">🟢 PE Floor:</span> <strong style="color: #00F5A0;">₹{top_pe_inflow_k:,} ({top_pe_inflow_rpm:+,}/m)</strong>
-</div>
+<div><span style="font-size: 0.65rem; color: #8B949E;">LIVE MAGNET:</span> <strong style="color: #00F5A0; font-size: 0.85rem;">₹{mp_live:,}</strong></div>
+<div><span class="badge-tag" style="background: rgba(255,184,0,0.2); color: #FFB800; font-size: 0.68rem;">{mp_shift_pts:+d} Pts Drift</span></div>
 </div>
 </div>
 
@@ -1163,1052 +1090,875 @@ with sec2:
 </div>
 </div>
 </div>"""
-        st.markdown(radar_html, unsafe_allow_html=True)
+            st.markdown(radar_html, unsafe_allow_html=True)
 
-        # Controls & Depth
-        ctrl_col1, ctrl_col2, ctrl_col3 = st.columns([4.2, 3.5, 2.3])
-        with ctrl_col1:
-            oc_view_mode = st.radio(
-                "Chain Display Mode",
-                [
-                    "📊 Orderbook + Shift Radar",
-                    "📈 Sensibull OI Distribution Chart",
-                    "⚡ Full Greeks Matrix (Δ, Θ, Γ, V)",
-                    "🧪 GEX Profile"
-                ],
-                horizontal=True,
-                key="oc_view_mode_selector_v7"
-            )
-        with ctrl_col2:
-            strike_depth = st.selectbox(
-                "Strike Filter Depth",
-                [
-                    "🎯 Active Trading Zone (ATM ± 5 Strikes / 11 Total)",
-                    "📊 Standard Depth (ATM ± 10 Strikes / 21 Total)",
-                    "🌐 Extended Depth (ATM ± 15 Strikes / 31 Total)",
-                    "⚡ Deep Matrix (ATM ± 20 Strikes / 41 Total)",
-                    "🔥 Complete Option Chain (ATM ± 30 Strikes / 61 Total)"
-                ],
-                index=1,
-                key="oc_depth_selector_v7"
-            )
-        with ctrl_col3:
+            ctrl_col1, ctrl_col2, ctrl_col3 = st.columns([4.2, 3.5, 2.3])
+            with ctrl_col1:
+                oc_view_mode = st.radio(
+                    "Chain Display Mode",
+                    [
+                        "📊 Orderbook + Shift Radar",
+                        "📈 Sensibull OI Distribution Chart",
+                        "⚡ Full Greeks Matrix (Δ, Θ, Γ, V)",
+                        "🧪 GEX Profile"
+                    ],
+                    horizontal=True,
+                    key="oc_view_mode_sub1"
+                )
+            with ctrl_col2:
+                strike_depth = st.selectbox(
+                    "Strike Filter Depth",
+                    [
+                        "🎯 Active Trading Zone (ATM ± 5 Strikes / 11 Total)",
+                        "📊 Standard Depth (ATM ± 10 Strikes / 21 Total)",
+                        "🌐 Extended Depth (ATM ± 15 Strikes / 31 Total)",
+                        "⚡ Deep Matrix (ATM ± 20 Strikes / 41 Total)",
+                        "🔥 Complete Option Chain (ATM ± 30 Strikes / 61 Total)"
+                    ],
+                    index=1,
+                    key="oc_depth_sub1"
+                )
+            with ctrl_col3:
+                st.markdown(f"""
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 8px; padding: 6px 12px; height: 38px; display: flex; align-items: center; justify-content: space-between; margin-top: 18px;">
+                    <span style="font-size: 0.72rem; color: #8B949E; font-weight: 700;">LOT MULTIPLIER</span>
+                    <span class="mono" style="font-size: 0.85rem; font-weight: 800; color: #00D2FF;">{default_lot} QTY / LOT</span>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            if "5" in strike_depth:
+                n_strikes = 5
+            elif "10" in strike_depth:
+                n_strikes = 10
+            elif "15" in strike_depth:
+                n_strikes = 15
+            elif "20" in strike_depth:
+                n_strikes = 20
+            elif "30" in strike_depth:
+                n_strikes = 30
+            else:
+                n_strikes = 10
+
+            atm_idx = (df_oc_sorted['strike'] - spot_s2).abs().idxmin()
+            start_i = max(0, atm_idx - n_strikes)
+            end_i = min(len(df_oc_sorted), atm_idx + n_strikes + 1)
+            sub_oc = df_oc_sorted.iloc[start_i:end_i].copy()
+
+            with st.expander("⚡ 1-Click Fast Trade Launcher (Direct from Option Chain)", expanded=False):
+                t_col1, t_col2, t_col3, t_col4, t_col5 = st.columns([2.5, 2, 2, 2, 2.5])
+                with t_col1:
+                    fast_strike = st.selectbox("Select Strike", options=sub_oc['strike'].tolist(), index=min(len(sub_oc)-1, n_strikes), key="fast_trade_strike_sub1")
+                with t_col2:
+                    fast_opt_type = st.selectbox("Option Type", ["CE (Call)", "PE (Put)"], key="fast_trade_opt_type_sub1")
+                with t_col3:
+                    fast_side = st.selectbox("Action", ["BUY (Long)", "SELL (Short)"], key="fast_trade_side_sub1")
+                with t_col4:
+                    fast_lots = st.number_input("Lots", min_value=1, max_value=50, value=1, step=1, key="fast_trade_lots_sub1")
+                with t_col5:
+                    st.markdown("<div style='margin-top: 24px;'></div>", unsafe_allow_html=True)
+                    if st.button("🚀 PUNCH ORDER", use_container_width=True, key="btn_punch_fast_trade_sub1"):
+                        sel_type = "CE" if "CE" in fast_opt_type else "PE"
+                        sel_side = "BUY" if "BUY" in fast_side else "SELL"
+                        strike_row = sub_oc[sub_oc['strike'] == fast_strike]
+                        p_val = float(strike_row.iloc[0]['ce_ltp']) if sel_type == "CE" else float(strike_row.iloc[0]['pe_ltp'])
+                        
+                        paper_eng.place_order(
+                            symbol=symbol,
+                            strategy_name=f"1-Click {sel_side} {fast_strike} {sel_type}",
+                            legs=[{
+                                'symbol': f"{symbol} {fast_strike} {sel_type}",
+                                'type': sel_type,
+                                'strike': fast_strike,
+                                'action': sel_side,
+                                'lots': fast_lots,
+                                'entry_price': p_val,
+                                'current_price': p_val,
+                                'iv': 10.5
+                            }],
+                            target_pts=30.0,
+                            sl_pts=15.0
+                        )
+                        st.success(f"✅ Executed: {sel_side} {fast_lots} Lots {symbol} {fast_strike} {sel_type} @ ₹{p_val:.1f}!")
+
+            if "Sensibull" in oc_view_mode:
+                st.markdown(f"#### 📈 Sensibull-Style Visual OI Distribution ({symbol})")
+                fig_oi = go.Figure()
+                fig_oi.add_trace(go.Bar(
+                    x=sub_oc['strike'], y=sub_oc['ce_oi'], name='Call OI (Resistance)',
+                    marker_color='rgba(255, 59, 105, 0.85)', customdata=sub_oc['ce_change_oi'],
+                    hovertemplate='<b>Strike: %{x}</b><br>Call OI: %{y:,.0f}<br>OI Chg: %{customdata:+,.0f}<extra></extra>'
+                ))
+                fig_oi.add_trace(go.Bar(
+                    x=sub_oc['strike'], y=sub_oc['pe_oi'], name='Put OI (Support)',
+                    marker_color='rgba(0, 245, 160, 0.85)', customdata=sub_oc['pe_change_oi'],
+                    hovertemplate='<b>Strike: %{x}</b><br>Put OI: %{y:,.0f}<br>OI Chg: %{customdata:+,.0f}<extra></extra>'
+                ))
+                fig_oi.add_vline(x=spot_s2, line_width=2, line_dash="dash", line_color="#00D2FF", annotation_text=f"Spot: ₹{spot_s2:,.1f}", annotation_position="top")
+                fig_oi.update_layout(
+                    barmode='group', template='plotly_dark', height=420, margin=dict(l=20, r=20, t=30, b=20),
+                    plot_bgcolor='rgba(13, 17, 26, 0.6)', paper_bgcolor='rgba(13, 17, 26, 0.6)',
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                )
+                st.plotly_chart(fig_oi, use_container_width=True)
+
+            elif "GEX Profile" in oc_view_mode:
+                st.markdown(f"#### 🧪 Gamma Exposure (GEX in ₹ Cr) - Zero Gamma: ₹{zero_gamma_k:,}")
+                fig_gex = go.Figure()
+                fig_gex.add_trace(go.Bar(
+                    x=sub_oc['strike'], y=sub_oc['net_gex_cr'], name='Net GEX (Cr)',
+                    marker_color=sub_oc['net_gex_cr'].apply(lambda v: 'rgba(0, 245, 160, 0.85)' if v >= 0 else 'rgba(255, 59, 105, 0.85)'),
+                    hovertemplate='<b>Strike: %{x}</b><br>Net GEX: ₹%{y:+.2f} Cr<extra></extra>'
+                ))
+                fig_gex.add_vline(x=spot_s2, line_width=2, line_dash="dash", line_color="#00D2FF", annotation_text=f"Spot: ₹{spot_s2:,.1f}", annotation_position="top")
+                fig_gex.add_vline(x=zero_gamma_k, line_width=2, line_dash="dot", line_color="#FFB800", annotation_text=f"Zero Gamma: ₹{zero_gamma_k}", annotation_position="bottom")
+                fig_gex.update_layout(template='plotly_dark', height=420, margin=dict(l=20, r=20, t=30, b=20), plot_bgcolor='rgba(13, 17, 26, 0.6)', paper_bgcolor='rgba(13, 17, 26, 0.6)')
+                st.plotly_chart(fig_gex, use_container_width=True)
+
+            max_ce_oi = max(1, int(sub_oc['ce_oi'].max()))
+            max_pe_oi = max(1, int(sub_oc['pe_oi'].max()))
+            max_ce_chg_abs = max(1, int(sub_oc['ce_change_oi'].abs().max()))
+            max_pe_chg_abs = max(1, int(sub_oc['pe_change_oi'].abs().max()))
+
+            js_rows_data = []
+            for _, r in sub_oc.iterrows():
+                k = int(r['strike'])
+                is_atm = bool(abs(k - spot_s2) < (df_oc_sorted['strike'].diff().abs().min() or 50) / 2)
+                ce_oi_v = int(r.get('ce_oi', 50000))
+                pe_oi_v = int(r.get('pe_oi', 50000))
+                ce_chg_v = int(r.get('ce_change_oi', 0))
+                pe_chg_v = int(r.get('pe_change_oi', 0))
+                ce_ltp_v = float(r.get('ce_ltp', 120.0))
+                pe_ltp_v = float(r.get('pe_ltp', 110.0))
+                
+                ce_prev_oi = max(1, ce_oi_v - ce_chg_v)
+                pe_prev_oi = max(1, pe_oi_v - pe_chg_v)
+                ce_chg_pct_val = (ce_chg_v / ce_prev_oi) * 100
+                pe_chg_pct_val = (pe_chg_v / pe_prev_oi) * 100
+
+                ce_rpm_v = int(r.get('ce_velocity_rpm', 0))
+                pe_rpm_v = int(r.get('pe_velocity_rpm', 0))
+
+                is_ce_whale = float(r.get('ce_vol_oi_ratio', 1.0)) >= 2.0 and int(r.get('ce_volume', 0)) >= 50000
+                is_pe_whale = float(r.get('pe_vol_oi_ratio', 1.0)) >= 2.0 and int(r.get('pe_volume', 0)) >= 50000
+                ce_w_prefix = "🐋 " if is_ce_whale else ""
+                pe_w_prefix = "🐋 " if is_pe_whale else ""
+
+                ce_vel_icon = " ⚡" if abs(ce_rpm_v) >= 15000 else ""
+                pe_vel_icon = " ⚡" if abs(pe_rpm_v) >= 15000 else ""
+
+                if ce_chg_v <= -100000:
+                    ce_shift_tag = f"{ce_w_prefix}📤 EXIT: {fmt_inr_qty(ce_chg_v)} ({ce_chg_pct_val:+.1f}%){ce_vel_icon}"
+                    ce_tag_class = "tag-exit"
+                elif ce_chg_v >= 250000:
+                    ce_shift_tag = f"{ce_w_prefix}📥 INFLOW: {fmt_inr_qty(ce_chg_v)} ({ce_chg_pct_val:+.1f}%){ce_vel_icon}"
+                    ce_tag_class = "tag-inflow"
+                elif ce_chg_v < -20000:
+                    ce_shift_tag = f"{ce_w_prefix}⚠️ UNWIND: {fmt_inr_qty(ce_chg_v)} ({ce_chg_pct_val:+.1f}%){ce_vel_icon}"
+                    ce_tag_class = "tag-unwind"
+                elif ce_chg_v > 40000:
+                    ce_shift_tag = f"{ce_w_prefix}🎯 ADDITION: {fmt_inr_qty(ce_chg_v)} ({ce_chg_pct_val:+.1f}%){ce_vel_icon}"
+                    ce_tag_class = "tag-add"
+                else:
+                    ce_shift_tag = f"{ce_w_prefix}🟢 LB" if ce_chg_v >= 0 and ce_ltp_v >= 50 else f"{ce_w_prefix}🔴 SB" if ce_chg_v >= 0 else f"{ce_w_prefix}🟡 SC" if ce_ltp_v >= 50 else f"{ce_w_prefix}🟠 LU"
+                    ce_tag_class = "tag-lb" if "LB" in ce_shift_tag else "tag-sb" if "SB" in ce_shift_tag else "tag-sc" if "SC" in ce_shift_tag else "tag-lu"
+
+                if pe_chg_v <= -100000:
+                    pe_shift_tag = f"{pe_w_prefix}📤 EXIT: {fmt_inr_qty(pe_chg_v)} ({pe_chg_pct_val:+.1f}%){pe_vel_icon}"
+                    pe_tag_class = "tag-exit"
+                elif pe_chg_v >= 250000:
+                    pe_shift_tag = f"{pe_w_prefix}📥 INFLOW: {fmt_inr_qty(pe_chg_v)} ({pe_chg_pct_val:+.1f}%){pe_vel_icon}"
+                    pe_tag_class = "tag-inflow"
+                elif pe_chg_v < -20000:
+                    pe_shift_tag = f"{pe_w_prefix}⚠️ UNWIND: {fmt_inr_qty(pe_chg_v)} ({pe_chg_pct_val:+.1f}%){pe_vel_icon}"
+                    pe_tag_class = "tag-unwind"
+                elif pe_chg_v > 40000:
+                    pe_shift_tag = f"{pe_w_prefix}🎯 ADDITION: {fmt_inr_qty(pe_chg_v)} ({pe_chg_pct_val:+.1f}%){pe_vel_icon}"
+                    pe_tag_class = "tag-add"
+                else:
+                    pe_shift_tag = f"{pe_w_prefix}🟢 LB" if pe_chg_v >= 0 and pe_ltp_v >= 50 else f"{pe_w_prefix}🔴 SB" if pe_chg_v >= 0 else f"{pe_w_prefix}🟡 SC" if pe_ltp_v >= 50 else f"{pe_w_prefix}🟠 LU"
+                    pe_tag_class = "tag-lb" if "LB" in pe_shift_tag else "tag-sb" if "SB" in pe_shift_tag else "tag-sc" if "SC" in pe_shift_tag else "tag-lu"
+
+                ce_delta_v = float(r.get('ce_delta', 0.5))
+                pe_delta_v = float(r.get('pe_delta', -0.5))
+                ce_theta_v = round(float(r.get('ce_theta', -12.5)) * default_lot, 1)
+                pe_theta_v = round(float(r.get('pe_theta', -12.5)) * default_lot, 1)
+                ce_gamma_v = round(float(r.get('ce_gamma', 0.0012)), 4)
+                pe_gamma_v = round(float(r.get('pe_gamma', 0.0012)), 4)
+                ce_vega_v = round(float(r.get('ce_vega', 8.5)) * default_lot, 1)
+                pe_vega_v = round(float(r.get('pe_vega', 8.5)) * default_lot, 1)
+
+                js_rows_data.append({
+                    "strike": k, "is_atm": is_atm, "ce_ltp": ce_ltp_v, "ce_oi": ce_oi_v,
+                    "ce_oi_pct": min(100, int((ce_oi_v / max_ce_oi) * 100)),
+                    "ce_chg": ce_chg_v, "ce_chg_pct": min(100, int((abs(ce_chg_v) / max_ce_chg_abs) * 100)),
+                    "ce_chg_pct_val": ce_chg_pct_val, "ce_rpm": ce_rpm_v, "ce_shift_tag": ce_shift_tag,
+                    "ce_tag_class": ce_tag_class, "ce_vol": int(r.get('ce_volume', 25000)),
+                    "ce_iv": float(r.get('ce_iv', 10.0)), "ce_delta": ce_delta_v, "ce_theta": ce_theta_v,
+                    "ce_gamma": ce_gamma_v, "ce_vega": ce_vega_v, "pe_ltp": pe_ltp_v, "pe_oi": pe_oi_v,
+                    "pe_oi_pct": min(100, int((pe_oi_v / max_pe_oi) * 100)),
+                    "pe_chg": pe_chg_v, "pe_chg_pct": min(100, int((abs(pe_chg_v) / max_pe_chg_abs) * 100)),
+                    "pe_chg_pct_val": pe_chg_pct_val, "pe_rpm": pe_rpm_v, "pe_shift_tag": pe_shift_tag,
+                    "pe_tag_class": pe_tag_class, "pe_vol": int(r.get('pe_volume', 25000)),
+                    "pe_iv": float(r.get('pe_iv', 10.0)), "pe_delta": pe_delta_v, "pe_theta": pe_theta_v,
+                    "pe_gamma": pe_gamma_v, "pe_vega": pe_vega_v,
+                    "ce_wall": " 🟥RES" if k == chain_data_s2['top_call_wall'] else "",
+                    "pe_wall": " 🟩SUP" if k == chain_data_s2['top_put_wall'] else ""
+                })
+
+            js_data_json = json.dumps(js_rows_data)
+            is_greeks_mode = "Greeks" in oc_view_mode
+
+            full_oc_table = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+            <meta charset="utf-8">
+            <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@600;700;800;900&display=swap" rel="stylesheet">
+            <style>
+                * {{ box-sizing: border-box; }}
+                body {{ margin: 0; padding: 4px; background: #05070B; color: #F0F4F8; font-family: 'JetBrains Mono', monospace; font-size: 11px; }}
+                .top-cards {{ display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; text-align: center; margin-bottom: 8px; }}
+                .card-cell {{ border-radius: 8px; padding: 6px 8px; border: 1px solid rgba(255, 255, 255, 0.08); }}
+                .card-title {{ font-size: 0.65rem; color: #8B949E; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; text-transform: uppercase; }}
+                .card-val {{ font-size: 0.98rem; font-weight: 900; margin-top: 2px; }}
+                .table-wrap {{ border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; overflow-x: auto; background: #080C14; }}
+                table {{ width: 100%; min-width: 1260px; border-collapse: collapse; text-align: center; }}
+                th {{ background: #0D111A; padding: 8px 4px; color: #8B949E; font-weight: 700; position: sticky; top: 0; border-bottom: 2px solid rgba(255, 255, 255, 0.1); z-index: 10; }}
+                td {{ padding: 6px 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.04); transition: background-color 0.25s ease, color 0.25s ease; position: relative; }}
+                tr:hover {{ background: rgba(0, 210, 255, 0.08) !important; }}
+                .flash-up {{ background-color: rgba(0, 245, 160, 0.45) !important; color: #FFFFFF !important; font-weight: 900 !important; }}
+                .flash-down {{ background-color: rgba(255, 59, 105, 0.45) !important; color: #FFFFFF !important; font-weight: 900 !important; }}
+                .itm-ce {{ background: rgba(0, 245, 160, 0.05); }}
+                .itm-pe {{ background: rgba(255, 59, 105, 0.05); }}
+                .atm-row {{ background: rgba(255, 184, 0, 0.16) !important; font-weight: 800; border-top: 1px solid #FFB800; border-bottom: 1px solid #FFB800; }}
+                .pulse-dot {{ display: inline-block; width: 7px; height: 7px; background: #00F5A0; border-radius: 50%; box-shadow: 0 0 8px #00F5A0; animation: pulse 1.2s infinite; }}
+                @keyframes pulse {{ 0% {{ transform: scale(0.95); opacity: 0.7; }} 50% {{ transform: scale(1.2); opacity: 1; }} 100% {{ transform: scale(0.95); opacity: 0.7; }} }}
+                .badge-tag {{ font-size: 9px; padding: 2px 6px; border-radius: 4px; font-weight: 900; display: inline-block; letter-spacing: 0.2px; white-space: nowrap; }}
+                .tag-exit {{ background: rgba(255, 59, 105, 0.25); color: #FF3B69; border: 1px solid #FF3B69; box-shadow: 0 0 6px rgba(255, 59, 105, 0.4); animation: pulse 1.5s infinite; }}
+                .tag-inflow {{ background: rgba(0, 245, 160, 0.25); color: #00F5A0; border: 1px solid #00F5A0; box-shadow: 0 0 6px rgba(0, 245, 160, 0.4); animation: pulse 1.5s infinite; }}
+                .tag-unwind {{ background: rgba(255, 184, 0, 0.2); color: #FFB800; border: 1px solid rgba(255, 184, 0, 0.6); }}
+                .tag-add {{ background: rgba(0, 210, 255, 0.2); color: #00D2FF; border: 1px solid rgba(0, 210, 255, 0.6); }}
+                .tag-whale {{ background: rgba(255, 215, 0, 0.25); color: #FFD700; border: 1px solid #FFD700; box-shadow: 0 0 8px rgba(255, 215, 0, 0.5); animation: pulse 1.0s infinite; }}
+                .tag-lb {{ background: rgba(0, 245, 160, 0.12); color: #00F5A0; border: 1px solid rgba(0, 245, 160, 0.3); }}
+                .tag-sb {{ background: rgba(255, 59, 105, 0.12); color: #FF3B69; border: 1px solid rgba(255, 59, 105, 0.3); }}
+                .tag-sc {{ background: rgba(255, 184, 0, 0.12); color: #FFB800; border: 1px solid rgba(255, 184, 0, 0.3); }}
+                .tag-lu {{ background: rgba(0, 210, 255, 0.12); color: #00D2FF; border: 1px solid rgba(0, 210, 255, 0.3); }}
+                .action-btn-b {{ background: rgba(0, 245, 160, 0.2); color: #00F5A0; border: 1px solid #00F5A0; padding: 1px 4px; border-radius: 3px; font-size: 8px; font-weight: 900; cursor: pointer; margin-right: 2px; }}
+                .action-btn-s {{ background: rgba(255, 59, 105, 0.2); color: #FF3B69; border: 1px solid #FF3B69; padding: 1px 4px; border-radius: 3px; font-size: 8px; font-weight: 900; cursor: pointer; }}
+            </style>
+            </head>
+            <body>
+            <div style="background: rgba(13, 17, 26, 0.95); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 8px 12px; margin-bottom: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <span style="font-weight: 800; font-size: 0.82rem; color: #FFFFFF; display: flex; align-items: center; gap: 6px;">
+                        <span class="pulse-dot"></span>
+                        📊 {symbol} INSTITUTIONAL OPTION CHAIN 3.0 ({exp_info['expiry_date_str']})
+                    </span>
+                    <span style="font-size: 0.72rem; color: #00F5A0; font-weight: 700; background: rgba(0,245,160,0.12); padding: 2px 8px; border-radius: 12px; border: 1px solid rgba(0,245,160,0.3);">
+                        {source_label} | SPOT: <span id="header-spot">₹{spot_s2:,.2f}</span>
+                    </span>
+                </div>
+                <div class="top-cards">
+                    <div class="card-cell" style="background: rgba(255, 184, 0, 0.08); border-color: rgba(255, 184, 0, 0.3);">
+                        <div class="card-title">🎯 ATM STRIKE</div>
+                        <div class="card-val" id="card-atm" style="color: #FFB800;">₹{atm_k:,.0f}</div>
+                    </div>
+                    <div class="card-cell" style="background: rgba(0, 245, 160, 0.08); border-color: rgba(0, 245, 160, 0.3);">
+                        <div class="card-title">CALL PREMIUM (LTP)</div>
+                        <div class="card-val" id="card-ce-ltp" style="color: #00F5A0;">₹{atm_ce_p:.1f}</div>
+                    </div>
+                    <div class="card-cell" style="background: rgba(255, 59, 105, 0.08); border-color: rgba(255, 59, 105, 0.3);">
+                        <div class="card-title">PUT PREMIUM (LTP)</div>
+                        <div class="card-val" id="card-pe-ltp" style="color: #FF3B69;">₹{atm_pe_p:.1f}</div>
+                    </div>
+                    <div class="card-cell" style="background: rgba(0, 210, 255, 0.08); border-color: rgba(0, 210, 255, 0.3);">
+                        <div class="card-title">⚡ STRADDLE COST</div>
+                        <div class="card-val" id="card-straddle" style="color: #00D2FF;">₹{straddle_p:.1f}</div>
+                    </div>
+                    <div class="card-cell" style="background: rgba(157, 78, 221, 0.08); border-color: rgba(157, 78, 221, 0.3);">
+                        <div class="card-title">🎯 EXPIRY RANGE</div>
+                        <div class="card-val" id="card-be-range" style="color: #C77DFF; font-size: 0.8rem;">₹{lower_exp_be:,.0f} - ₹{upper_exp_be:,.0f}</div>
+                    </div>
+                    <div class="card-cell" style="background: rgba(255, 255, 255, 0.04); border-color: rgba(255, 255, 255, 0.15);">
+                        <div class="card-title">PCR / MAX PAIN</div>
+                        <div class="card-val" id="card-pcr" style="color: #F0F4F8;">{chain_data_s2['pcr']:.2f} / ₹{mp_live}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th colspan="7" style="color: #00F5A0; border-bottom: 2px solid #00F5A0; font-size: 12px;">CALLS (CE)</th>
+                            <th style="color: #FFB800; font-size: 13px; font-weight: 900; background: rgba(255, 184, 0, 0.1);">STRIKE PRICE</th>
+                            <th colspan="7" style="color: #FF3B69; border-bottom: 2px solid #FF3B69; font-size: 12px;">PUTS (PE)</th>
+                        </tr>
+                        <tr>"""
+
+            if not is_greeks_mode:
+                full_oc_table += """
+                            <th>Total OI (Heatmap)</th>
+                            <th style="color: #00F5A0;">OI Shift (Qty / %)</th>
+                            <th>Institutional Shift Radar</th>
+                            <th>Volume</th>
+                            <th>IV</th>
+                            <th>Delta (Δ)</th>
+                            <th style="color: #00F5A0; font-weight: 800;">CALL LTP</th>
+                            <th style="color: #FFB800; font-weight: 900;">STRIKE</th>
+                            <th style="color: #FF3B69; font-weight: 800;">PUT LTP</th>
+                            <th>Delta (Δ)</th>
+                            <th>IV</th>
+                            <th>Volume</th>
+                            <th>Institutional Shift Radar</th>
+                            <th style="color: #FF3B69;">OI Shift (Qty / %)</th>
+                            <th>Total OI (Heatmap)</th>"""
+            else:
+                full_oc_table += """
+                            <th>Daily Theta (₹/d)</th>
+                            <th>Vega (₹/1% IV)</th>
+                            <th>Gamma (Γ)</th>
+                            <th>Delta (Δ)</th>
+                            <th>IV (%)</th>
+                            <th style="color: #00F5A0; font-weight: 800;">CALL LTP</th>
+                            <th style="color: #FFB800; font-weight: 900;">STRIKE</th>
+                            <th style="color: #FF3B69; font-weight: 800;">PUT LTP</th>
+                            <th>IV (%)</th>
+                            <th>Delta (Δ)</th>
+                            <th>Gamma (Γ)</th>
+                            <th>Vega (₹/1% IV)</th>
+                            <th>Daily Theta (₹/d)</th>"""
+
+            full_oc_table += f"""
+                        </tr>
+                    </thead>
+                    <tbody id="oc-tbody">
+                    </tbody>
+                </table>
+            </div>
+
+            <script>
+            const initialData = {js_data_json};
+            let currentSpot = {spot_s2};
+            const atmStrike = {atm_k};
+            const lotSize = {default_lot};
+            const isGreeksMode = {"true" if is_greeks_mode else "false"};
+
+            function formatNumber(num) {{ return num.toLocaleString('en-IN'); }}
+            function formatQtyLakhs(val) {{
+                const absV = Math.abs(val);
+                const sign = val >= 0 ? '+' : '-';
+                if (absV >= 10000000) return `${{sign}}${{(absV / 10000000).toFixed(2)}}Cr`;
+                if (absV >= 100000) return `${{sign}}${{(absV / 100000).toFixed(2)}}L`;
+                if (absV >= 1000) return `${{sign}}${{(absV / 1000).toFixed(1)}}K`;
+                return `${{sign}}${{absV}}`;
+            }}
+            function formatTotalOILakhs(val) {{
+                const absV = Math.abs(val);
+                if (absV >= 10000000) return `${{(absV / 10000000).toFixed(2)}}Cr (${{formatNumber(val)}})`;
+                if (absV >= 100000) return `${{(absV / 100000).toFixed(2)}}L (${{formatNumber(val)}})`;
+                return formatNumber(val);
+            }}
+            function getTagHtml(tag, tagClass) {{ return `<span class="badge-tag ${{tagClass}}">${{tag}}</span>`; }}
+
+            function buildTable() {{
+                const tbody = document.getElementById('oc-tbody');
+                tbody.innerHTML = '';
+                initialData.forEach((row, idx) => {{
+                    const k = row.strike;
+                    const isAtm = row.is_atm;
+                    const rowClass = isAtm ? 'atm-row' : '';
+                    const ceBg = k < currentSpot ? 'itm-ce' : '';
+                    const peBg = k > currentSpot ? 'itm-pe' : '';
+                    const atmLabel = isAtm ? ' ⚡ATM' : '';
+                    const ceChgColor = row.ce_chg >= 0 ? '#00F5A0' : '#FF3B69';
+                    const peChgColor = row.pe_chg >= 0 ? '#00F5A0' : '#FF3B69';
+
+                    const ceOiBar = `background: linear-gradient(90deg, rgba(255, 59, 105, 0.22) ${{row.ce_oi_pct}}%, transparent ${{row.ce_oi_pct}}%);`;
+                    const peOiBar = `background: linear-gradient(270deg, rgba(0, 245, 160, 0.22) ${{row.pe_oi_pct}}%, transparent ${{row.pe_oi_pct}}%);`;
+                    const ceDeltaColor = row.ce_chg >= 0 ? 'rgba(0, 245, 160, 0.28)' : 'rgba(255, 59, 105, 0.28)';
+                    const peDeltaColor = row.pe_chg >= 0 ? 'rgba(0, 245, 160, 0.28)' : 'rgba(255, 59, 105, 0.28)';
+                    const ceChgBar = `background: linear-gradient(90deg, ${{ceDeltaColor}} ${{row.ce_chg_pct}}%, transparent ${{row.ce_chg_pct}}%);`;
+                    const peChgBar = `background: linear-gradient(270deg, ${{peDeltaColor}} ${{row.pe_chg_pct}}%, transparent ${{row.pe_chg_pct}}%);`;
+
+                    const tr = document.createElement('tr');
+                    tr.className = rowClass;
+                    tr.id = `row-${{k}}`;
+
+                    if (!isGreeksMode) {{
+                        tr.innerHTML = `
+                            <td class="${{ceBg}}" id="ce-oi-${{k}}" style="${{ceOiBar}} text-align: right; padding-right: 8px;">${{formatTotalOILakhs(row.ce_oi)}}${{row.ce_wall}}</td>
+                            <td class="${{ceBg}}" id="ce-chg-${{k}}" style="${{ceChgBar}} color: ${{ceChgColor}}; font-weight: 800;">${{formatQtyLakhs(row.ce_chg)}} <span style="font-size: 9px; opacity: 0.85;">(${{row.ce_chg_pct_val >= 0 ? '+' : ''}}${{row.ce_chg_pct_val.toFixed(1)}}%)</span></td>
+                            <td class="${{ceBg}}" id="ce-tag-${{k}}">${{getTagHtml(row.ce_shift_tag, row.ce_tag_class)}}</td>
+                            <td class="${{ceBg}}" id="ce-vol-${{k}}">${{formatNumber(row.ce_vol)}}</td>
+                            <td class="${{ceBg}}" id="ce-iv-${{k}}">${{row.ce_iv.toFixed(1)}}%</td>
+                            <td class="${{ceBg}}" id="ce-delta-${{k}}" style="color: #00F5A0; font-weight: 700;">+${{row.ce_delta.toFixed(2)}}</td>
+                            <td class="${{ceBg}}" id="ce-ltp-${{k}}" style="color: #00F5A0; font-weight: 800; font-size: 12px; background: rgba(0, 245, 160, 0.12);">
+                                <span class="action-btn-b" title="Fast Buy Call">B</span><span class="action-btn-s" title="Fast Sell Call">S</span> ₹${{row.ce_ltp.toFixed(1)}}
+                            </td>
+                            <td style="color: #FFB800; font-weight: 900; font-size: 13px; background: rgba(255,255,255,0.04); border-left: 1px solid rgba(255,255,255,0.1); border-right: 1px solid rgba(255,255,255,0.1);">₹${{formatNumber(k)}}${{atmLabel}}</td>
+                            <td class="${{peBg}}" id="pe-ltp-${{k}}" style="color: #FF3B69; font-weight: 800; font-size: 12px; background: rgba(255, 59, 105, 0.12);">
+                                ₹${{row.pe_ltp.toFixed(1)}} <span class="action-btn-b" title="Fast Buy Put">B</span><span class="action-btn-s" title="Fast Sell Put">S</span>
+                            </td>
+                            <td class="${{peBg}}" id="pe-delta-${{k}}" style="color: #FF3B69;">${{row.pe_delta.toFixed(2)}}</td>
+                            <td class="${{peBg}}" id="pe-iv-${{k}}">${{row.pe_iv.toFixed(1)}}%</td>
+                            <td class="${{peBg}}" id="pe-vol-${{k}}">${{formatNumber(row.pe_vol)}}</td>
+                            <td class="${{peBg}}" id="pe-tag-${{k}}">${{getTagHtml(row.pe_shift_tag, row.pe_tag_class)}}</td>
+                            <td class="${{peBg}}" id="pe-chg-${{k}}" style="${{peChgBar}} color: ${{peChgColor}}; font-weight: 800;">${{formatQtyLakhs(row.pe_chg)}} <span style="font-size: 9px; opacity: 0.85;">(${{row.pe_chg_pct_val >= 0 ? '+' : ''}}${{row.pe_chg_pct_val.toFixed(1)}}%)</span></td>
+                            <td class="${{peBg}}" id="pe-oi-${{k}}" style="${{peOiBar}} text-align: left; padding-left: 8px;">${{formatTotalOILakhs(row.pe_oi)}}${{row.pe_wall}}</td>
+                        `;
+                    }} else {{
+                        tr.innerHTML = `
+                            <td class="${{ceBg}}" id="ce-theta-${{k}}" style="color: #FFB800; font-weight: 700;">-₹${{Math.abs(row.ce_theta).toFixed(0)}}</td>
+                            <td class="${{ceBg}}" id="ce-vega-${{k}}" style="color: #00D2FF;">+₹${{row.ce_vega.toFixed(0)}}</td>
+                            <td class="${{ceBg}}" id="ce-gamma-${{k}}" style="color: #8B949E;">${{row.ce_gamma.toFixed(4)}}</td>
+                            <td class="${{ceBg}}" id="ce-delta-${{k}}" style="color: #00F5A0; font-weight: 700;">+${{row.ce_delta.toFixed(2)}}</td>
+                            <td class="${{ceBg}}" id="ce-iv-${{k}}">${{row.ce_iv.toFixed(1)}}%</td>
+                            <td class="${{ceBg}}" id="ce-ltp-${{k}}" style="color: #00F5A0; font-weight: 800; font-size: 12px; background: rgba(0, 245, 160, 0.12);">₹${{row.ce_ltp.toFixed(1)}}</td>
+                            <td style="color: #FFB800; font-weight: 900; font-size: 13px; background: rgba(255,255,255,0.04); border-left: 1px solid rgba(255,255,255,0.1); border-right: 1px solid rgba(255,255,255,0.1);">₹${{formatNumber(k)}}${{atmLabel}}</td>
+                            <td class="${{peBg}}" id="pe-ltp-${{k}}" style="color: #FF3B69; font-weight: 800; font-size: 12px; background: rgba(255, 59, 105, 0.12);">₹${{row.pe_ltp.toFixed(1)}}</td>
+                            <td class="${{peBg}}" id="pe-iv-${{k}}">${{row.pe_iv.toFixed(1)}}%</td>
+                            <td class="${{peBg}}" id="pe-delta-${{k}}" style="color: #FF3B69; font-weight: 700;">${{row.pe_delta.toFixed(2)}}</td>
+                            <td class="${{peBg}}" id="pe-gamma-${{k}}" style="color: #8B949E;">${{row.pe_gamma.toFixed(4)}}</td>
+                            <td class="${{peBg}}" id="pe-vega-${{k}}" style="color: #00D2FF;">+₹${{row.pe_vega.toFixed(0)}}</td>
+                            <td class="${{peBg}}" id="pe-theta-${{k}}" style="color: #FFB800; font-weight: 700;">-₹${{Math.abs(row.pe_theta).toFixed(0)}}</td>
+                        `;
+                    }}
+                    tbody.appendChild(tr);
+                }});
+            }}
+            buildTable();
+
+            setInterval(() => {{
+                const spotDrift = (Math.random() - 0.49) * 0.35;
+                currentSpot = +(currentSpot + spotDrift).toFixed(2);
+                const spotEl = document.getElementById('header-spot');
+                if (spotEl) spotEl.innerText = `₹${{currentSpot.toLocaleString('en-IN', {{minimumFractionDigits: 2}})}}`;
+
+                const numUpdates = Math.floor(Math.random() * 3) + 2;
+                let atmCePrice = null;
+                let atmPePrice = null;
+
+                for (let i = 0; i < numUpdates; i++) {{
+                    const randIdx = Math.floor(Math.random() * initialData.length);
+                    const row = initialData[randIdx];
+                    const k = row.strike;
+
+                    const ceTick = (Math.random() - 0.48) * 0.40;
+                    const oldCe = row.ce_ltp;
+                    const newCe = Math.max(0.05, +(oldCe + ceTick).toFixed(2));
+                    row.ce_ltp = newCe;
+                    row.ce_vol += Math.floor(Math.random() * 150) + 75;
+
+                    const ceOiDelta = (Math.random() > 0.45 ? 1 : -1) * (Math.floor(Math.random() * 6) + 1) * lotSize * 8;
+                    row.ce_oi = Math.max(1000, row.ce_oi + ceOiDelta);
+                    row.ce_chg += ceOiDelta;
+
+                    const ceCell = document.getElementById(`ce-ltp-${{k}}`);
+                    const ceVolCell = document.getElementById(`ce-vol-${{k}}`);
+                    const ceOiCell = document.getElementById(`ce-oi-${{k}}`);
+                    const ceChgCell = document.getElementById(`ce-chg-${{k}}`);
+
+                    if (ceCell) {{
+                        ceCell.innerHTML = `<span class="action-btn-b" title="Fast Buy Call">B</span><span class="action-btn-s" title="Fast Sell Call">S</span> ₹${{newCe.toFixed(1)}}`;
+                        ceCell.classList.remove('flash-up', 'flash-down');
+                        void ceCell.offsetWidth;
+                        ceCell.classList.add(newCe >= oldCe ? 'flash-up' : 'flash-down');
+                        setTimeout(() => {{ ceCell.classList.remove('flash-up', 'flash-down'); }}, 450);
+                    }}
+                    if (ceVolCell) ceVolCell.innerText = formatNumber(row.ce_vol);
+                    if (ceOiCell) ceOiCell.innerText = `${{formatTotalOILakhs(row.ce_oi)}}${{row.ce_wall}}`;
+                    if (ceChgCell) {{
+                        const pctVal = ((row.ce_chg / Math.max(1, row.ce_oi - row.ce_chg)) * 100).toFixed(1);
+                        ceChgCell.innerHTML = `${{formatQtyLakhs(row.ce_chg)}} <span style="font-size: 9px; opacity: 0.85;">(${{row.ce_chg >= 0 ? '+' : ''}}${{pctVal}}%)</span>`;
+                        ceChgCell.style.color = row.ce_chg >= 0 ? '#00F5A0' : '#FF3B69';
+                    }}
+
+                    const peTick = (Math.random() - 0.48) * 0.40;
+                    const oldPe = row.pe_ltp;
+                    const newPe = Math.max(0.05, +(oldPe + peTick).toFixed(2));
+                    row.pe_ltp = newPe;
+                    row.pe_vol += Math.floor(Math.random() * 150) + 75;
+
+                    const peOiDelta = (Math.random() > 0.45 ? 1 : -1) * (Math.floor(Math.random() * 6) + 1) * lotSize * 8;
+                    row.pe_oi = Math.max(1000, row.pe_oi + peOiDelta);
+                    row.pe_chg += peOiDelta;
+
+                    const peCell = document.getElementById(`pe-ltp-${{k}}`);
+                    const peVolCell = document.getElementById(`pe-vol-${{k}}`);
+                    const peOiCell = document.getElementById(`pe-oi-${{k}}`);
+                    const peChgCell = document.getElementById(`pe-chg-${{k}}`);
+
+                    if (peCell) {{
+                        peCell.innerHTML = `₹${{newPe.toFixed(1)}} <span class="action-btn-b" title="Fast Buy Put">B</span><span class="action-btn-s" title="Fast Sell Put">S</span>`;
+                        peCell.classList.remove('flash-up', 'flash-down');
+                        void peCell.offsetWidth;
+                        peCell.classList.add(newPe >= oldPe ? 'flash-up' : 'flash-down');
+                        setTimeout(() => {{ peCell.classList.remove('flash-up', 'flash-down'); }}, 450);
+                    }}
+                    if (peVolCell) peVolCell.innerText = formatNumber(row.pe_vol);
+                    if (peOiCell) peOiCell.innerText = `${{formatTotalOILakhs(row.pe_oi)}}${{row.pe_wall}}`;
+                    if (peChgCell) {{
+                        const pctVal = ((row.pe_chg / Math.max(1, row.pe_oi - row.pe_chg)) * 100).toFixed(1);
+                        peChgCell.innerHTML = `${{formatQtyLakhs(row.pe_chg)}} <span style="font-size: 9px; opacity: 0.85;">(${{row.pe_chg >= 0 ? '+' : ''}}${{pctVal}}%)</span>`;
+                        peChgCell.style.color = row.pe_chg >= 0 ? '#00F5A0' : '#FF3B69';
+                    }}
+
+                    if (k === atmStrike) {{ atmCePrice = newCe; atmPePrice = newPe; }}
+                }}
+
+                if (atmCePrice !== null) {{ const cardCe = document.getElementById('card-ce-ltp'); if (cardCe) cardCe.innerText = `₹${{atmCePrice.toFixed(1)}}`; }}
+                if (atmPePrice !== null) {{ const cardPe = document.getElementById('card-pe-ltp'); if (cardPe) cardPe.innerText = `₹${{atmPePrice.toFixed(1)}}`; }}
+                const cardStraddle = document.getElementById('card-straddle');
+                if (cardStraddle && atmCePrice && atmPePrice) {{
+                    const newStraddle = atmCePrice + atmPePrice;
+                    cardStraddle.innerText = `₹${{newStraddle.toFixed(1)}}`;
+                    const cardBeRange = document.getElementById('card-be-range');
+                    if (cardBeRange) {{
+                        cardBeRange.innerText = `₹${{(currentSpot - newStraddle).toLocaleString('en-IN', {{maximumFractionDigits: 0}})}} - ₹${{(currentSpot + newStraddle).toLocaleString('en-IN', {{maximumFractionDigits: 0}})}}`;
+                    }}
+                }}
+            }}, 800);
+            </script>
+            </body>
+            </html>
+            """
+            table_height = min(780, max(440, len(sub_oc) * 36 + 180))
+            components.html(full_oc_table, height=table_height, scrolling=True)
+
+        # -------------------------------------------------------------
+        # SUB-TAB 2: 11-STRIKE (ATM ± 5) VELOCITY SPEEDOMETER MATRIX
+        # -------------------------------------------------------------
+        with sub_tab2:
+            atm_idx_vel = (df_oc_sorted['strike'] - spot_s2).abs().idxmin()
+            start_v = max(0, atm_idx_vel - 5)
+            end_v = min(len(df_oc_sorted), atm_idx_vel + 6)
+            core_11_df = df_oc_sorted.iloc[start_v:end_v].copy()
+
+            tot_ce_exit_rpm = int(core_11_df[core_11_df['ce_velocity_rpm'] < 0]['ce_velocity_rpm'].sum())
+            tot_ce_inflow_rpm = int(core_11_df[core_11_df['ce_velocity_rpm'] > 0]['ce_velocity_rpm'].sum())
+            tot_pe_exit_rpm = int(core_11_df[core_11_df['pe_velocity_rpm'] < 0]['pe_velocity_rpm'].sum())
+            tot_pe_inflow_rpm = int(core_11_df[core_11_df['pe_velocity_rpm'] > 0]['pe_velocity_rpm'].sum())
+
+            net_bull_pressure = abs(tot_ce_exit_rpm) + tot_pe_inflow_rpm
+            net_bear_pressure = tot_ce_inflow_rpm + abs(tot_pe_exit_rpm)
+
+            if net_bull_pressure > net_bear_pressure * 1.3:
+                net_velocity_verdict = "🚀 AGGRESSIVE BULL SQUEEZE (Bulls Dominating Velocity)"
+                net_vel_pill = "glow-pill-emerald"
+            elif net_bear_pressure > net_bull_pressure * 1.3:
+                net_velocity_verdict = "🚨 HEAVY BEAR PRESSURE (Bears Dominating Velocity)"
+                net_vel_pill = "glow-pill-rose"
+            else:
+                net_velocity_verdict = "⚖️ BALANCED TWO-WAY VELOCITY (Range-Bound / Straddle Play)"
+                net_vel_pill = "glow-pill-gold"
+
+            m1, m2, m3, m4 = st.columns(4)
+            with m1:
+                st.markdown(f"""
+                <div style="background: rgba(255, 59, 105, 0.08); border: 1px solid rgba(255, 59, 105, 0.3); border-radius: 8px; padding: 8px 12px;">
+                    <div style="font-size: 0.68rem; color: #FF3B69; font-weight: 800;">🔴 CALL EXIT VELOCITY</div>
+                    <div style="font-size: 1.15rem; font-weight: 900; color: #FF3B69; margin-top: 2px;">{tot_ce_exit_rpm:,} <span style="font-size: 0.72rem; color: #8B949E;">qty/min</span></div>
+                    <div style="font-size: 0.68rem; color: #8B949E; margin-top: 2px;">Short Covering Burst: <strong style="color: #FFB800;">{tot_ce_exit_rpm * 15:,}</strong> /15m</div>
+                </div>
+                """, unsafe_allow_html=True)
+            with m2:
+                st.markdown(f"""
+                <div style="background: rgba(0, 245, 160, 0.08); border: 1px solid rgba(0, 245, 160, 0.3); border-radius: 8px; padding: 8px 12px;">
+                    <div style="font-size: 0.68rem; color: #00F5A0; font-weight: 800;">🟢 CALL INFLOW VELOCITY</div>
+                    <div style="font-size: 1.15rem; font-weight: 900; color: #00F5A0; margin-top: 2px;">+{tot_ce_inflow_rpm:,} <span style="font-size: 0.72rem; color: #8B949E;">qty/min</span></div>
+                    <div style="font-size: 0.68rem; color: #8B949E; margin-top: 2px;">Resistance Addition: <strong style="color: #00F5A0;">+{tot_ce_inflow_rpm * 15:,}</strong> /15m</div>
+                </div>
+                """, unsafe_allow_html=True)
+            with m3:
+                st.markdown(f"""
+                <div style="background: rgba(255, 59, 105, 0.08); border: 1px solid rgba(255, 59, 105, 0.3); border-radius: 8px; padding: 8px 12px;">
+                    <div style="font-size: 0.68rem; color: #FF3B69; font-weight: 800;">🔴 PUT EXIT VELOCITY</div>
+                    <div style="font-size: 1.15rem; font-weight: 900; color: #FF3B69; margin-top: 2px;">{tot_pe_exit_rpm:,} <span style="font-size: 0.72rem; color: #8B949E;">qty/min</span></div>
+                    <div style="font-size: 0.68rem; color: #8B949E; margin-top: 2px;">Support Unwinding: <strong style="color: #FFB800;">{tot_pe_exit_rpm * 15:,}</strong> /15m</div>
+                </div>
+                """, unsafe_allow_html=True)
+            with m4:
+                st.markdown(f"""
+                <div style="background: rgba(0, 245, 160, 0.08); border: 1px solid rgba(0, 245, 160, 0.3); border-radius: 8px; padding: 8px 12px;">
+                    <div style="font-size: 0.68rem; color: #00F5A0; font-weight: 800;">🟢 PUT INFLOW VELOCITY</div>
+                    <div style="font-size: 1.15rem; font-weight: 900; color: #00F5A0; margin-top: 2px;">+{tot_pe_inflow_rpm:,} <span style="font-size: 0.72rem; color: #8B949E;">qty/min</span></div>
+                    <div style="font-size: 0.68rem; color: #8B949E; margin-top: 2px;">Floor Building: <strong style="color: #00F5A0;">+{tot_pe_inflow_rpm * 15:,}</strong> /15m</div>
+                </div>
+                """, unsafe_allow_html=True)
+
             st.markdown(f"""
-            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 8px; padding: 6px 12px; height: 38px; display: flex; align-items: center; justify-content: space-between; margin-top: 18px;">
-                <span style="font-size: 0.72rem; color: #8B949E; font-weight: 700;">LOT MULTIPLIER</span>
-                <span class="mono" style="font-size: 0.85rem; font-weight: 800; color: #00D2FF;">{default_lot} QTY / LOT</span>
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 8px 14px; margin: 10px 0 14px 0; display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 0.75rem; color: #8B949E; font-weight: 700;">OVERALL 11-STRIKE VELOCITY VERDICT:</span>
+                <span class="{net_vel_pill}" style="font-size: 0.78rem;">{net_velocity_verdict}</span>
             </div>
             """, unsafe_allow_html=True)
-        
-        if "5" in strike_depth:
-            n_strikes = 5
-        elif "10" in strike_depth:
-            n_strikes = 10
-        elif "15" in strike_depth:
-            n_strikes = 15
-        elif "20" in strike_depth:
-            n_strikes = 20
-        elif "30" in strike_depth:
-            n_strikes = 30
-        else:
-            n_strikes = 10
 
-        atm_idx = (df_oc_sorted['strike'] - spot_s2).abs().idxmin()
-        start_i = max(0, atm_idx - n_strikes)
-        end_i = min(len(df_oc_sorted), atm_idx + n_strikes + 1)
-        sub_oc = df_oc_sorted.iloc[start_i:end_i].copy()
+            table_rows_html = []
+            for _, row in core_11_df.iterrows():
+                k = int(row['strike'])
+                is_atm = (k == atm_k)
+                atm_badge = " <span style='color: #FFB800; font-weight: 900; font-size: 10px;'>[ATM]</span>" if is_atm else ""
+                row_bg = "background: rgba(255, 184, 0, 0.14); font-weight: 800; border-top: 1px solid #FFB800; border-bottom: 1px solid #FFB800;" if is_atm else ""
 
-        # =========================================================================
-        # MULTI-STRIKE 15-MIN OI VELOCITY SCANNER (ALL STRIKES BREAKDOWN)
-        # =========================================================================
-        with st.expander("⏱️ Multi-Strike 15-Min OI Velocity Scanner (Top Active Strikes)", expanded=False):
-            vel_c1, vel_c2 = st.columns(2)
-            with vel_c1:
-                st.markdown("<strong style='color: #FF3B69; font-size: 0.82rem;'>🔴 TOP CALL VELOCITY STRIKES (Short Covering & Inflows)</strong>", unsafe_allow_html=True)
-                top_ce_vel_df = df_oc_sorted.sort_values(by='ce_velocity_rpm').head(5)[['strike', 'ce_change_oi', 'ce_velocity_rpm', 'ce_velocity_15m', 'ce_ltp']]
-                top_ce_vel_rows = []
-                for _, vr in top_ce_vel_df.iterrows():
-                    v_stat = "⚡ ROCKET COVERING" if vr['ce_velocity_rpm'] <= -15000 else "⚠️ UNWINDING" if vr['ce_velocity_rpm'] < 0 else "📥 FRESH WALL"
-                    v_color = "#FF3B69" if vr['ce_velocity_rpm'] < 0 else "#00F5A0"
-                    top_ce_vel_rows.append(f"<div style='display: flex; justify-content: space-between; padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.05); font-family: monospace; font-size: 0.75rem;'><span>₹{int(vr['strike'])} CE (LTP ₹{vr['ce_ltp']:.1f})</span><span style='color: {v_color}; font-weight: 800;'>{int(vr['ce_velocity_rpm']):+,d}/min ({int(vr['ce_velocity_15m']):+,d} in 15m)</span><span style='font-size: 0.70rem;'>{v_stat}</span></div>")
-                st.markdown("".join(top_ce_vel_rows), unsafe_allow_html=True)
+                ce_rpm = int(row['ce_velocity_rpm'])
+                pe_rpm = int(row['pe_velocity_rpm'])
+                ce_15m = ce_rpm * 15
+                pe_15m = pe_rpm * 15
 
-            with vel_c2:
-                st.markdown("<strong style='color: #00F5A0; font-size: 0.82rem;'>🟢 TOP PUT VELOCITY STRIKES (Support Building & Unwinding)</strong>", unsafe_allow_html=True)
-                top_pe_vel_df = df_oc_sorted.sort_values(by='pe_velocity_rpm', ascending=False).head(5)[['strike', 'pe_change_oi', 'pe_velocity_rpm', 'pe_velocity_15m', 'pe_ltp']]
-                top_pe_vel_rows = []
-                for _, vr in top_pe_vel_df.iterrows():
-                    v_stat = "🛡️ HEAVY SUPPORT" if vr['pe_velocity_rpm'] >= 20000 else "🎯 ADDITION" if vr['pe_velocity_rpm'] > 0 else "🚨 FLOOR EXIT"
-                    v_color = "#00F5A0" if vr['pe_velocity_rpm'] > 0 else "#FF3B69"
-                    top_pe_vel_rows.append(f"<div style='display: flex; justify-content: space-between; padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.05); font-family: monospace; font-size: 0.75rem;'><span>₹{int(vr['strike'])} PE (LTP ₹{vr['pe_ltp']:.1f})</span><span style='color: {v_color}; font-weight: 800;'>{int(vr['pe_velocity_rpm']):+,d}/min ({int(vr['pe_velocity_15m']):+,d} in 15m)</span><span style='font-size: 0.70rem;'>{v_stat}</span></div>")
-                st.markdown("".join(top_pe_vel_rows), unsafe_allow_html=True)
+                ce_exit_val = f"{ce_rpm:,}/m <span style='font-size: 9px; opacity: 0.8;'>({ce_15m:,}/15m)</span>" if ce_rpm < 0 else "<span style='color: #555;'>-</span>"
+                ce_inflow_val = f"+{ce_rpm:,}/m <span style='font-size: 9px; opacity: 0.8;'>(+{ce_15m:,}/15m)</span>" if ce_rpm > 0 else "<span style='color: #555;'>-</span>"
+                pe_exit_val = f"{pe_rpm:,}/m <span style='font-size: 9px; opacity: 0.8;'>({pe_15m:,}/15m)</span>" if pe_rpm < 0 else "<span style='color: #555;'>-</span>"
+                pe_inflow_val = f"+{pe_rpm:,}/m <span style='font-size: 9px; opacity: 0.8;'>(+{pe_15m:,}/15m)</span>" if pe_rpm > 0 else "<span style='color: #555;'>-</span>"
 
-        # =========================================================================
-        # 1-CLICK DIRECT OPTION CHAIN TRADE PUNCHER
-        # =========================================================================
-        with st.expander("⚡ 1-Click Fast Trade Launcher (Direct from Option Chain)", expanded=False):
-            t_col1, t_col2, t_col3, t_col4, t_col5 = st.columns([2.5, 2, 2, 2, 2.5])
-            with t_col1:
-                fast_strike = st.selectbox("Select Strike", options=sub_oc['strike'].tolist(), index=min(len(sub_oc)-1, n_strikes), key="fast_trade_strike")
-            with t_col2:
-                fast_opt_type = st.selectbox("Option Type", ["CE (Call)", "PE (Put)"], key="fast_trade_opt_type")
-            with t_col3:
-                fast_side = st.selectbox("Action", ["BUY (Long)", "SELL (Short)"], key="fast_trade_side")
-            with t_col4:
-                fast_lots = st.number_input("Lots", min_value=1, max_value=50, value=1, step=1, key="fast_trade_lots")
-            with t_col5:
-                st.markdown("<div style='margin-top: 24px;'></div>", unsafe_allow_html=True)
-                if st.button("🚀 PUNCH ORDER", use_container_width=True, key="btn_punch_fast_trade"):
-                    sel_type = "CE" if "CE" in fast_opt_type else "PE"
-                    sel_side = "BUY" if "BUY" in fast_side else "SELL"
-                    strike_row = sub_oc[sub_oc['strike'] == fast_strike]
-                    p_val = float(strike_row.iloc[0]['ce_ltp']) if sel_type == "CE" else float(strike_row.iloc[0]['pe_ltp'])
-                    
-                    paper_eng.place_order(
-                        symbol=symbol,
-                        strategy_name=f"1-Click {sel_side} {fast_strike} {sel_type}",
-                        legs=[{
-                            'symbol': f"{symbol} {fast_strike} {sel_type}",
-                            'type': sel_type,
-                            'strike': fast_strike,
-                            'action': sel_side,
-                            'lots': fast_lots,
-                            'entry_price': p_val,
-                            'current_price': p_val,
-                            'iv': 10.5
-                        }],
-                        target_pts=30.0,
-                        sl_pts=15.0
-                    )
-                    st.success(f"✅ Successfully Executed: {sel_side} {fast_lots} Lots {symbol} {fast_strike} {sel_type} @ ₹{p_val:.1f}!")
+                ce_exit_style = "color: #FF3B69; font-weight: 800;" if ce_rpm < 0 else "color: #8B949E;"
+                ce_inflow_style = "color: #00F5A0; font-weight: 800;" if ce_rpm > 0 else "color: #8B949E;"
+                pe_exit_style = "color: #FF3B69; font-weight: 800;" if pe_rpm < 0 else "color: #8B949E;"
+                pe_inflow_style = "color: #00F5A0; font-weight: 800;" if pe_rpm > 0 else "color: #8B949E;"
 
-        # =========================================================================
-        # SENSIBULL-STYLE VISUAL OI DISTRIBUTION CHART
-        # =========================================================================
-        if "Sensibull" in oc_view_mode:
-            st.markdown(f"#### 📈 Sensibull-Style Visual OI Distribution ({symbol})")
-            fig_oi = go.Figure()
-            fig_oi.add_trace(go.Bar(
-                x=sub_oc['strike'],
-                y=sub_oc['ce_oi'],
-                name='Call OI (Resistance)',
-                marker_color='rgba(255, 59, 105, 0.85)',
-                customdata=sub_oc['ce_change_oi'],
-                hovertemplate='<b>Strike: %{x}</b><br>Call OI: %{y:,.0f}<br>OI Chg: %{customdata:+,.0f}<extra></extra>'
+                max_r = max(abs(ce_rpm), abs(pe_rpm))
+                if max_r >= 25000:
+                    speed_badge = "<span style='background: rgba(255, 59, 105, 0.25); color: #FF3B69; border: 1px solid #FF3B69; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 900;'>⚡ ROCKET</span>"
+                elif max_r >= 10000:
+                    speed_badge = "<span style='background: rgba(255, 184, 0, 0.2); color: #FFB800; border: 1px solid #FFB800; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 800;'>🔥 FAST</span>"
+                else:
+                    speed_badge = "<span style='background: rgba(0, 210, 255, 0.15); color: #00D2FF; border: 1px solid rgba(0, 210, 255, 0.4); padding: 2px 6px; border-radius: 4px; font-size: 10px;'>🚗 STEADY</span>"
+
+                if ce_rpm <= -15000:
+                    verdict = "🚀 MAJOR SQUEEZE (Call Writers Fleeing)"
+                    v_color = "#00F5A0"
+                elif pe_rpm >= 25000:
+                    verdict = "🛡️ ROCK-SOLID FLOOR (Heavy PE Inflow)"
+                    v_color = "#00F5A0"
+                elif ce_rpm >= 25000:
+                    verdict = "🛑 RESISTANCE WALL (Heavy CE Inflow)"
+                    v_color = "#FF3B69"
+                elif pe_rpm <= -15000:
+                    verdict = "🚨 SUPPORT BREAKDOWN (Put Panic Exit)"
+                    v_color = "#FF3B69"
+                elif is_atm:
+                    verdict = "⚔️ STRADDLE COMBAT ZONE"
+                    v_color = "#FFB800"
+                else:
+                    verdict = "🔒 BALANCED ORDERFLOW"
+                    v_color = "#8B949E"
+
+                table_rows_html.append(f"<tr style='{row_bg}'><td style='{ce_exit_style} text-align: right; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.05);'>{ce_exit_val}</td><td style='{ce_inflow_style} text-align: right; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); border-right: 1px solid rgba(255,255,255,0.1);'>{ce_inflow_val}</td><td style='color: #FFB800; font-weight: 900; font-size: 13px; text-align: center; background: rgba(255,255,255,0.03); border-left: 1px solid rgba(255,255,255,0.1); border-right: 1px solid rgba(255,255,255,0.1); border-bottom: 1px solid rgba(255,255,255,0.05);'>₹{k:,}{atm_badge}</td><td style='{pe_exit_style} text-align: left; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); border-left: 1px solid rgba(255,255,255,0.1);'>{pe_exit_val}</td><td style='{pe_inflow_style} text-align: left; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.05);'>{pe_inflow_val}</td><td style='text-align: center; border-left: 1px solid rgba(255,255,255,0.1); border-bottom: 1px solid rgba(255,255,255,0.05);'>{speed_badge}</td><td style='color: {v_color}; font-weight: 800; font-size: 11px; text-align: left; padding: 8px 12px; border-left: 1px solid rgba(255,255,255,0.1); border-bottom: 1px solid rgba(255,255,255,0.05);'>{verdict}</td></tr>")
+
+            all_rows_str = "".join(table_rows_html)
+
+            full_table_ui = f'''
+            <!DOCTYPE html>
+            <html>
+            <head>
+            <meta charset="utf-8">
+            <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+            <style>
+                * {{ box-sizing: border-box; }}
+                body {{ margin: 0; padding: 4px; background: #05070B; color: #F0F4F8; font-family: 'JetBrains Mono', monospace; font-size: 11px; }}
+                table {{ width: 100%; border-collapse: collapse; min-width: 980px; background: #080C14; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; overflow: hidden; }}
+                th {{ background: #0D111A; padding: 8px 6px; font-weight: 700; position: sticky; top: 0; z-index: 10; }}
+                tr:hover {{ background: rgba(0, 210, 255, 0.08) !important; }}
+            </style>
+            </head>
+            <body>
+            <table>
+                <thead>
+                    <tr style="border-bottom: 2px solid rgba(255,255,255,0.1);">
+                        <th colspan="2" style="color: #00F5A0; padding: 10px; font-size: 12px; border-right: 1px solid rgba(255,255,255,0.1); text-align: center;">🔴/🟢 CALL (CE) VELOCITY</th>
+                        <th style="color: #FFB800; font-size: 13px; font-weight: 900; padding: 10px; text-align: center;">STRIKE</th>
+                        <th colspan="2" style="color: #FF3B69; padding: 10px; font-size: 12px; border-left: 1px solid rgba(255,255,255,0.1); text-align: center;">🔴/🟢 PUT (PE) VELOCITY</th>
+                        <th rowspan="2" style="color: #00D2FF; padding: 10px; text-align: center; border-left: 1px solid rgba(255,255,255,0.1);">SPEEDOMETER</th>
+                        <th rowspan="2" style="color: #F0F4F8; padding: 10px; text-align: left; border-left: 1px solid rgba(255,255,255,0.1);">STRIKE VERDICT</th>
+                    </tr>
+                    <tr style="border-bottom: 2px solid rgba(255,255,255,0.1); font-size: 10px; color: #8B949E;">
+                        <th style="text-align: right; padding: 6px 12px; color: #FF3B69;">🔴 CE Exit Rate</th>
+                        <th style="text-align: right; padding: 6px 12px; color: #00F5A0; border-right: 1px solid rgba(255,255,255,0.1);">🟢 CE Inflow Rate</th>
+                        <th style="color: #FFB800; font-weight: 900; text-align: center;">ATM ± 5 STRIKES</th>
+                        <th style="text-align: left; padding: 6px 12px; color: #FF3B69; border-left: 1px solid rgba(255,255,255,0.1);">🔴 PE Exit Rate</th>
+                        <th style="text-align: left; padding: 6px 12px; color: #00F5A0;">🟢 PE Inflow Rate</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {all_rows_str}
+                </tbody>
+            </table>
+            </body>
+            </html>
+            '''
+            components.html(full_table_ui, height=490, scrolling=True)
+
+            st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
+            st.markdown(f"#### 📊 Core 11-Strike Call vs Put Velocity Distribution ({symbol})")
+            fig_vel = go.Figure()
+            fig_vel.add_trace(go.Bar(
+                x=core_11_df['strike'], y=core_11_df['ce_velocity_rpm'], name='Call Velocity (RPM)',
+                marker_color=core_11_df['ce_velocity_rpm'].apply(lambda v: 'rgba(0, 245, 160, 0.85)' if v >= 0 else 'rgba(255, 59, 105, 0.85)'),
+                hovertemplate='<b>Strike: %{x}</b><br>Call Velocity: %{y:+,d} contracts/min<extra></extra>'
             ))
-            fig_oi.add_trace(go.Bar(
-                x=sub_oc['strike'],
-                y=sub_oc['pe_oi'],
-                name='Put OI (Support)',
-                marker_color='rgba(0, 245, 160, 0.85)',
-                customdata=sub_oc['pe_change_oi'],
-                hovertemplate='<b>Strike: %{x}</b><br>Put OI: %{y:,.0f}<br>OI Chg: %{customdata:+,.0f}<extra></extra>'
+            fig_vel.add_trace(go.Bar(
+                x=core_11_df['strike'], y=core_11_df['pe_velocity_rpm'], name='Put Velocity (RPM)',
+                marker_color=core_11_df['pe_velocity_rpm'].apply(lambda v: 'rgba(0, 245, 160, 0.85)' if v >= 0 else 'rgba(255, 59, 105, 0.85)'),
+                hovertemplate='<b>Strike: %{x}</b><br>Put Velocity: %{y:+,d} contracts/min<extra></extra>'
             ))
-            fig_oi.add_vline(x=spot_s2, line_width=2, line_dash="dash", line_color="#00D2FF", annotation_text=f"Spot: ₹{spot_s2:,.1f}", annotation_position="top")
-            fig_oi.update_layout(
-                barmode='group',
-                template='plotly_dark',
-                height=420,
-                margin=dict(l=20, r=20, t=30, b=20),
-                plot_bgcolor='rgba(13, 17, 26, 0.6)',
-                paper_bgcolor='rgba(13, 17, 26, 0.6)',
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                xaxis=dict(title="Strike Price", showgrid=True, gridcolor='rgba(255,255,255,0.05)'),
-                yaxis=dict(title="Open Interest (Contracts)", showgrid=True, gridcolor='rgba(255,255,255,0.05)')
+            fig_vel.add_vline(x=spot_s2, line_width=2, line_dash="dash", line_color="#00D2FF", annotation_text=f"Spot: ₹{spot_s2:,.1f}", annotation_position="top")
+            fig_vel.update_layout(
+                barmode='group', template='plotly_dark', height=380, margin=dict(l=20, r=20, t=30, b=20),
+                plot_bgcolor='rgba(13, 17, 26, 0.6)', paper_bgcolor='rgba(13, 17, 26, 0.6)',
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
             )
-            st.plotly_chart(fig_oi, use_container_width=True)
+            st.plotly_chart(fig_vel, use_container_width=True)
 
-        elif "GEX Profile" in oc_view_mode:
-            st.markdown(f"#### 🧪 Gamma Exposure (GEX in ₹ Cr per Strike) - Zero Gamma: ₹{zero_gamma_k:,}")
-            fig_gex = go.Figure()
-            fig_gex.add_trace(go.Bar(
-                x=sub_oc['strike'],
-                y=sub_oc['net_gex_cr'],
-                name='Net Gamma Exposure (Cr)',
-                marker_color=sub_oc['net_gex_cr'].apply(lambda v: 'rgba(0, 245, 160, 0.85)' if v >= 0 else 'rgba(255, 59, 105, 0.85)'),
-                hovertemplate='<b>Strike: %{x}</b><br>Net GEX: ₹%{y:+.2f} Cr<extra></extra>'
-            ))
-            fig_gex.add_vline(x=spot_s2, line_width=2, line_dash="dash", line_color="#00D2FF", annotation_text=f"Spot: ₹{spot_s2:,.1f}", annotation_position="top")
-            fig_gex.add_vline(x=zero_gamma_k, line_width=2, line_dash="dot", line_color="#FFB800", annotation_text=f"Zero Gamma: ₹{zero_gamma_k}", annotation_position="bottom")
-            fig_gex.update_layout(
-                template='plotly_dark',
-                height=420,
-                margin=dict(l=20, r=20, t=30, b=20),
-                plot_bgcolor='rgba(13, 17, 26, 0.6)',
-                paper_bgcolor='rgba(13, 17, 26, 0.6)',
-                xaxis=dict(title="Strike Price", showgrid=True, gridcolor='rgba(255,255,255,0.05)'),
-                yaxis=dict(title="Net GEX (₹ Crores)", showgrid=True, gridcolor='rgba(255,255,255,0.05)')
-            )
-            st.plotly_chart(fig_gex, use_container_width=True)
-
-        # =========================================================================
-        # REAL-TIME OPTION CHAIN TABLE 3.0
-        # =========================================================================
-        max_ce_oi = max(1, int(sub_oc['ce_oi'].max()))
-        max_pe_oi = max(1, int(sub_oc['pe_oi'].max()))
-        max_ce_chg_abs = max(1, int(sub_oc['ce_change_oi'].abs().max()))
-        max_pe_chg_abs = max(1, int(sub_oc['pe_change_oi'].abs().max()))
-
-        # Build JSON array for client-side JS ticking engine
-        js_rows_data = []
-        for _, r in sub_oc.iterrows():
-            k = int(r['strike'])
-            is_atm = bool(abs(k - spot_s2) < (df_oc_sorted['strike'].diff().abs().min() or 50) / 2)
-            ce_oi_v = int(r.get('ce_oi', 50000))
-            pe_oi_v = int(r.get('pe_oi', 50000))
-            ce_chg_v = int(r.get('ce_change_oi', 0))
-            pe_chg_v = int(r.get('pe_change_oi', 0))
-            ce_ltp_v = float(r.get('ce_ltp', 120.0))
-            pe_ltp_v = float(r.get('pe_ltp', 110.0))
-            
-            # Compute percentage change relative to base OI
-            ce_prev_oi = max(1, ce_oi_v - ce_chg_v)
-            pe_prev_oi = max(1, pe_oi_v - pe_chg_v)
-            ce_chg_pct_val = (ce_chg_v / ce_prev_oi) * 100
-            pe_chg_pct_val = (pe_chg_v / pe_prev_oi) * 100
-
-            # Velocity rate per minute
-            ce_rpm_v = int(r.get('ce_velocity_rpm', 0))
-            pe_rpm_v = int(r.get('pe_velocity_rpm', 0))
-
-            # Whale activity flag
-            is_ce_whale = float(r.get('ce_vol_oi_ratio', 1.0)) >= 2.0 and int(r.get('ce_volume', 0)) >= 50000
-            is_pe_whale = float(r.get('pe_vol_oi_ratio', 1.0)) >= 2.0 and int(r.get('pe_volume', 0)) >= 50000
-            ce_w_prefix = "🐋 " if is_ce_whale else ""
-            pe_w_prefix = "🐋 " if is_pe_whale else ""
-
-            # Velocity lightning booster if high speed
-            ce_vel_icon = " ⚡" if abs(ce_rpm_v) >= 15000 else ""
-            pe_vel_icon = " ⚡" if abs(pe_rpm_v) >= 15000 else ""
-
-            # Exact self-explanatory shift badges with Lakhs/Cr value (PRIMARY STATUS)
-            if ce_chg_v <= -100000:
-                ce_shift_tag = f"{ce_w_prefix}📤 EXIT: {fmt_inr_qty(ce_chg_v)} ({ce_chg_pct_val:+.1f}%){ce_vel_icon}"
-                ce_tag_class = "tag-exit"
-            elif ce_chg_v >= 250000:
-                ce_shift_tag = f"{ce_w_prefix}📥 INFLOW: {fmt_inr_qty(ce_chg_v)} ({ce_chg_pct_val:+.1f}%){ce_vel_icon}"
-                ce_tag_class = "tag-inflow"
-            elif ce_chg_v < -20000:
-                ce_shift_tag = f"{ce_w_prefix}⚠️ UNWIND: {fmt_inr_qty(ce_chg_v)} ({ce_chg_pct_val:+.1f}%){ce_vel_icon}"
-                ce_tag_class = "tag-unwind"
-            elif ce_chg_v > 40000:
-                ce_shift_tag = f"{ce_w_prefix}🎯 ADDITION: {fmt_inr_qty(ce_chg_v)} ({ce_chg_pct_val:+.1f}%){ce_vel_icon}"
-                ce_tag_class = "tag-add"
-            else:
-                ce_shift_tag = f"{ce_w_prefix}🟢 LB" if ce_chg_v >= 0 and ce_ltp_v >= 50 else f"{ce_w_prefix}🔴 SB" if ce_chg_v >= 0 else f"{ce_w_prefix}🟡 SC" if ce_ltp_v >= 50 else f"{ce_w_prefix}🟠 LU"
-                ce_tag_class = "tag-lb" if "LB" in ce_shift_tag else "tag-sb" if "SB" in ce_shift_tag else "tag-sc" if "SC" in ce_shift_tag else "tag-lu"
-
-            if pe_chg_v <= -100000:
-                pe_shift_tag = f"{pe_w_prefix}📤 EXIT: {fmt_inr_qty(pe_chg_v)} ({pe_chg_pct_val:+.1f}%){pe_vel_icon}"
-                pe_tag_class = "tag-exit"
-            elif pe_chg_v >= 250000:
-                pe_shift_tag = f"{pe_w_prefix}📥 INFLOW: {fmt_inr_qty(pe_chg_v)} ({pe_chg_pct_val:+.1f}%){pe_vel_icon}"
-                pe_tag_class = "tag-inflow"
-            elif pe_chg_v < -20000:
-                pe_shift_tag = f"{pe_w_prefix}⚠️ UNWIND: {fmt_inr_qty(pe_chg_v)} ({pe_chg_pct_val:+.1f}%){pe_vel_icon}"
-                pe_tag_class = "tag-unwind"
-            elif pe_chg_v > 40000:
-                pe_shift_tag = f"{pe_w_prefix}🎯 ADDITION: {fmt_inr_qty(pe_chg_v)} ({pe_chg_pct_val:+.1f}%){pe_vel_icon}"
-                pe_tag_class = "tag-add"
-            else:
-                pe_shift_tag = f"{pe_w_prefix}🟢 LB" if pe_chg_v >= 0 and pe_ltp_v >= 50 else f"{pe_w_prefix}🔴 SB" if pe_chg_v >= 0 else f"{pe_w_prefix}🟡 SC" if pe_ltp_v >= 50 else f"{pe_w_prefix}🟠 LU"
-                pe_tag_class = "tag-lb" if "LB" in pe_shift_tag else "tag-sb" if "SB" in pe_shift_tag else "tag-sc" if "SC" in pe_shift_tag else "tag-lu"
-
-            # Greeks calculation directly from df row
-            ce_delta_v = float(r.get('ce_delta', 0.5))
-            pe_delta_v = float(r.get('pe_delta', -0.5))
-            ce_theta_v = round(float(r.get('ce_theta', -12.5)) * default_lot, 1) # In ₹/day
-            pe_theta_v = round(float(r.get('pe_theta', -12.5)) * default_lot, 1) # In ₹/day
-            ce_gamma_v = round(float(r.get('ce_gamma', 0.0012)), 4)
-            pe_gamma_v = round(float(r.get('pe_gamma', 0.0012)), 4)
-            ce_vega_v = round(float(r.get('ce_vega', 8.5)) * default_lot, 1) # In ₹ per 1% IV
-            pe_vega_v = round(float(r.get('pe_vega', 8.5)) * default_lot, 1) # In ₹ per 1% IV
-
-            js_rows_data.append({
-                "strike": k,
-                "is_atm": is_atm,
-                "ce_ltp": ce_ltp_v,
-                "ce_oi": ce_oi_v,
-                "ce_oi_pct": min(100, int((ce_oi_v / max_ce_oi) * 100)),
-                "ce_chg": ce_chg_v,
-                "ce_chg_pct": min(100, int((abs(ce_chg_v) / max_ce_chg_abs) * 100)),
-                "ce_chg_pct_val": ce_chg_pct_val,
-                "ce_rpm": ce_rpm_v,
-                "ce_shift_tag": ce_shift_tag,
-                "ce_tag_class": ce_tag_class,
-                "ce_vol": int(r.get('ce_volume', 25000)),
-                "ce_iv": float(r.get('ce_iv', 10.0)),
-                "ce_delta": ce_delta_v,
-                "ce_theta": ce_theta_v,
-                "ce_gamma": ce_gamma_v,
-                "ce_vega": ce_vega_v,
-                "pe_ltp": pe_ltp_v,
-                "pe_oi": pe_oi_v,
-                "pe_oi_pct": min(100, int((pe_oi_v / max_pe_oi) * 100)),
-                "pe_chg": pe_chg_v,
-                "pe_chg_pct": min(100, int((abs(pe_chg_v) / max_pe_chg_abs) * 100)),
-                "pe_chg_pct_val": pe_chg_pct_val,
-                "pe_rpm": pe_rpm_v,
-                "pe_shift_tag": pe_shift_tag,
-                "pe_tag_class": pe_tag_class,
-                "pe_vol": int(r.get('pe_volume', 25000)),
-                "pe_iv": float(r.get('pe_iv', 10.0)),
-                "pe_delta": pe_delta_v,
-                "pe_theta": pe_theta_v,
-                "pe_gamma": pe_gamma_v,
-                "pe_vega": pe_vega_v,
-                "ce_wall": " 🟥RES" if k == chain_data_s2['top_call_wall'] else "",
-                "pe_wall": " 🟩SUP" if k == chain_data_s2['top_put_wall'] else ""
-            })
-
-        js_data_json = json.dumps(js_rows_data)
-        is_greeks_mode = "Greeks" in oc_view_mode
-
-        # ULTRA REAL-TIME TICKING HTML/JS TABLE WITH QUICK ACTION SHORTCUTS
-        full_oc_table = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-        <meta charset="utf-8">
-        <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@600;700;800;900&display=swap" rel="stylesheet">
-        <style>
-            * {{ box-sizing: border-box; }}
-            body {{
-                margin: 0;
-                padding: 4px;
-                background: #05070B;
-                color: #F0F4F8;
-                font-family: 'JetBrains Mono', monospace;
-                font-size: 11px;
-            }}
-            .top-cards {{
-                display: grid;
-                grid-template-columns: repeat(6, 1fr);
-                gap: 6px;
-                text-align: center;
-                margin-bottom: 8px;
-            }}
-            .card-cell {{
-                border-radius: 8px;
-                padding: 6px 8px;
-                border: 1px solid rgba(255, 255, 255, 0.08);
-            }}
-            .card-title {{ font-size: 0.65rem; color: #8B949E; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; text-transform: uppercase; }}
-            .card-val {{ font-size: 0.98rem; font-weight: 900; margin-top: 2px; }}
-
-            .table-wrap {{
-                border: 1px solid rgba(255, 255, 255, 0.08);
-                border-radius: 8px;
-                overflow-x: auto;
-                background: #080C14;
-            }}
-            table {{
-                width: 100%;
-                min-width: 1260px;
-                border-collapse: collapse;
-                text-align: center;
-            }}
-            th {{
-                background: #0D111A;
-                padding: 8px 4px;
-                color: #8B949E;
-                font-weight: 700;
-                position: sticky;
-                top: 0;
-                border-bottom: 2px solid rgba(255, 255, 255, 0.1);
-                z-index: 10;
-            }}
-            td {{
-                padding: 6px 4px;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-                transition: background-color 0.25s ease, color 0.25s ease;
-                position: relative;
-            }}
-            tr:hover {{
-                background: rgba(0, 210, 255, 0.08) !important;
-            }}
-
-            /* FLASH ANIMATIONS FOR REAL BROKER TICK EFFECT */
-            .flash-up {{
-                background-color: rgba(0, 245, 160, 0.45) !important;
-                color: #FFFFFF !important;
-                font-weight: 900 !important;
-            }}
-            .flash-down {{
-                background-color: rgba(255, 59, 105, 0.45) !important;
-                color: #FFFFFF !important;
-                font-weight: 900 !important;
-            }}
-
-            .itm-ce {{ background: rgba(0, 245, 160, 0.05); }}
-            .itm-pe {{ background: rgba(255, 59, 105, 0.05); }}
-            .atm-row {{
-                background: rgba(255, 184, 0, 0.16) !important;
-                font-weight: 800;
-                border-top: 1px solid #FFB800;
-                border-bottom: 1px solid #FFB800;
-            }}
-            .pulse-dot {{
-                display: inline-block;
-                width: 7px;
-                height: 7px;
-                background: #00F5A0;
-                border-radius: 50%;
-                box-shadow: 0 0 8px #00F5A0;
-                animation: pulse 1.2s infinite;
-            }}
-            @keyframes pulse {{
-                0% {{ transform: scale(0.95); opacity: 0.7; }}
-                50% {{ transform: scale(1.2); opacity: 1; }}
-                100% {{ transform: scale(0.95); opacity: 0.7; }}
-            }}
-
-            /* SHIFT & BUILDUP BADGES WITH VALUES */
-            .badge-tag {{
-                font-size: 9px;
-                padding: 2px 6px;
-                border-radius: 4px;
-                font-weight: 900;
-                display: inline-block;
-                letter-spacing: 0.2px;
-                white-space: nowrap;
-            }}
-            .tag-exit {{
-                background: rgba(255, 59, 105, 0.25);
-                color: #FF3B69;
-                border: 1px solid #FF3B69;
-                box-shadow: 0 0 6px rgba(255, 59, 105, 0.4);
-                animation: pulse 1.5s infinite;
-            }}
-            .tag-inflow {{
-                background: rgba(0, 245, 160, 0.25);
-                color: #00F5A0;
-                border: 1px solid #00F5A0;
-                box-shadow: 0 0 6px rgba(0, 245, 160, 0.4);
-                animation: pulse 1.5s infinite;
-            }}
-            .tag-unwind {{
-                background: rgba(255, 184, 0, 0.2);
-                color: #FFB800;
-                border: 1px solid rgba(255, 184, 0, 0.6);
-            }}
-            .tag-add {{
-                background: rgba(0, 210, 255, 0.2);
-                color: #00D2FF;
-                border: 1px solid rgba(0, 210, 255, 0.6);
-            }}
-            .tag-whale {{
-                background: rgba(255, 215, 0, 0.25);
-                color: #FFD700;
-                border: 1px solid #FFD700;
-                box-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
-                animation: pulse 1.0s infinite;
-            }}
-            .tag-lb {{ background: rgba(0, 245, 160, 0.12); color: #00F5A0; border: 1px solid rgba(0, 245, 160, 0.3); }}
-            .tag-sb {{ background: rgba(255, 59, 105, 0.12); color: #FF3B69; border: 1px solid rgba(255, 59, 105, 0.3); }}
-            .tag-sc {{ background: rgba(255, 184, 0, 0.12); color: #FFB800; border: 1px solid rgba(255, 184, 0, 0.3); }}
-            .tag-lu {{ background: rgba(0, 210, 255, 0.12); color: #00D2FF; border: 1px solid rgba(0, 210, 255, 0.3); }}
-
-            .action-btn-b {{
-                background: rgba(0, 245, 160, 0.2);
-                color: #00F5A0;
-                border: 1px solid #00F5A0;
-                padding: 1px 4px;
-                border-radius: 3px;
-                font-size: 8px;
-                font-weight: 900;
-                cursor: pointer;
-                margin-right: 2px;
-            }}
-            .action-btn-s {{
-                background: rgba(255, 59, 105, 0.2);
-                color: #FF3B69;
-                border: 1px solid #FF3B69;
-                padding: 1px 4px;
-                border-radius: 3px;
-                font-size: 8px;
-                font-weight: 900;
-                cursor: pointer;
-            }}
-        </style>
-        </head>
-        <body>
-
-        <!-- LIVE STREAM HEADER CARDS -->
-        <div style="background: rgba(13, 17, 26, 0.95); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 8px 12px; margin-bottom: 8px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                <span style="font-weight: 800; font-size: 0.82rem; color: #FFFFFF; display: flex; align-items: center; gap: 6px;">
-                    <span class="pulse-dot"></span>
-                    📊 {symbol} INSTITUTIONAL OPTION CHAIN WITH SMART MONEY SHIFT RADAR ({exp_info['expiry_date_str']})
-                </span>
-                <span style="font-size: 0.72rem; color: #00F5A0; font-weight: 700; background: rgba(0,245,160,0.12); padding: 2px 8px; border-radius: 12px; border: 1px solid rgba(0,245,160,0.3);">
-                    {source_label} | SPOT: <span id="header-spot">₹{spot_s2:,.2f}</span>
-                </span>
-            </div>
-
-            <div class="top-cards">
-                <div class="card-cell" style="background: rgba(255, 184, 0, 0.08); border-color: rgba(255, 184, 0, 0.3);">
-                    <div class="card-title">🎯 ATM STRIKE</div>
-                    <div class="card-val" id="card-atm" style="color: #FFB800;">₹{atm_k:,.0f}</div>
-                </div>
-                <div class="card-cell" style="background: rgba(0, 245, 160, 0.08); border-color: rgba(0, 245, 160, 0.3);">
-                    <div class="card-title">CALL PREMIUM (LTP)</div>
-                    <div class="card-val" id="card-ce-ltp" style="color: #00F5A0;">₹{atm_ce_p:.1f}</div>
-                </div>
-                <div class="card-cell" style="background: rgba(255, 59, 105, 0.08); border-color: rgba(255, 59, 105, 0.3);">
-                    <div class="card-title">PUT PREMIUM (LTP)</div>
-                    <div class="card-val" id="card-pe-ltp" style="color: #FF3B69;">₹{atm_pe_p:.1f}</div>
-                </div>
-                <div class="card-cell" style="background: rgba(0, 210, 255, 0.08); border-color: rgba(0, 210, 255, 0.3);">
-                    <div class="card-title">⚡ STRADDLE COST</div>
-                    <div class="card-val" id="card-straddle" style="color: #00D2FF;">₹{straddle_p:.1f}</div>
-                </div>
-                <div class="card-cell" style="background: rgba(157, 78, 221, 0.08); border-color: rgba(157, 78, 221, 0.3);">
-                    <div class="card-title">🎯 EXPIRY RANGE</div>
-                    <div class="card-val" id="card-be-range" style="color: #C77DFF; font-size: 0.8rem;">₹{lower_exp_be:,.0f} - ₹{upper_exp_be:,.0f}</div>
-                </div>
-                <div class="card-cell" style="background: rgba(255, 255, 255, 0.04); border-color: rgba(255, 255, 255, 0.15);">
-                    <div class="card-title">PCR / MAX PAIN</div>
-                    <div class="card-val" id="card-pcr" style="color: #F0F4F8;">{chain_data_s2['pcr']:.2f} / ₹{mp_live}</div>
+        # -------------------------------------------------------------
+        # SUB-TAB 3: EXPIRY LIFECYCLE EVENT-BY-EVENT S&R SHIFT JOURNAL
+        # -------------------------------------------------------------
+        with sub_tab3:
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, rgba(0, 210, 255, 0.08) 0%, rgba(13, 17, 26, 0.95) 100%); border: 1px solid rgba(0, 210, 255, 0.3); border-radius: 10px; padding: 10px 16px; margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 1.3rem;">🧭</span>
+                        <div>
+                            <h3 style="margin: 0; font-size: 1.05rem; font-weight: 800; color: #00D2FF; letter-spacing: 0.5px;">EXPIRY LIFECYCLE: EVENT-BY-EVENT S&R MIGRATION FLIGHT RECORDER</h3>
+                            <span style="font-size: 0.72rem; color: #8B949E;">Real-Time Audit Trail of Every Single Support & Resistance Shift Since Expiry Inception (Day 1 to Expiry Day)</span>
+                        </div>
+                    </div>
+                    <span class="glow-pill-cyan" style="font-size: 0.72rem;">MULTI-DAY AUDIT TRAIL</span>
                 </div>
             </div>
-        </div>
+            """, unsafe_allow_html=True)
 
-        <!-- REAL-TIME TICKING OPTION CHAIN TABLE 3.0 -->
-        <div class="table-wrap">
+            top_call_w = chain_data_s2.get('top_call_wall', atm_k + 200)
+            top_put_w = chain_data_s2.get('top_put_wall', atm_k - 200)
+            shift_events = data_eng.get_expiry_shift_events(symbol, spot=spot_s2, top_ce=top_call_w, top_pe=top_put_w, max_pain=mp_live)
+
+            j1, j2, j3, j4 = st.columns(4)
+            with j1:
+                st.markdown(f"""
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 8px 12px;">
+                    <div style="font-size: 0.68rem; color: #8B949E; font-weight: 700;">📅 ACTIVE EXPIRY CYCLE</div>
+                    <div style="font-size: 1.05rem; font-weight: 900; color: #00D2FF; margin-top: 2px;">{exp_info['expiry_date_str']}</div>
+                    <div style="font-size: 0.68rem; color: #8B949E; margin-top: 2px;">Remaining: <strong style="color: #FFB800;">{dte} DTE</strong></div>
+                </div>
+                """, unsafe_allow_html=True)
+            with j2:
+                st.markdown(f"""
+                <div style="background: rgba(0, 245, 160, 0.08); border: 1px solid rgba(0, 245, 160, 0.3); border-radius: 8px; padding: 8px 12px;">
+                    <div style="font-size: 0.68rem; color: #00F5A0; font-weight: 800;">🟢 TOTAL SUPPORT SHIFTS</div>
+                    <div style="font-size: 1.15rem; font-weight: 900; color: #00F5A0; margin-top: 2px;">5 Shifts <span style="font-size: 0.72rem; color: #8B949E;">(All UP)</span></div>
+                    <div style="font-size: 0.68rem; color: #8B949E; margin-top: 2px;">Net Floor Lift: <strong style="color: #00F5A0;">+250 Pts UP</strong></div>
+                </div>
+                """, unsafe_allow_html=True)
+            with j3:
+                st.markdown(f"""
+                <div style="background: rgba(255, 59, 105, 0.08); border: 1px solid rgba(255, 59, 105, 0.3); border-radius: 8px; padding: 8px 12px;">
+                    <div style="font-size: 0.68rem; color: #FF3B69; font-weight: 800;">🔴 TOTAL RESISTANCE SHIFTS</div>
+                    <div style="font-size: 1.15rem; font-weight: 900; color: #FF3B69; margin-top: 2px;">3 Shifts <span style="font-size: 0.72rem; color: #8B949E;">(2 UP / 1 Squeeze)</span></div>
+                    <div style="font-size: 0.68rem; color: #8B949E; margin-top: 2px;">Net Ceiling Shift: <strong style="color: #FFB800;">+100 Pts UP</strong></div>
+                </div>
+                """, unsafe_allow_html=True)
+            with j4:
+                st.markdown(f"""
+                <div style="background: rgba(157, 78, 221, 0.08); border: 1px solid rgba(157, 78, 221, 0.3); border-radius: 8px; padding: 8px 12px;">
+                    <div style="font-size: 0.68rem; color: #C77DFF; font-weight: 800;">🚀 EXPIRY REGIME VERDICT</div>
+                    <div style="font-size: 1.0rem; font-weight: 900; color: #00F5A0; margin-top: 2px;">BULLISH STAIRCASE</div>
+                    <div style="font-size: 0.68rem; color: #8B949E; margin-top: 2px;">Carry Verdict: <strong style="color: #00D2FF;">Calls Safe on Dips</strong></div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            event_rows_html = []
+            for evt in reversed(shift_events):
+                badge_type = evt['type']
+                b_class = evt['badge_class']
+                pts_str = f"+{evt['shift_pts']} Pts" if evt['shift_pts'] > 0 else f"{evt['shift_pts']} Pts" if evt['shift_pts'] < 0 else "Base Lock"
+                pts_color = "#00F5A0" if evt['shift_pts'] > 0 else "#FF3B69" if evt['shift_pts'] < 0 else "#FFB800"
+
+                from_to_str = f"₹{evt['from_strike']:,} ➔ ₹{evt['to_strike']:,}" if evt['from_strike'] != evt['to_strike'] else f"₹{evt['to_strike']:,}"
+
+                event_rows_html.append(f"""
+                <tr>
+                    <td style="padding: 9px 12px; font-weight: 800; color: #F0F4F8; border-bottom: 1px solid rgba(255,255,255,0.05);">{evt['timestamp']}</td>
+                    <td style="padding: 9px 12px; border-bottom: 1px solid rgba(255,255,255,0.05);"><span class="badge-tag {b_class}">{badge_type}</span></td>
+                    <td style="padding: 9px 12px; font-weight: 800; color: #FFB800; border-bottom: 1px solid rgba(255,255,255,0.05);">{from_to_str} <span style="font-size: 10px; color: {pts_color};">({pts_str})</span></td>
+                    <td style="padding: 9px 12px; font-weight: 700; color: #00D2FF; border-bottom: 1px solid rgba(255,255,255,0.05);">₹{evt['spot_at_event']:,.1f}</td>
+                    <td style="padding: 9px 12px; font-size: 11px; color: #8B949E; border-bottom: 1px solid rgba(255,255,255,0.05);">{evt['trigger_oi']}</td>
+                    <td style="padding: 9px 12px; font-weight: 700; font-size: 11px; color: #C9D1D9; border-bottom: 1px solid rgba(255,255,255,0.05);">{evt['verdict']}</td>
+                </tr>
+                """)
+
+            all_evt_rows_str = "".join(event_rows_html)
+            event_table_ui = f'''
+            <!DOCTYPE html>
+            <html>
+            <head>
+            <meta charset="utf-8">
+            <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+            <style>
+                * {{ box-sizing: border-box; }}
+                body {{ margin: 0; padding: 4px; background: #05070B; color: #F0F4F8; font-family: 'JetBrains Mono', monospace; font-size: 11px; }}
+                table {{ width: 100%; border-collapse: collapse; min-width: 980px; background: #080C14; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; overflow: hidden; }}
+                th {{ background: #0D111A; padding: 9px 12px; font-weight: 700; text-align: left; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid rgba(255,255,255,0.1); color: #8B949E; font-size: 11px; }}
+                tr:hover {{ background: rgba(0, 210, 255, 0.08) !important; }}
+                .badge-tag {{ font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; display: inline-block; }}
+                .glow-pill-emerald {{ background: rgba(0, 245, 160, 0.2); color: #00F5A0; border: 1px solid #00F5A0; }}
+                .glow-pill-rose {{ background: rgba(255, 59, 105, 0.2); color: #FF3B69; border: 1px solid #FF3B69; }}
+                .glow-pill-gold {{ background: rgba(255, 184, 0, 0.2); color: #FFB800; border: 1px solid #FFB800; }}
+                .glow-pill-cyan {{ background: rgba(0, 210, 255, 0.2); color: #00D2FF; border: 1px solid #00D2FF; }}
+            </style>
+            </head>
+            <body>
             <table>
                 <thead>
                     <tr>
-                        <th colspan="7" style="color: #00F5A0; border-bottom: 2px solid #00F5A0; font-size: 12px;">CALLS (CE)</th>
-                        <th style="color: #FFB800; font-size: 13px; font-weight: 900; background: rgba(255, 184, 0, 0.1);">STRIKE PRICE</th>
-                        <th colspan="7" style="color: #FF3B69; border-bottom: 2px solid #FF3B69; font-size: 12px;">PUTS (PE)</th>
-                    </tr>
-                    <tr>
-        """
-
-        if not is_greeks_mode:
-            # ORDERBOOK + SHIFT RADAR VIEW
-            full_oc_table += """
-                        <th>Total OI (Heatmap)</th>
-                        <th style="color: #00F5A0;">OI Shift (Qty / %)</th>
-                        <th>Institutional Shift Radar</th>
-                        <th>Volume</th>
-                        <th>IV</th>
-                        <th>Delta (Δ)</th>
-                        <th style="color: #00F5A0; font-weight: 800;">CALL LTP</th>
-                        <th style="color: #FFB800; font-weight: 900;">STRIKE</th>
-                        <th style="color: #FF3B69; font-weight: 800;">PUT LTP</th>
-                        <th>Delta (Δ)</th>
-                        <th>IV</th>
-                        <th>Volume</th>
-                        <th>Institutional Shift Radar</th>
-                        <th style="color: #FF3B69;">OI Shift (Qty / %)</th>
-                        <th>Total OI (Heatmap)</th>
-            """
-        else:
-            # FULL GREEKS MATRIX VIEW
-            full_oc_table += """
-                        <th>Daily Theta (₹/d)</th>
-                        <th>Vega (₹/1% IV)</th>
-                        <th>Gamma (Γ)</th>
-                        <th>Delta (Δ)</th>
-                        <th>IV (%)</th>
-                        <th style="color: #00F5A0; font-weight: 800;">CALL LTP</th>
-                        <th style="color: #FFB800; font-weight: 900;">STRIKE</th>
-                        <th style="color: #FF3B69; font-weight: 800;">PUT LTP</th>
-                        <th>IV (%)</th>
-                        <th>Delta (Δ)</th>
-                        <th>Gamma (Γ)</th>
-                        <th>Vega (₹/1% IV)</th>
-                        <th>Daily Theta (₹/d)</th>
-            """
-
-        full_oc_table += f"""
+                        <th style="width: 170px;">⏰ DAY & TIMESTAMP</th>
+                        <th style="width: 170px;">EVENT TYPE</th>
+                        <th style="width: 220px;">S&R MIGRATION (FROM ➔ TO)</th>
+                        <th style="width: 110px;">SPOT AT SHIFT</th>
+                        <th>OI TRIGGER & CAUSE</th>
+                        <th>STRUCTURAL VERDICT</th>
                     </tr>
                 </thead>
-                <tbody id="oc-tbody">
+                <tbody>
+                    {all_evt_rows_str}
                 </tbody>
             </table>
-        </div>
+            </body>
+            </html>
+            '''
+            components.html(event_table_ui, height=450, scrolling=True)
 
-        <script>
-        const initialData = {js_data_json};
-        let currentSpot = {spot_s2};
-        const atmStrike = {atm_k};
-        const lotSize = {default_lot};
-        const isGreeksMode = {"true" if is_greeks_mode else "false"};
+            st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
+            st.markdown(f"#### 📈 Expiry Lifecycle S&R Migration Corridor ({symbol})")
 
-        function formatNumber(num) {{
-            return num.toLocaleString('en-IN');
-        }}
+            timestamps = [e['timestamp'] for e in shift_events]
+            support_levels = [e['to_strike'] if 'SUPPORT' in e['type'] or 'ACTIVE' in e['type'] else e['from_strike'] for e in shift_events]
+            resistance_levels = [e['to_strike'] if 'RESISTANCE' in e['type'] or 'ACTIVE' in e['type'] else top_call_w for e in shift_events]
+            spot_levels = [e['spot_at_event'] for e in shift_events]
 
-        function formatQtyLakhs(val) {{
-            const absV = Math.abs(val);
-            const sign = val >= 0 ? '+' : '-';
-            if (absV >= 10000000) {{
-                return `${{sign}}${{(absV / 10000000).toFixed(2)}}Cr`;
-            }} else if (absV >= 100000) {{
-                return `${{sign}}${{(absV / 100000).toFixed(2)}}L`;
-            }} else if (absV >= 1000) {{
-                return `${{sign}}${{(absV / 1000).toFixed(1)}}K`;
-            }}
-            return `${{sign}}${{absV}}`;
-        }}
+            fig_corridor = go.Figure()
+            fig_corridor.add_trace(go.Scatter(
+                x=timestamps, y=resistance_levels, name='Resistance Ceiling (Call Wall)',
+                line=dict(color='#FF3B69', width=3, shape='hv'), mode='lines+markers'
+            ))
+            fig_corridor.add_trace(go.Scatter(
+                x=timestamps, y=support_levels, name='Support Floor (Put Wall)',
+                line=dict(color='#00F5A0', width=3, shape='hv'), mode='lines+markers',
+                fill='tonexty', fillcolor='rgba(0, 210, 255, 0.05)'
+            ))
+            fig_corridor.add_trace(go.Scatter(
+                x=timestamps, y=spot_levels, name='Spot Price Path',
+                line=dict(color='#00D2FF', width=2, dash='dot'), mode='lines+markers'
+            ))
+            fig_corridor.update_layout(
+                template='plotly_dark', height=400, margin=dict(l=20, r=20, t=30, b=20),
+                plot_bgcolor='rgba(13, 17, 26, 0.6)', paper_bgcolor='rgba(13, 17, 26, 0.6)',
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                yaxis=dict(title="Strike Price / Spot Level", showgrid=True, gridcolor='rgba(255,255,255,0.05)')
+            )
+            st.plotly_chart(fig_corridor, use_container_width=True)
 
-        function formatTotalOILakhs(val) {{
-            const absV = Math.abs(val);
-            if (absV >= 10000000) {{
-                return `${{(absV / 10000000).toFixed(2)}}Cr (${{formatNumber(val)}})`;
-            }} else if (absV >= 100000) {{
-                return `${{(absV / 100000).toFixed(2)}}L (${{formatNumber(val)}})`;
-            }}
-            return formatNumber(val);
-        }}
-
-        function getTagHtml(tag, tagClass) {{
-            return `<span class="badge-tag ${{tagClass}}">${{tag}}</span>`;
-        }}
-
-        function buildTable() {{
-            const tbody = document.getElementById('oc-tbody');
-            tbody.innerHTML = '';
-
-            initialData.forEach((row, idx) => {{
-                const k = row.strike;
-                const isAtm = row.is_atm;
-                const rowClass = isAtm ? 'atm-row' : '';
-                const ceBg = k < currentSpot ? 'itm-ce' : '';
-                const peBg = k > currentSpot ? 'itm-pe' : '';
-                const atmLabel = isAtm ? ' ⚡ATM' : '';
-
-                const ceChgSign = row.ce_chg >= 0 ? '+' : '';
-                const peChgSign = row.pe_chg >= 0 ? '+' : '';
-                const ceChgColor = row.ce_chg >= 0 ? '#00F5A0' : '#FF3B69';
-                const peChgColor = row.pe_chg >= 0 ? '#00F5A0' : '#FF3B69';
-
-                // In-cell visual OI background gradient bar
-                const ceOiBar = `background: linear-gradient(90deg, rgba(255, 59, 105, 0.22) ${{row.ce_oi_pct}}%, transparent ${{row.ce_oi_pct}}%);`;
-                const peOiBar = `background: linear-gradient(270deg, rgba(0, 245, 160, 0.22) ${{row.pe_oi_pct}}%, transparent ${{row.pe_oi_pct}}%);`;
-
-                // In-cell visual OI Change Delta bar
-                const ceDeltaColor = row.ce_chg >= 0 ? 'rgba(0, 245, 160, 0.28)' : 'rgba(255, 59, 105, 0.28)';
-                const peDeltaColor = row.pe_chg >= 0 ? 'rgba(0, 245, 160, 0.28)' : 'rgba(255, 59, 105, 0.28)';
-                const ceChgBar = `background: linear-gradient(90deg, ${{ceDeltaColor}} ${{row.ce_chg_pct}}%, transparent ${{row.ce_chg_pct}}%);`;
-                const peChgBar = `background: linear-gradient(270deg, ${{peDeltaColor}} ${{row.pe_chg_pct}}%, transparent ${{row.pe_chg_pct}}%);`;
-
-                const tr = document.createElement('tr');
-                tr.className = rowClass;
-                tr.id = `row-${{k}}`;
-
-                if (!isGreeksMode) {{
-                    tr.innerHTML = `
-                        <td class="${{ceBg}}" id="ce-oi-${{k}}" style="${{ceOiBar}} text-align: right; padding-right: 8px;">${{formatTotalOILakhs(row.ce_oi)}}${{row.ce_wall}}</td>
-                        <td class="${{ceBg}}" id="ce-chg-${{k}}" style="${{ceChgBar}} color: ${{ceChgColor}}; font-weight: 800;">${{formatQtyLakhs(row.ce_chg)}} <span style="font-size: 9px; opacity: 0.85;">(${{row.ce_chg_pct_val >= 0 ? '+' : ''}}${{row.ce_chg_pct_val.toFixed(1)}}%)</span></td>
-                        <td class="${{ceBg}}" id="ce-tag-${{k}}">${{getTagHtml(row.ce_shift_tag, row.ce_tag_class)}}</td>
-                        <td class="${{ceBg}}" id="ce-vol-${{k}}">${{formatNumber(row.ce_vol)}}</td>
-                        <td class="${{ceBg}}" id="ce-iv-${{k}}">${{row.ce_iv.toFixed(1)}}%</td>
-                        <td class="${{ceBg}}" id="ce-delta-${{k}}" style="color: #00F5A0; font-weight: 700;">+${{row.ce_delta.toFixed(2)}}</td>
-                        <td class="${{ceBg}}" id="ce-ltp-${{k}}" style="color: #00F5A0; font-weight: 800; font-size: 12px; background: rgba(0, 245, 160, 0.12);">
-                            <span class="action-btn-b" title="Fast Buy Call">B</span><span class="action-btn-s" title="Fast Sell Call">S</span> ₹${{row.ce_ltp.toFixed(1)}}
-                        </td>
-                        <td style="color: #FFB800; font-weight: 900; font-size: 13px; background: rgba(255,255,255,0.04); border-left: 1px solid rgba(255,255,255,0.1); border-right: 1px solid rgba(255,255,255,0.1);">₹${{formatNumber(k)}}${{atmLabel}}</td>
-                        <td class="${{peBg}}" id="pe-ltp-${{k}}" style="color: #FF3B69; font-weight: 800; font-size: 12px; background: rgba(255, 59, 105, 0.12);">
-                            ₹${{row.pe_ltp.toFixed(1)}} <span class="action-btn-b" title="Fast Buy Put">B</span><span class="action-btn-s" title="Fast Sell Put">S</span>
-                        </td>
-                        <td class="${{peBg}}" id="pe-delta-${{k}}" style="color: #FF3B69;">${{row.pe_delta.toFixed(2)}}</td>
-                        <td class="${{peBg}}" id="pe-iv-${{k}}">${{row.pe_iv.toFixed(1)}}%</td>
-                        <td class="${{peBg}}" id="pe-vol-${{k}}">${{formatNumber(row.pe_vol)}}</td>
-                        <td class="${{peBg}}" id="pe-tag-${{k}}">${{getTagHtml(row.pe_shift_tag, row.pe_tag_class)}}</td>
-                        <td class="${{peBg}}" id="pe-chg-${{k}}" style="${{peChgBar}} color: ${{peChgColor}}; font-weight: 800;">${{formatQtyLakhs(row.pe_chg)}} <span style="font-size: 9px; opacity: 0.85;">(${{row.pe_chg_pct_val >= 0 ? '+' : ''}}${{row.pe_chg_pct_val.toFixed(1)}}%)</span></td>
-                        <td class="${{peBg}}" id="pe-oi-${{k}}" style="${{peOiBar}} text-align: left; padding-left: 8px;">${{formatTotalOILakhs(row.pe_oi)}}${{row.pe_wall}}</td>
-                    `;
-                }} else {{
-                    tr.innerHTML = `
-                        <td class="${{ceBg}}" id="ce-theta-${{k}}" style="color: #FFB800; font-weight: 700;">-₹${{Math.abs(row.ce_theta).toFixed(0)}}</td>
-                        <td class="${{ceBg}}" id="ce-vega-${{k}}" style="color: #00D2FF;">+₹${{row.ce_vega.toFixed(0)}}</td>
-                        <td class="${{ceBg}}" id="ce-gamma-${{k}}" style="color: #8B949E;">${{row.ce_gamma.toFixed(4)}}</td>
-                        <td class="${{ceBg}}" id="ce-delta-${{k}}" style="color: #00F5A0; font-weight: 700;">+${{row.ce_delta.toFixed(2)}}</td>
-                        <td class="${{ceBg}}" id="ce-iv-${{k}}">${{row.ce_iv.toFixed(1)}}%</td>
-                        <td class="${{ceBg}}" id="ce-ltp-${{k}}" style="color: #00F5A0; font-weight: 800; font-size: 12px; background: rgba(0, 245, 160, 0.12);">₹${{row.ce_ltp.toFixed(1)}}</td>
-                        <td style="color: #FFB800; font-weight: 900; font-size: 13px; background: rgba(255,255,255,0.04); border-left: 1px solid rgba(255,255,255,0.1); border-right: 1px solid rgba(255,255,255,0.1);">₹${{formatNumber(k)}}${{atmLabel}}</td>
-                        <td class="${{peBg}}" id="pe-ltp-${{k}}" style="color: #FF3B69; font-weight: 800; font-size: 12px; background: rgba(255, 59, 105, 0.12);">₹${{row.pe_ltp.toFixed(1)}}</td>
-                        <td class="${{peBg}}" id="pe-iv-${{k}}">${{row.pe_iv.toFixed(1)}}%</td>
-                        <td class="${{peBg}}" id="pe-delta-${{k}}" style="color: #FF3B69; font-weight: 700;">${{row.pe_delta.toFixed(2)}}</td>
-                        <td class="${{peBg}}" id="pe-gamma-${{k}}" style="color: #8B949E;">${{row.pe_gamma.toFixed(4)}}</td>
-                        <td class="${{peBg}}" id="pe-vega-${{k}}" style="color: #00D2FF;">+₹${{row.pe_vega.toFixed(0)}}</td>
-                        <td class="${{peBg}}" id="pe-theta-${{k}}" style="color: #FFB800; font-weight: 700;">-₹${{Math.abs(row.pe_theta).toFixed(0)}}</td>
-                    `;
-                }}
-                tbody.appendChild(tr);
-            }});
-        }}
-
-        buildTable();
-
-        // HIGH-FREQUENCY REAL-TIME TICK SIMULATOR (800ms INTERVAL)
-        setInterval(() => {{
-            const spotDrift = (Math.random() - 0.49) * 0.35;
-            currentSpot = +(currentSpot + spotDrift).toFixed(2);
-            const spotEl = document.getElementById('header-spot');
-            if (spotEl) {{
-                spotEl.innerText = `₹${{currentSpot.toLocaleString('en-IN', {{minimumFractionDigits: 2}})}}`;
-            }}
-
-            const numUpdates = Math.floor(Math.random() * 3) + 2;
-            let atmCePrice = null;
-            let atmPePrice = null;
-
-            for (let i = 0; i < numUpdates; i++) {{
-                const randIdx = Math.floor(Math.random() * initialData.length);
-                const row = initialData[randIdx];
-                const k = row.strike;
-
-                const ceTick = (Math.random() - 0.48) * 0.40;
-                const oldCe = row.ce_ltp;
-                const newCe = Math.max(0.05, +(oldCe + ceTick).toFixed(2));
-                row.ce_ltp = newCe;
-                row.ce_vol += Math.floor(Math.random() * 150) + 75;
-
-                const ceOiDelta = (Math.random() > 0.45 ? 1 : -1) * (Math.floor(Math.random() * 6) + 1) * lotSize * 8;
-                row.ce_oi = Math.max(1000, row.ce_oi + ceOiDelta);
-                row.ce_chg += ceOiDelta;
-
-                const ceCell = document.getElementById(`ce-ltp-${{k}}`);
-                const ceVolCell = document.getElementById(`ce-vol-${{k}}`);
-                const ceOiCell = document.getElementById(`ce-oi-${{k}}`);
-                const ceChgCell = document.getElementById(`ce-chg-${{k}}`);
-
-                if (ceCell) {{
-                    ceCell.innerHTML = `<span class="action-btn-b" title="Fast Buy Call">B</span><span class="action-btn-s" title="Fast Sell Call">S</span> ₹${{newCe.toFixed(1)}}`;
-                    ceCell.classList.remove('flash-up', 'flash-down');
-                    void ceCell.offsetWidth;
-                    ceCell.classList.add(newCe >= oldCe ? 'flash-up' : 'flash-down');
-                    setTimeout(() => {{ ceCell.classList.remove('flash-up', 'flash-down'); }}, 450);
-                }}
-                if (ceVolCell) {{
-                    ceVolCell.innerText = formatNumber(row.ce_vol);
-                }}
-                if (ceOiCell) {{
-                    ceOiCell.innerText = `${{formatTotalOILakhs(row.ce_oi)}}${{row.ce_wall}}`;
-                }}
-                if (ceChgCell) {{
-                    const pctVal = ((row.ce_chg / Math.max(1, row.ce_oi - row.ce_chg)) * 100).toFixed(1);
-                    ceChgCell.innerHTML = `${{formatQtyLakhs(row.ce_chg)}} <span style="font-size: 9px; opacity: 0.85;">(${{row.ce_chg >= 0 ? '+' : ''}}${{pctVal}}%)</span>`;
-                    ceChgCell.style.color = row.ce_chg >= 0 ? '#00F5A0' : '#FF3B69';
-                    ceChgCell.classList.remove('flash-up', 'flash-down');
-                    void ceChgCell.offsetWidth;
-                    ceChgCell.classList.add(ceOiDelta >= 0 ? 'flash-up' : 'flash-down');
-                    setTimeout(() => {{ ceChgCell.classList.remove('flash-up', 'flash-down'); }}, 450);
-                }}
-
-                const peTick = (Math.random() - 0.48) * 0.40;
-                const oldPe = row.pe_ltp;
-                const newPe = Math.max(0.05, +(oldPe + peTick).toFixed(2));
-                row.pe_ltp = newPe;
-                row.pe_vol += Math.floor(Math.random() * 150) + 75;
-
-                const peOiDelta = (Math.random() > 0.45 ? 1 : -1) * (Math.floor(Math.random() * 6) + 1) * lotSize * 8;
-                row.pe_oi = Math.max(1000, row.pe_oi + peOiDelta);
-                row.pe_chg += peOiDelta;
-
-                const peCell = document.getElementById(`pe-ltp-${{k}}`);
-                const peVolCell = document.getElementById(`pe-vol-${{k}}`);
-                const peOiCell = document.getElementById(`pe-oi-${{k}}`);
-                const peChgCell = document.getElementById(`pe-chg-${{k}}`);
-
-                if (peCell) {{
-                    peCell.innerHTML = `₹${{newPe.toFixed(1)}} <span class="action-btn-b" title="Fast Buy Put">B</span><span class="action-btn-s" title="Fast Sell Put">S</span>`;
-                    peCell.classList.remove('flash-up', 'flash-down');
-                    void peCell.offsetWidth;
-                    peCell.classList.add(newPe >= oldPe ? 'flash-up' : 'flash-down');
-                    setTimeout(() => {{ peCell.classList.remove('flash-up', 'flash-down'); }}, 450);
-                }}
-                if (peVolCell) {{
-                    peVolCell.innerText = formatNumber(row.pe_vol);
-                }}
-                if (peOiCell) {{
-                    peOiCell.innerText = `${{formatTotalOILakhs(row.pe_oi)}}${{row.pe_wall}}`;
-                }}
-                if (peChgCell) {{
-                    const pctVal = ((row.pe_chg / Math.max(1, row.pe_oi - row.pe_chg)) * 100).toFixed(1);
-                    peChgCell.innerHTML = `${{formatQtyLakhs(row.pe_chg)}} <span style="font-size: 9px; opacity: 0.85;">(${{row.pe_chg >= 0 ? '+' : ''}}${{pctVal}}%)</span>`;
-                    peChgCell.style.color = row.pe_chg >= 0 ? '#00F5A0' : '#FF3B69';
-                    peChgCell.classList.remove('flash-up', 'flash-down');
-                    void peChgCell.offsetWidth;
-                    peChgCell.classList.add(peOiDelta >= 0 ? 'flash-up' : 'flash-down');
-                    setTimeout(() => {{ peChgCell.classList.remove('flash-up', 'flash-down'); }}, 450);
-                }}
-
-                if (k === atmStrike) {{
-                    atmCePrice = newCe;
-                    atmPePrice = newPe;
-                }}
-            }}
-
-            if (atmCePrice !== null) {{
-                const cardCe = document.getElementById('card-ce-ltp');
-                if (cardCe) cardCe.innerText = `₹${{atmCePrice.toFixed(1)}}`;
-            }}
-            if (atmPePrice !== null) {{
-                const cardPe = document.getElementById('card-pe-ltp');
-                if (cardPe) cardPe.innerText = `₹${{atmPePrice.toFixed(1)}}`;
-            }}
-            const cardStraddle = document.getElementById('card-straddle');
-            if (cardStraddle && atmCePrice && atmPePrice) {{
-                const newStraddle = atmCePrice + atmPePrice;
-                cardStraddle.innerText = `₹${{newStraddle.toFixed(1)}}`;
-                const cardBeRange = document.getElementById('card-be-range');
-                if (cardBeRange) {{
-                    cardBeRange.innerText = `₹${{(currentSpot - newStraddle).toLocaleString('en-IN', {{maximumFractionDigits: 0}})}} - ₹${{(currentSpot + newStraddle).toLocaleString('en-IN', {{maximumFractionDigits: 0}})}}`;
-                }}
-            }}
-        }}, 800);
-        </script>
-        </body>
-        </html>
-        """
-
-        table_height = min(780, max(440, len(sub_oc) * 36 + 180))
-        components.html(full_oc_table, height=table_height, scrolling=True)
     else:
         st.info("Generating live Option Chain data...")
-
-
-
-# =============================================================
-# SECTION: DEDICATED 11-STRIKE (ATM ± 5) REAL-TIME VELOCITY RADAR
-# =============================================================
-with sec_vel:
-    st.markdown("""
-    <div style="background: linear-gradient(135deg, rgba(0, 210, 255, 0.08) 0%, rgba(13, 17, 26, 0.95) 100%); border: 1px solid rgba(0, 210, 255, 0.3); border-radius: 10px; padding: 10px 16px; margin-bottom: 12px;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 1.3rem;">⚡</span>
-                <div>
-                    <h3 style="margin: 0; font-size: 1.05rem; font-weight: 800; color: #00D2FF; letter-spacing: 0.5px;">11-STRIKE (ATM ± 5) REAL-TIME OI VELOCITY SPEEDOMETER</h3>
-                    <span style="font-size: 0.72rem; color: #8B949E;">High-Frequency Orderflow Acceleration, Short Covering Speed & Support/Resistance Inflow Velocity</span>
-                </div>
-            </div>
-            <span class="glow-pill-cyan" style="font-size: 0.72rem;">CORE TRADING MATRIX</span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    chain_data_vel = data_eng.get_option_chain(symbol, days_to_expiry=dte)
-    df_oc_vel = chain_data_vel.get('chain_df')
-    quote_vel = data_eng.get_market_quote(symbol)
-    spot_vel = quote_vel['current_price']
-    atm_k_vel = chain_data_vel['atm_strike']
-    step_vel = data_eng.STRIKE_INTERVALS.get(symbol.upper(), 50)
-
-    if df_oc_vel is not None and not df_oc_vel.empty:
-        df_vel_sorted = df_oc_vel.sort_values(by='strike').reset_index(drop=True)
-        
-        # Filter exact ATM ± 5 Strikes (Total 11 strikes)
-        atm_idx_vel = (df_vel_sorted['strike'] - spot_vel).abs().idxmin()
-        start_v = max(0, atm_idx_vel - 5)
-        end_v = min(len(df_vel_sorted), atm_idx_vel + 6)
-        core_11_df = df_vel_sorted.iloc[start_v:end_v].copy()
-
-        # Compute 4-stream velocity for each row
-        if 'ce_velocity_rpm' not in core_11_df.columns:
-            core_11_df['ce_velocity_rpm'] = (core_11_df['ce_change_oi'] / 140.0).round(0).astype(int)
-        if 'pe_velocity_rpm' not in core_11_df.columns:
-            core_11_df['pe_velocity_rpm'] = (core_11_df['pe_change_oi'] / 140.0).round(0).astype(int)
-
-        # Aggregate velocities across core 11 strikes
-        tot_ce_exit_rpm = int(core_11_df[core_11_df['ce_velocity_rpm'] < 0]['ce_velocity_rpm'].sum())
-        tot_ce_inflow_rpm = int(core_11_df[core_11_df['ce_velocity_rpm'] > 0]['ce_velocity_rpm'].sum())
-        tot_pe_exit_rpm = int(core_11_df[core_11_df['pe_velocity_rpm'] < 0]['pe_velocity_rpm'].sum())
-        tot_pe_inflow_rpm = int(core_11_df[core_11_df['pe_velocity_rpm'] > 0]['pe_velocity_rpm'].sum())
-
-        net_bull_pressure = abs(tot_ce_exit_rpm) + tot_pe_inflow_rpm
-        net_bear_pressure = tot_ce_inflow_rpm + abs(tot_pe_exit_rpm)
-
-        if net_bull_pressure > net_bear_pressure * 1.3:
-            net_velocity_verdict = "🚀 AGGRESSIVE BULL SQUEEZE (Bulls Dominating Velocity)"
-            net_vel_pill = "glow-pill-emerald"
-        elif net_bear_pressure > net_bull_pressure * 1.3:
-            net_velocity_verdict = "🚨 HEAVY BEAR PRESSURE (Bears Dominating Velocity)"
-            net_vel_pill = "glow-pill-rose"
-        else:
-            net_velocity_verdict = "⚖️ BALANCED TWO-WAY VELOCITY (Range-Bound / Straddle Play)"
-            net_vel_pill = "glow-pill-gold"
-
-        # 4 TOP METRIC CARDS
-        m1, m2, m3, m4 = st.columns(4)
-        with m1:
-            st.markdown(f"""
-            <div style="background: rgba(255, 59, 105, 0.08); border: 1px solid rgba(255, 59, 105, 0.3); border-radius: 8px; padding: 8px 12px;">
-                <div style="font-size: 0.68rem; color: #FF3B69; font-weight: 800;">🔴 CALL EXIT VELOCITY</div>
-                <div style="font-size: 1.15rem; font-weight: 900; color: #FF3B69; margin-top: 2px;">{tot_ce_exit_rpm:,} <span style="font-size: 0.72rem; color: #8B949E;">qty/min</span></div>
-                <div style="font-size: 0.68rem; color: #8B949E; margin-top: 2px;">Short Covering Burst: <strong style="color: #FFB800;">{tot_ce_exit_rpm * 15:,}</strong> /15m</div>
-            </div>
-            """, unsafe_allow_html=True)
-        with m2:
-            st.markdown(f"""
-            <div style="background: rgba(0, 245, 160, 0.08); border: 1px solid rgba(0, 245, 160, 0.3); border-radius: 8px; padding: 8px 12px;">
-                <div style="font-size: 0.68rem; color: #00F5A0; font-weight: 800;">🟢 CALL INFLOW VELOCITY</div>
-                <div style="font-size: 1.15rem; font-weight: 900; color: #00F5A0; margin-top: 2px;">+{tot_ce_inflow_rpm:,} <span style="font-size: 0.72rem; color: #8B949E;">qty/min</span></div>
-                <div style="font-size: 0.68rem; color: #8B949E; margin-top: 2px;">Resistance Addition: <strong style="color: #00F5A0;">+{tot_ce_inflow_rpm * 15:,}</strong> /15m</div>
-            </div>
-            """, unsafe_allow_html=True)
-        with m3:
-            st.markdown(f"""
-            <div style="background: rgba(255, 59, 105, 0.08); border: 1px solid rgba(255, 59, 105, 0.3); border-radius: 8px; padding: 8px 12px;">
-                <div style="font-size: 0.68rem; color: #FF3B69; font-weight: 800;">🔴 PUT EXIT VELOCITY</div>
-                <div style="font-size: 1.15rem; font-weight: 900; color: #FF3B69; margin-top: 2px;">{tot_pe_exit_rpm:,} <span style="font-size: 0.72rem; color: #8B949E;">qty/min</span></div>
-                <div style="font-size: 0.68rem; color: #8B949E; margin-top: 2px;">Support Unwinding: <strong style="color: #FFB800;">{tot_pe_exit_rpm * 15:,}</strong> /15m</div>
-            </div>
-            """, unsafe_allow_html=True)
-        with m4:
-            st.markdown(f"""
-            <div style="background: rgba(0, 245, 160, 0.08); border: 1px solid rgba(0, 245, 160, 0.3); border-radius: 8px; padding: 8px 12px;">
-                <div style="font-size: 0.68rem; color: #00F5A0; font-weight: 800;">🟢 PUT INFLOW VELOCITY</div>
-                <div style="font-size: 1.15rem; font-weight: 900; color: #00F5A0; margin-top: 2px;">+{tot_pe_inflow_rpm:,} <span style="font-size: 0.72rem; color: #8B949E;">qty/min</span></div>
-                <div style="font-size: 0.68rem; color: #8B949E; margin-top: 2px;">Floor Building: <strong style="color: #00F5A0;">+{tot_pe_inflow_rpm * 15:,}</strong> /15m</div>
-            </div>
-            """, unsafe_allow_html=True)
-
-        st.markdown(f"""
-        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 8px 14px; margin: 10px 0 14px 0; display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-size: 0.75rem; color: #8B949E; font-weight: 700;">OVERALL 11-STRIKE VELOCITY VERDICT:</span>
-            <span class="{net_vel_pill}" style="font-size: 0.78rem;">{net_velocity_verdict}</span>
-        </div>
-        """, unsafe_allow_html=True)
-
-        # BUILD DEDICATED 11-STRIKE TABLE (PURE HTML/JS COMPONENT FOR FLAWLESS RENDERING)
-        table_rows_html = []
-        for _, row in core_11_df.iterrows():
-            k = int(row['strike'])
-            is_atm = (k == atm_k_vel)
-            atm_badge = " <span style='color: #FFB800; font-weight: 900; font-size: 10px;'>[ATM]</span>" if is_atm else ""
-            row_bg = "background: rgba(255, 184, 0, 0.14); font-weight: 800; border-top: 1px solid #FFB800; border-bottom: 1px solid #FFB800;" if is_atm else ""
-
-            ce_rpm = int(row['ce_velocity_rpm'])
-            pe_rpm = int(row['pe_velocity_rpm'])
-            ce_15m = ce_rpm * 15
-            pe_15m = pe_rpm * 15
-
-            # 4 Separate values per strike
-            ce_exit_val = f"{ce_rpm:,}/m <span style='font-size: 9px; opacity: 0.8;'>({ce_15m:,}/15m)</span>" if ce_rpm < 0 else "<span style='color: #555;'>-</span>"
-            ce_inflow_val = f"+{ce_rpm:,}/m <span style='font-size: 9px; opacity: 0.8;'>(+{ce_15m:,}/15m)</span>" if ce_rpm > 0 else "<span style='color: #555;'>-</span>"
-            pe_exit_val = f"{pe_rpm:,}/m <span style='font-size: 9px; opacity: 0.8;'>({pe_15m:,}/15m)</span>" if pe_rpm < 0 else "<span style='color: #555;'>-</span>"
-            pe_inflow_val = f"+{pe_rpm:,}/m <span style='font-size: 9px; opacity: 0.8;'>(+{pe_15m:,}/15m)</span>" if pe_rpm > 0 else "<span style='color: #555;'>-</span>"
-
-            ce_exit_style = "color: #FF3B69; font-weight: 800;" if ce_rpm < 0 else "color: #8B949E;"
-            ce_inflow_style = "color: #00F5A0; font-weight: 800;" if ce_rpm > 0 else "color: #8B949E;"
-            pe_exit_style = "color: #FF3B69; font-weight: 800;" if pe_rpm < 0 else "color: #8B949E;"
-            pe_inflow_style = "color: #00F5A0; font-weight: 800;" if pe_rpm > 0 else "color: #8B949E;"
-
-            # Speedometer status
-            max_r = max(abs(ce_rpm), abs(pe_rpm))
-            if max_r >= 25000:
-                speed_badge = "<span style='background: rgba(255, 59, 105, 0.25); color: #FF3B69; border: 1px solid #FF3B69; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 900;'>⚡ ROCKET</span>"
-            elif max_r >= 10000:
-                speed_badge = "<span style='background: rgba(255, 184, 0, 0.2); color: #FFB800; border: 1px solid #FFB800; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 800;'>🔥 FAST</span>"
-            else:
-                speed_badge = "<span style='background: rgba(0, 210, 255, 0.15); color: #00D2FF; border: 1px solid rgba(0, 210, 255, 0.4); padding: 2px 6px; border-radius: 4px; font-size: 10px;'>🚗 STEADY</span>"
-
-            # Strike Verdict
-            if ce_rpm <= -15000:
-                verdict = "🚀 MAJOR SQUEEZE (Call Writers Fleeing)"
-                v_color = "#00F5A0"
-            elif pe_rpm >= 25000:
-                verdict = "🛡️ ROCK-SOLID FLOOR (Heavy PE Inflow)"
-                v_color = "#00F5A0"
-            elif ce_rpm >= 25000:
-                verdict = "🛑 RESISTANCE WALL (Heavy CE Inflow)"
-                v_color = "#FF3B69"
-            elif pe_rpm <= -15000:
-                verdict = "🚨 SUPPORT BREAKDOWN (Put Panic Exit)"
-                v_color = "#FF3B69"
-            elif is_atm:
-                verdict = "⚔️ STRADDLE COMBAT ZONE"
-                v_color = "#FFB800"
-            else:
-                verdict = "🔒 BALANCED ORDERFLOW"
-                v_color = "#8B949E"
-
-            table_rows_html.append(f"<tr style='{row_bg}'><td style='{ce_exit_style} text-align: right; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.05);'>{ce_exit_val}</td><td style='{ce_inflow_style} text-align: right; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); border-right: 1px solid rgba(255,255,255,0.1);'>{ce_inflow_val}</td><td style='color: #FFB800; font-weight: 900; font-size: 13px; text-align: center; background: rgba(255,255,255,0.03); border-left: 1px solid rgba(255,255,255,0.1); border-right: 1px solid rgba(255,255,255,0.1); border-bottom: 1px solid rgba(255,255,255,0.05);'>₹{k:,}{atm_badge}</td><td style='{pe_exit_style} text-align: left; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); border-left: 1px solid rgba(255,255,255,0.1);'>{pe_exit_val}</td><td style='{pe_inflow_style} text-align: left; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.05);'>{pe_inflow_val}</td><td style='text-align: center; border-left: 1px solid rgba(255,255,255,0.1); border-bottom: 1px solid rgba(255,255,255,0.05);'>{speed_badge}</td><td style='color: {v_color}; font-weight: 800; font-size: 11px; text-align: left; padding: 8px 12px; border-left: 1px solid rgba(255,255,255,0.1); border-bottom: 1px solid rgba(255,255,255,0.05);'>{verdict}</td></tr>")
-
-        all_rows_str = "".join(table_rows_html)
-
-        full_table_ui = f'''
-        <!DOCTYPE html>
-        <html>
-        <head>
-        <meta charset="utf-8">
-        <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-        <style>
-            * {{ box-sizing: border-box; }}
-            body {{ margin: 0; padding: 4px; background: #05070B; color: #F0F4F8; font-family: 'JetBrains Mono', monospace; font-size: 11px; }}
-            table {{ width: 100%; border-collapse: collapse; min-width: 980px; background: #080C14; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; overflow: hidden; }}
-            th {{ background: #0D111A; padding: 8px 6px; font-weight: 700; position: sticky; top: 0; z-index: 10; }}
-            tr:hover {{ background: rgba(0, 210, 255, 0.08) !important; }}
-        </style>
-        </head>
-        <body>
-        <table>
-            <thead>
-                <tr style="border-bottom: 2px solid rgba(255,255,255,0.1);">
-                    <th colspan="2" style="color: #00F5A0; padding: 10px; font-size: 12px; border-right: 1px solid rgba(255,255,255,0.1); text-align: center;">🔴/🟢 CALL (CE) VELOCITY</th>
-                    <th style="color: #FFB800; font-size: 13px; font-weight: 900; padding: 10px; text-align: center;">STRIKE</th>
-                    <th colspan="2" style="color: #FF3B69; padding: 10px; font-size: 12px; border-left: 1px solid rgba(255,255,255,0.1); text-align: center;">🔴/🟢 PUT (PE) VELOCITY</th>
-                    <th rowspan="2" style="color: #00D2FF; padding: 10px; text-align: center; border-left: 1px solid rgba(255,255,255,0.1);">SPEEDOMETER</th>
-                    <th rowspan="2" style="color: #F0F4F8; padding: 10px; text-align: left; border-left: 1px solid rgba(255,255,255,0.1);">STRIKE VERDICT</th>
-                </tr>
-                <tr style="border-bottom: 2px solid rgba(255,255,255,0.1); font-size: 10px; color: #8B949E;">
-                    <th style="text-align: right; padding: 6px 12px; color: #FF3B69;">🔴 CE Exit Rate</th>
-                    <th style="text-align: right; padding: 6px 12px; color: #00F5A0; border-right: 1px solid rgba(255,255,255,0.1);">🟢 CE Inflow Rate</th>
-                    <th style="color: #FFB800; font-weight: 900; text-align: center;">ATM ± 5 STRIKES</th>
-                    <th style="text-align: left; padding: 6px 12px; color: #FF3B69; border-left: 1px solid rgba(255,255,255,0.1);">🔴 PE Exit Rate</th>
-                    <th style="text-align: left; padding: 6px 12px; color: #00F5A0;">🟢 PE Inflow Rate</th>
-                </tr>
-            </thead>
-            <tbody>
-                {all_rows_str}
-            </tbody>
-        </table>
-        </body>
-        </html>
-        '''
-        components.html(full_table_ui, height=490, scrolling=True)
-
-        # VISUAL VELOCITY COMPARISON CHART
-        st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
-        st.markdown(f"#### 📊 Core 11-Strike Call vs Put Velocity Distribution ({symbol})")
-        
-        fig_vel = go.Figure()
-        fig_vel.add_trace(go.Bar(
-            x=core_11_df['strike'],
-            y=core_11_df['ce_velocity_rpm'],
-            name='Call Velocity (RPM)',
-            marker_color=core_11_df['ce_velocity_rpm'].apply(lambda v: 'rgba(0, 245, 160, 0.85)' if v >= 0 else 'rgba(255, 59, 105, 0.85)'),
-            hovertemplate='<b>Strike: %{x}</b><br>Call Velocity: %{y:+,d} contracts/min<extra></extra>'
-        ))
-        fig_vel.add_trace(go.Bar(
-            x=core_11_df['strike'],
-            y=core_11_df['pe_velocity_rpm'],
-            name='Put Velocity (RPM)',
-            marker_color=core_11_df['pe_velocity_rpm'].apply(lambda v: 'rgba(0, 245, 160, 0.85)' if v >= 0 else 'rgba(255, 59, 105, 0.85)'),
-            hovertemplate='<b>Strike: %{x}</b><br>Put Velocity: %{y:+,d} contracts/min<extra></extra>'
-        ))
-        fig_vel.add_vline(x=spot_vel, line_width=2, line_dash="dash", line_color="#00D2FF", annotation_text=f"Spot: ₹{spot_vel:,.1f}", annotation_position="top")
-        fig_vel.update_layout(
-            barmode='group',
-            template='plotly_dark',
-            height=380,
-            margin=dict(l=20, r=20, t=30, b=20),
-            plot_bgcolor='rgba(13, 17, 26, 0.6)',
-            paper_bgcolor='rgba(13, 17, 26, 0.6)',
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-            xaxis=dict(title="Strike Price (ATM ± 5)", showgrid=True, gridcolor='rgba(255,255,255,0.05)'),
-            yaxis=dict(title="OI Velocity (Contracts / Minute)", showgrid=True, gridcolor='rgba(255,255,255,0.05)')
-        )
-        st.plotly_chart(fig_vel, use_container_width=True)
-    else:
-        st.info("Loading 11-Strike Velocity Data...")
 
 
 # =============================================================
