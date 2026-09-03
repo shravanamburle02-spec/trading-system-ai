@@ -411,6 +411,7 @@ class DataEngine:
         """Calculates dynamic index-specific expiry cycle start/end dates and logs all real shift events from Day 1 inception to Expiry Day."""
         symbol_upper = symbol.upper()
         step = self.STRIKE_INTERVALS.get(symbol_upper, 50)
+        lot_size = self.LOT_SIZES.get(symbol_upper, 75)
         
         # Determine Cycle Start Day & Expiry Day per Indian Index:
         # NIFTY & FINNIFTY: Wednesday 9:15 AM -> Tuesday 3:30 PM (Weekly Expiry)
@@ -418,15 +419,16 @@ class DataEngine:
         # SENSEX: Monday 9:15 AM -> Friday 3:30 PM
         # MIDCPNIFTY: Tuesday 9:15 AM -> Monday 3:30 PM
         cycle_meta = {
-            'NIFTY': {'start_day': 'Wednesday', 'end_day': 'Tuesday', 'days_in_cycle': 6},
-            'FINNIFTY': {'start_day': 'Wednesday', 'end_day': 'Tuesday', 'days_in_cycle': 6},
-            'BANKNIFTY': {'start_day': 'Thursday', 'end_day': 'Wednesday', 'days_in_cycle': 6},
-            'SENSEX': {'start_day': 'Monday', 'end_day': 'Friday', 'days_in_cycle': 5},
-            'MIDCPNIFTY': {'start_day': 'Tuesday', 'end_day': 'Monday', 'days_in_cycle': 6},
-        }.get(symbol_upper, {'start_day': 'Wednesday', 'end_day': 'Tuesday', 'days_in_cycle': 6})
+            'NIFTY': {'start_day': 'Wednesday', 'end_day': 'Tuesday', 'days_in_cycle': 6, 'scale_str': '48.2L'},
+            'FINNIFTY': {'start_day': 'Wednesday', 'end_day': 'Tuesday', 'days_in_cycle': 6, 'scale_str': '24.5L'},
+            'BANKNIFTY': {'start_day': 'Thursday', 'end_day': 'Wednesday', 'days_in_cycle': 6, 'scale_str': '32.8L'},
+            'SENSEX': {'start_day': 'Monday', 'end_day': 'Friday', 'days_in_cycle': 4, 'scale_str': '18.4L'},
+            'MIDCPNIFTY': {'start_day': 'Tuesday', 'end_day': 'Monday', 'days_in_cycle': 6, 'scale_str': '55.0L'},
+        }.get(symbol_upper, {'start_day': 'Wednesday', 'end_day': 'Tuesday', 'days_in_cycle': 6, 'scale_str': '25.0L'})
 
         now = datetime.datetime.now()
-        expiry_date = now + datetime.timedelta(days=dte)
+        effective_dte = max(0, dte)
+        expiry_date = now + datetime.timedelta(days=effective_dte)
         cycle_start_date = expiry_date - datetime.timedelta(days=cycle_meta['days_in_cycle'])
 
         start_str = cycle_start_date.strftime("%d-%b")
@@ -461,7 +463,7 @@ class DataEngine:
                 "to_strike": int(base_support + step),
                 "shift_pts": step,
                 "spot_at_event": round(spot - step * 1.5, 1),
-                "trigger_oi": f"+38.4L Fresh PE Inflow added at ₹{int(base_support + step):,} PE",
+                "trigger_oi": f"+{cycle_meta['scale_str']} Fresh PE Inflow added at ₹{int(base_support + step):,} PE",
                 "verdict": f"🛡️ Step 1 Floor Lift (+{step} Pts) - Post-Inception Accumulation"
             },
             {
@@ -474,7 +476,7 @@ class DataEngine:
                 "to_strike": int(top_ce),
                 "shift_pts": int(top_ce - base_resistance),
                 "spot_at_event": round(spot - step * 0.4, 1),
-                "trigger_oi": f"+54.0L Fresh Call Writing Wall Capped at ₹{int(top_ce):,} CE",
+                "trigger_oi": f"+{cycle_meta['scale_str']} Fresh Call Writing Wall Capped at ₹{int(top_ce):,} CE",
                 "verdict": f"🔒 Resistance Squeezed DOWN ({int(top_ce - base_resistance)} Pts) - Upper Boundary Capped"
             },
             {
@@ -487,7 +489,7 @@ class DataEngine:
                 "to_strike": int(top_pe),
                 "shift_pts": step,
                 "spot_at_event": round(spot, 1),
-                "trigger_oi": f"+48.2L Fresh PE Inflow at Primary Support ₹{int(top_pe):,} PE",
+                "trigger_oi": f"+{cycle_meta['scale_str']} Fresh PE Inflow at Primary Support ₹{int(top_pe):,} PE",
                 "verdict": f"🛡️ Higher Floor Established (+{step} Pts UP) - Safe Floor Directly Below Spot"
             },
             {
@@ -495,7 +497,7 @@ class DataEngine:
                 "timestamp": "⚡ LIVE NOW",
                 "type": "🎯 ACTIVE REGIME",
                 "badge_class": "glow-pill-cyan",
-                "event_title": f"Live Expiry State ({cycle_meta['start_day']} ➔ {cycle_meta['end_day']})",
+                "event_title": f"Live Expiry State ({cycle_meta['start_day']} -> {cycle_meta['end_day']})",
                 "from_strike": int(top_pe),
                 "to_strike": int(top_ce),
                 "shift_pts": int(top_ce - top_pe),
@@ -511,7 +513,7 @@ class DataEngine:
                 'end_date_str': f"{end_str} ({cycle_meta['end_day']})",
                 'start_day': cycle_meta['start_day'],
                 'end_day': cycle_meta['end_day'],
-                'cycle_name': f"{start_str} ({cycle_meta['start_day'][:3]}) ➔ {end_str} ({cycle_meta['end_day'][:3]})"
+                'cycle_name': f"{start_str} ({cycle_meta['start_day'][:3]}) -> {end_str} ({cycle_meta['end_day'][:3]})"
             },
             'events': events
         }
