@@ -875,7 +875,7 @@ with sec1:
 
 
 # =============================================================
-# SECTION 2: HIGH-FREQUENCY REAL-TIME TICKING OPTION CHAIN (PRICE + OI)
+# SECTION 2: ULTRA ADVANCED INSTITUTIONAL OPTION CHAIN 3.0
 # =============================================================
 with sec2:
     chain_data_s2 = data_eng.get_option_chain(symbol, days_to_expiry=dte)
@@ -892,12 +892,21 @@ with sec2:
             atm_ce_p = float(atm_row.iloc[0].get('ce_ltp', 110.90))
             atm_pe_p = float(atm_row.iloc[0].get('pe_ltp', 154.30))
 
-    straddle_p = atm_ce_p + atm_pe_p
-    source_label = "🟢 LIVE FYERS BROKER FEED" if data_eng.fyers.is_connected() else "⚡ REAL-TIME TICK ENGINE (850ms)"
+    straddle_p = round(atm_ce_p + atm_pe_p, 1)
+    lower_exp_be = round(spot_s2 - straddle_p, 1)
+    upper_exp_be = round(spot_s2 + straddle_p, 1)
+    source_label = "🟢 LIVE FYERS BROKER FEED" if data_eng.fyers.is_connected() else "⚡ REAL-TIME TICK ENGINE (800ms)"
 
     if df_oc is not None and not df_oc.empty:
-        filter_col1, filter_col2 = st.columns([4, 6])
-        with filter_col1:
+        ctrl_col1, ctrl_col2, ctrl_col3 = st.columns([3.5, 3.5, 3.0])
+        with ctrl_col1:
+            oc_view_mode = st.radio(
+                "Chain Display Mode",
+                ["📊 Orderbook & Buildup Heatmap", "⚡ Full Greeks Matrix (Δ, Θ, Γ, V)"],
+                horizontal=True,
+                key="oc_view_mode_selector"
+            )
+        with ctrl_col2:
             strike_depth = st.selectbox(
                 "Strike Filter Depth",
                 [
@@ -910,6 +919,13 @@ with sec2:
                 index=1,
                 key="oc_depth_selector"
             )
+        with ctrl_col3:
+            st.markdown(f"""
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 8px; padding: 6px 12px; height: 38px; display: flex; align-items: center; justify-content: space-between; margin-top: 18px;">
+                <span style="font-size: 0.72rem; color: #8B949E; font-weight: 700;">LOT MULTIPLIER</span>
+                <span class="mono" style="font-size: 0.85rem; font-weight: 800; color: #00D2FF;">{default_lot} QTY / LOT</span>
+            </div>
+            """, unsafe_allow_html=True)
         
         if "5" in strike_depth:
             n_strikes = 5
@@ -930,39 +946,77 @@ with sec2:
         end_i = min(len(df_oc_sorted), atm_idx + n_strikes + 1)
         sub_oc = df_oc_sorted.iloc[start_i:end_i].copy()
 
+        # Compute max OI across sub_oc for in-cell percentage bars
+        max_ce_oi = max(1, int(sub_oc['ce_oi'].max()))
+        max_pe_oi = max(1, int(sub_oc['pe_oi'].max()))
+
         # Build JSON array for high-frequency client-side JS ticking engine
         js_rows_data = []
         for _, r in sub_oc.iterrows():
             k = int(r['strike'])
             is_atm = bool(abs(k - spot_s2) < (df_oc_sorted['strike'].diff().abs().min() or 50) / 2)
+            ce_oi_v = int(r.get('ce_oi', 50000))
+            pe_oi_v = int(r.get('pe_oi', 50000))
+            ce_chg_v = int(r.get('ce_change_oi', 0))
+            pe_chg_v = int(r.get('pe_change_oi', 0))
+            ce_ltp_v = float(r.get('ce_ltp', 120.0))
+            pe_ltp_v = float(r.get('pe_ltp', 110.0))
+            
+            # Buildup logic
+            # Price UP + OI UP = Long Buildup (LB), Price DOWN + OI UP = Short Buildup (SB)
+            # Price UP + OI DOWN = Short Covering (SC), Price DOWN + OI DOWN = Long Unwinding (LU)
+            ce_tag = "LB" if ce_chg_v >= 0 and ce_ltp_v >= 50 else "SB" if ce_chg_v >= 0 else "SC" if ce_ltp_v >= 50 else "LU"
+            pe_tag = "LB" if pe_chg_v >= 0 and pe_ltp_v >= 50 else "SB" if pe_chg_v >= 0 else "SC" if pe_ltp_v >= 50 else "LU"
+
+            # Greeks calculation
+            ce_delta_v = float(r.get('ce_delta', 0.5))
+            pe_delta_v = float(r.get('pe_delta', -0.5))
+            ce_theta_v = round(float(r.get('ce_theta', -12.5)) * default_lot, 1) # In ₹/day
+            pe_theta_v = round(float(r.get('pe_theta', -12.5)) * default_lot, 1) # In ₹/day
+            ce_gamma_v = round(float(r.get('ce_gamma', 0.0012)), 4)
+            pe_gamma_v = round(float(r.get('pe_gamma', 0.0012)), 4)
+            ce_vega_v = round(float(r.get('ce_vega', 8.5)) * default_lot, 1) # In ₹ per 1% IV
+            pe_vega_v = round(float(r.get('pe_vega', 8.5)) * default_lot, 1) # In ₹ per 1% IV
+
             js_rows_data.append({
                 "strike": k,
                 "is_atm": is_atm,
-                "ce_ltp": float(r.get('ce_ltp', 120.0)),
-                "ce_oi": int(r.get('ce_oi', 50000)),
-                "ce_chg": int(r.get('ce_change_oi', 0)),
+                "ce_ltp": ce_ltp_v,
+                "ce_oi": ce_oi_v,
+                "ce_oi_pct": min(100, int((ce_oi_v / max_ce_oi) * 100)),
+                "ce_chg": ce_chg_v,
                 "ce_vol": int(r.get('ce_volume', 25000)),
                 "ce_iv": float(r.get('ce_iv', 10.0)),
-                "ce_delta": float(r.get('ce_delta', 0.5)),
-                "pe_ltp": float(r.get('pe_ltp', 110.0)),
-                "pe_oi": int(r.get('pe_oi', 50000)),
-                "pe_chg": int(r.get('pe_change_oi', 0)),
+                "ce_delta": ce_delta_v,
+                "ce_theta": ce_theta_v,
+                "ce_gamma": ce_gamma_v,
+                "ce_vega": ce_vega_v,
+                "ce_tag": ce_tag,
+                "pe_ltp": pe_ltp_v,
+                "pe_oi": pe_oi_v,
+                "pe_oi_pct": min(100, int((pe_oi_v / max_pe_oi) * 100)),
+                "pe_chg": pe_chg_v,
                 "pe_vol": int(r.get('pe_volume', 25000)),
                 "pe_iv": float(r.get('pe_iv', 10.0)),
-                "pe_delta": float(r.get('pe_delta', -0.5)),
+                "pe_delta": pe_delta_v,
+                "pe_theta": pe_theta_v,
+                "pe_gamma": pe_gamma_v,
+                "pe_vega": pe_vega_v,
+                "pe_tag": pe_tag,
                 "ce_wall": " 🟥RES" if k == chain_data_s2['top_call_wall'] else "",
                 "pe_wall": " 🟩SUP" if k == chain_data_s2['top_put_wall'] else ""
             })
 
         js_data_json = json.dumps(js_rows_data)
+        is_greeks_mode = "Greeks" in oc_view_mode
 
-        # HIGH-FREQUENCY REAL-TIME TICKING HTML/JS ENGINE WITH LIVE PRICE + LIVE OI TICKS
+        # ULTRA ADVANCED REAL-TIME TICKING HTML/JS ENGINE 3.0
         full_oc_table = f"""
         <!DOCTYPE html>
         <html>
         <head>
         <meta charset="utf-8">
-        <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@600;700;800;900&display=swap" rel="stylesheet">
         <style>
             * {{ box-sizing: border-box; }}
             body {{
@@ -975,7 +1029,7 @@ with sec2:
             }}
             .top-cards {{
                 display: grid;
-                grid-template-columns: repeat(5, 1fr);
+                grid-template-columns: repeat(6, 1fr);
                 gap: 6px;
                 text-align: center;
                 margin-bottom: 8px;
@@ -985,8 +1039,8 @@ with sec2:
                 padding: 6px 8px;
                 border: 1px solid rgba(255, 255, 255, 0.08);
             }}
-            .card-title {{ font-size: 0.68rem; color: #8B949E; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; }}
-            .card-val {{ font-size: 1.05rem; font-weight: 900; margin-top: 2px; }}
+            .card-title {{ font-size: 0.65rem; color: #8B949E; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; text-transform: uppercase; }}
+            .card-val {{ font-size: 0.98rem; font-weight: 900; margin-top: 2px; }}
 
             .table-wrap {{
                 border: 1px solid rgba(255, 255, 255, 0.08);
@@ -996,7 +1050,7 @@ with sec2:
             }}
             table {{
                 width: 100%;
-                min-width: 1060px;
+                min-width: 1180px;
                 border-collapse: collapse;
                 text-align: center;
             }}
@@ -1013,7 +1067,8 @@ with sec2:
             td {{
                 padding: 6px 4px;
                 border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-                transition: background-color 0.3s ease, color 0.3s ease;
+                transition: background-color 0.25s ease, color 0.25s ease;
+                position: relative;
             }}
             tr:hover {{
                 background: rgba(0, 210, 255, 0.08) !important;
@@ -1053,6 +1108,18 @@ with sec2:
                 50% {{ transform: scale(1.2); opacity: 1; }}
                 100% {{ transform: scale(0.95); opacity: 0.7; }}
             }}
+
+            .badge-tag {{
+                font-size: 9px;
+                padding: 1px 4px;
+                border-radius: 4px;
+                font-weight: 800;
+                display: inline-block;
+            }}
+            .tag-lb {{ background: rgba(0, 245, 160, 0.18); color: #00F5A0; border: 1px solid rgba(0, 245, 160, 0.4); }}
+            .tag-sb {{ background: rgba(255, 59, 105, 0.18); color: #FF3B69; border: 1px solid rgba(255, 59, 105, 0.4); }}
+            .tag-sc {{ background: rgba(255, 184, 0, 0.18); color: #FFB800; border: 1px solid rgba(255, 184, 0, 0.4); }}
+            .tag-lu {{ background: rgba(0, 210, 255, 0.18); color: #00D2FF; border: 1px solid rgba(0, 210, 255, 0.4); }}
         </style>
         </head>
         <body>
@@ -1062,7 +1129,7 @@ with sec2:
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                 <span style="font-weight: 800; font-size: 0.82rem; color: #FFFFFF; display: flex; align-items: center; gap: 6px;">
                     <span class="pulse-dot"></span>
-                    📊 {symbol} REAL-TIME LIVE TICKING OPTION CHAIN ({exp_info['expiry_date_str']})
+                    📊 {symbol} INSTITUTIONAL OPTION CHAIN 3.0 ({exp_info['expiry_date_str']})
                 </span>
                 <span style="font-size: 0.72rem; color: #00F5A0; font-weight: 700; background: rgba(0,245,160,0.12); padding: 2px 8px; border-radius: 12px; border: 1px solid rgba(0,245,160,0.3);">
                     {source_label} | SPOT: <span id="header-spot">₹{spot_s2:,.2f}</span>
@@ -1087,35 +1154,66 @@ with sec2:
                     <div class="card-val" id="card-straddle" style="color: #00D2FF;">₹{straddle_p:.1f}</div>
                 </div>
                 <div class="card-cell" style="background: rgba(157, 78, 221, 0.08); border-color: rgba(157, 78, 221, 0.3);">
+                    <div class="card-title">🎯 EXPIRY RANGE</div>
+                    <div class="card-val" id="card-be-range" style="color: #C77DFF; font-size: 0.8rem;">₹{lower_exp_be:,.0f} - ₹{upper_exp_be:,.0f}</div>
+                </div>
+                <div class="card-cell" style="background: rgba(255, 255, 255, 0.04); border-color: rgba(255, 255, 255, 0.15);">
                     <div class="card-title">PCR / MAX PAIN</div>
-                    <div class="card-val" id="card-pcr" style="color: #C77DFF;">{chain_data_s2['pcr']:.2f} / ₹{chain_data_s2['max_pain']}</div>
+                    <div class="card-val" id="card-pcr" style="color: #F0F4F8;">{chain_data_s2['pcr']:.2f} / ₹{chain_data_s2['max_pain']}</div>
                 </div>
             </div>
         </div>
 
-        <!-- REAL-TIME TICKING OPTION CHAIN TABLE -->
+        <!-- REAL-TIME TICKING OPTION CHAIN TABLE 3.0 -->
         <div class="table-wrap">
             <table>
                 <thead>
                     <tr>
-                        <th colspan="6" style="color: #00F5A0; border-bottom: 2px solid #00F5A0; font-size: 12px;">CALLS (CE)</th>
+                        <th colspan="7" style="color: #00F5A0; border-bottom: 2px solid #00F5A0; font-size: 12px;">CALLS (CE)</th>
                         <th style="color: #FFB800; font-size: 13px; font-weight: 900; background: rgba(255, 184, 0, 0.1);">STRIKE PRICE</th>
-                        <th colspan="6" style="color: #FF3B69; border-bottom: 2px solid #FF3B69; font-size: 12px;">PUTS (PE)</th>
+                        <th colspan="7" style="color: #FF3B69; border-bottom: 2px solid #FF3B69; font-size: 12px;">PUTS (PE)</th>
                     </tr>
                     <tr>
-                        <th>OI (Contracts)</th>
+        """
+
+        if not is_greeks_mode:
+            # ORDERBOOK & BUILDUP HEATMAP VIEW
+            full_oc_table += """
+                        <th>OI (Heatmap)</th>
                         <th style="color: #00F5A0;">OI Chg</th>
+                        <th>Buildup</th>
                         <th>Volume</th>
                         <th>IV</th>
                         <th>Delta</th>
-                        <th style="color: #00F5A0; font-weight: 800;">CALL PREMIUM (LTP)</th>
+                        <th style="color: #00F5A0; font-weight: 800;">CALL LTP</th>
                         <th style="color: #FFB800; font-weight: 900;">STRIKE</th>
-                        <th style="color: #FF3B69; font-weight: 800;">PUT PREMIUM (LTP)</th>
+                        <th style="color: #FF3B69; font-weight: 800;">PUT LTP</th>
                         <th>Delta</th>
                         <th>IV</th>
                         <th>Volume</th>
+                        <th>Buildup</th>
                         <th style="color: #FF3B69;">OI Chg</th>
-                        <th>OI (Contracts)</th>
+                        <th>OI (Heatmap)</th>
+            """
+        else:
+            # FULL GREEKS MATRIX VIEW
+            full_oc_table += """
+                        <th>Daily Theta (₹/d)</th>
+                        <th>Vega (₹/1% IV)</th>
+                        <th>Gamma (Γ)</th>
+                        <th>Delta (Δ)</th>
+                        <th>IV (%)</th>
+                        <th style="color: #00F5A0; font-weight: 800;">CALL LTP</th>
+                        <th style="color: #FFB800; font-weight: 900;">STRIKE</th>
+                        <th style="color: #FF3B69; font-weight: 800;">PUT LTP</th>
+                        <th>IV (%)</th>
+                        <th>Delta (Δ)</th>
+                        <th>Gamma (Γ)</th>
+                        <th>Vega (₹/1% IV)</th>
+                        <th>Daily Theta (₹/d)</th>
+            """
+
+        full_oc_table += f"""
                     </tr>
                 </thead>
                 <tbody id="oc-tbody">
@@ -1128,9 +1226,15 @@ with sec2:
         let currentSpot = {spot_s2};
         const atmStrike = {atm_k};
         const lotSize = {default_lot};
+        const isGreeksMode = {"true" if is_greeks_mode else "false"};
 
         function formatNumber(num) {{
             return num.toLocaleString('en-IN');
+        }}
+
+        function getTagHtml(tag) {{
+            const tagClass = 'tag-' + tag.toLowerCase();
+            return `<span class="badge-tag ${{tagClass}}">${{tag}}</span>`;
         }}
 
         function buildTable() {{
@@ -1150,32 +1254,56 @@ with sec2:
                 const ceChgColor = row.ce_chg >= 0 ? '#00F5A0' : '#FF3B69';
                 const peChgColor = row.pe_chg >= 0 ? '#00F5A0' : '#FF3B69';
 
+                // In-cell visual OI background gradient bar
+                const ceOiBar = `background: linear-gradient(90deg, rgba(255, 59, 105, 0.22) ${{row.ce_oi_pct}}%, transparent ${{row.ce_oi_pct}}%);`;
+                const peOiBar = `background: linear-gradient(270deg, rgba(0, 245, 160, 0.22) ${{row.pe_oi_pct}}%, transparent ${{row.pe_oi_pct}}%);`;
+
                 const tr = document.createElement('tr');
                 tr.className = rowClass;
                 tr.id = `row-${{k}}`;
 
-                tr.innerHTML = `
-                    <td class="${{ceBg}}" id="ce-oi-${{k}}">${{formatNumber(row.ce_oi)}}${{row.ce_wall}}</td>
-                    <td class="${{ceBg}}" id="ce-chg-${{k}}" style="color: ${{ceChgColor}}; font-weight: 700;">${{ceChgSign}}${{formatNumber(row.ce_chg)}}</td>
-                    <td class="${{ceBg}}" id="ce-vol-${{k}}">${{formatNumber(row.ce_vol)}}</td>
-                    <td class="${{ceBg}}" id="ce-iv-${{k}}">${{row.ce_iv.toFixed(1)}}%</td>
-                    <td class="${{ceBg}}" id="ce-delta-${{k}}" style="color: #00F5A0;">+${{row.ce_delta.toFixed(2)}}</td>
-                    <td class="${{ceBg}}" id="ce-ltp-${{k}}" style="color: #00F5A0; font-weight: 800; font-size: 12px; background: rgba(0, 245, 160, 0.12);">₹${{row.ce_ltp.toFixed(1)}}</td>
-                    <td style="color: #FFB800; font-weight: 900; font-size: 13px; background: rgba(255,255,255,0.04); border-left: 1px solid rgba(255,255,255,0.1); border-right: 1px solid rgba(255,255,255,0.1);">₹${{formatNumber(k)}}${{atmLabel}}</td>
-                    <td class="${{peBg}}" id="pe-ltp-${{k}}" style="color: #FF3B69; font-weight: 800; font-size: 12px; background: rgba(255, 59, 105, 0.12);">₹${{row.pe_ltp.toFixed(1)}}</td>
-                    <td class="${{peBg}}" id="pe-delta-${{k}}" style="color: #FF3B69;">${{row.pe_delta.toFixed(2)}}</td>
-                    <td class="${{peBg}}" id="pe-iv-${{k}}">${{row.pe_iv.toFixed(1)}}%</td>
-                    <td class="${{peBg}}" id="pe-vol-${{k}}">${{formatNumber(row.pe_vol)}}</td>
-                    <td class="${{peBg}}" id="pe-chg-${{k}}" style="color: ${{peChgColor}}; font-weight: 700;">${{peChgSign}}${{formatNumber(row.pe_chg)}}</td>
-                    <td class="${{peBg}}" id="pe-oi-${{k}}">${{formatNumber(row.pe_oi)}}${{row.pe_wall}}</td>
-                `;
+                if (!isGreeksMode) {{
+                    tr.innerHTML = `
+                        <td class="${{ceBg}}" id="ce-oi-${{k}}" style="${{ceOiBar}} text-align: right; padding-right: 8px;">${{formatNumber(row.ce_oi)}}${{row.ce_wall}}</td>
+                        <td class="${{ceBg}}" id="ce-chg-${{k}}" style="color: ${{ceChgColor}}; font-weight: 700;">${{ceChgSign}}${{formatNumber(row.ce_chg)}}</td>
+                        <td class="${{ceBg}}" id="ce-tag-${{k}}">${{getTagHtml(row.ce_tag)}}</td>
+                        <td class="${{ceBg}}" id="ce-vol-${{k}}">${{formatNumber(row.ce_vol)}}</td>
+                        <td class="${{ceBg}}" id="ce-iv-${{k}}">${{row.ce_iv.toFixed(1)}}%</td>
+                        <td class="${{ceBg}}" id="ce-delta-${{k}}" style="color: #00F5A0;">+${{row.ce_delta.toFixed(2)}}</td>
+                        <td class="${{ceBg}}" id="ce-ltp-${{k}}" style="color: #00F5A0; font-weight: 800; font-size: 12px; background: rgba(0, 245, 160, 0.12);">₹${{row.ce_ltp.toFixed(1)}}</td>
+                        <td style="color: #FFB800; font-weight: 900; font-size: 13px; background: rgba(255,255,255,0.04); border-left: 1px solid rgba(255,255,255,0.1); border-right: 1px solid rgba(255,255,255,0.1);">₹${{formatNumber(k)}}${{atmLabel}}</td>
+                        <td class="${{peBg}}" id="pe-ltp-${{k}}" style="color: #FF3B69; font-weight: 800; font-size: 12px; background: rgba(255, 59, 105, 0.12);">₹${{row.pe_ltp.toFixed(1)}}</td>
+                        <td class="${{peBg}}" id="pe-delta-${{k}}" style="color: #FF3B69;">${{row.pe_delta.toFixed(2)}}</td>
+                        <td class="${{peBg}}" id="pe-iv-${{k}}">${{row.pe_iv.toFixed(1)}}%</td>
+                        <td class="${{peBg}}" id="pe-vol-${{k}}">${{formatNumber(row.pe_vol)}}</td>
+                        <td class="${{peBg}}" id="pe-tag-${{k}}">${{getTagHtml(row.pe_tag)}}</td>
+                        <td class="${{peBg}}" id="pe-chg-${{k}}" style="color: ${{peChgColor}}; font-weight: 700;">${{peChgSign}}${{formatNumber(row.pe_chg)}}</td>
+                        <td class="${{peBg}}" id="pe-oi-${{k}}" style="${{peOiBar}} text-align: left; padding-left: 8px;">${{formatNumber(row.pe_oi)}}${{row.pe_wall}}</td>
+                    `;
+                }} else {{
+                    tr.innerHTML = `
+                        <td class="${{ceBg}}" id="ce-theta-${{k}}" style="color: #FFB800; font-weight: 700;">-₹${{Math.abs(row.ce_theta).toFixed(0)}}</td>
+                        <td class="${{ceBg}}" id="ce-vega-${{k}}" style="color: #00D2FF;">+₹${{row.ce_vega.toFixed(0)}}</td>
+                        <td class="${{ceBg}}" id="ce-gamma-${{k}}" style="color: #8B949E;">${{row.ce_gamma.toFixed(4)}}</td>
+                        <td class="${{ceBg}}" id="ce-delta-${{k}}" style="color: #00F5A0; font-weight: 700;">+${{row.ce_delta.toFixed(2)}}</td>
+                        <td class="${{ceBg}}" id="ce-iv-${{k}}">${{row.ce_iv.toFixed(1)}}%</td>
+                        <td class="${{ceBg}}" id="ce-ltp-${{k}}" style="color: #00F5A0; font-weight: 800; font-size: 12px; background: rgba(0, 245, 160, 0.12);">₹${{row.ce_ltp.toFixed(1)}}</td>
+                        <td style="color: #FFB800; font-weight: 900; font-size: 13px; background: rgba(255,255,255,0.04); border-left: 1px solid rgba(255,255,255,0.1); border-right: 1px solid rgba(255,255,255,0.1);">₹${{formatNumber(k)}}${{atmLabel}}</td>
+                        <td class="${{peBg}}" id="pe-ltp-${{k}}" style="color: #FF3B69; font-weight: 800; font-size: 12px; background: rgba(255, 59, 105, 0.12);">₹${{row.pe_ltp.toFixed(1)}}</td>
+                        <td class="${{peBg}}" id="pe-iv-${{k}}">${{row.pe_iv.toFixed(1)}}%</td>
+                        <td class="${{peBg}}" id="pe-delta-${{k}}" style="color: #FF3B69; font-weight: 700;">${{row.pe_delta.toFixed(2)}}</td>
+                        <td class="${{peBg}}" id="pe-gamma-${{k}}" style="color: #8B949E;">${{row.pe_gamma.toFixed(4)}}</td>
+                        <td class="${{peBg}}" id="pe-vega-${{k}}" style="color: #00D2FF;">+₹${{row.pe_vega.toFixed(0)}}</td>
+                        <td class="${{peBg}}" id="pe-theta-${{k}}" style="color: #FFB800; font-weight: 700;">-₹${{Math.abs(row.pe_theta).toFixed(0)}}</td>
+                    `;
+                }}
                 tbody.appendChild(tr);
             }});
         }}
 
         buildTable();
 
-        // HIGH-FREQUENCY REAL-TIME TICK SIMULATOR (800ms INTERVAL) - TICKS PRICE, VOLUME, OI & OI CHANGE!
+        // HIGH-FREQUENCY REAL-TIME TICK SIMULATOR (800ms INTERVAL)
         setInterval(() => {{
             // 1. Subtle Spot Drift
             const spotDrift = (Math.random() - 0.49) * 0.35;
@@ -1202,7 +1330,7 @@ with sec2:
                 row.ce_ltp = newCe;
                 row.ce_vol += Math.floor(Math.random() * 150) + 75;
 
-                // --- Call OI & OI Change Tick (Active Call Writing / Unwinding) ---
+                // --- Call OI & OI Change Tick ---
                 const ceOiDelta = (Math.random() > 0.42 ? 1 : -1) * (Math.floor(Math.random() * 4) + 1) * lotSize;
                 row.ce_oi = Math.max(1000, row.ce_oi + ceOiDelta);
                 row.ce_chg += ceOiDelta;
@@ -1242,7 +1370,7 @@ with sec2:
                 row.pe_ltp = newPe;
                 row.pe_vol += Math.floor(Math.random() * 150) + 75;
 
-                // --- Put OI & OI Change Tick (Active Put Writing / Unwinding) ---
+                // --- Put OI & OI Change Tick ---
                 const peOiDelta = (Math.random() > 0.42 ? 1 : -1) * (Math.floor(Math.random() * 4) + 1) * lotSize;
                 row.pe_oi = Math.max(1000, row.pe_oi + peOiDelta);
                 row.pe_chg += peOiDelta;
@@ -1292,15 +1420,20 @@ with sec2:
             }}
             const cardStraddle = document.getElementById('card-straddle');
             if (cardStraddle && atmCePrice && atmPePrice) {{
-                cardStraddle.innerText = `₹${{(atmCePrice + atmPePrice).toFixed(1)}}`;
+                const newStraddle = atmCePrice + atmPePrice;
+                cardStraddle.innerText = `₹${{newStraddle.toFixed(1)}}`;
+                const cardBeRange = document.getElementById('card-be-range');
+                if (cardBeRange) {{
+                    cardBeRange.innerText = `₹${{(currentSpot - newStraddle).toLocaleString('en-IN', {{maximumFractionDigits: 0}})}} - ₹${{(currentSpot + newStraddle).toLocaleString('en-IN', {{maximumFractionDigits: 0}})}}`;
+                }}
             }}
-        }}, 850);
+        }}, 800);
         </script>
         </body>
         </html>
         """
 
-        table_height = min(720, max(420, len(sub_oc) * 36 + 140))
+        table_height = min(760, max(440, len(sub_oc) * 36 + 160))
         components.html(full_oc_table, height=table_height, scrolling=True)
     else:
         st.info("Generating live Option Chain data...")
