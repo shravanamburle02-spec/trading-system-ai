@@ -898,16 +898,13 @@ with sec2:
     source_label = "🟢 LIVE FYERS BROKER FEED" if data_eng.fyers.is_connected() else "⚡ REAL-TIME TICK ENGINE (800ms)"
 
     if df_oc is not None and not df_oc.empty:
-        # -------------------------------------------------------------
-        # 1. SMART MONEY SHIFTING & EXIT DETECTION ENGINE
-        # -------------------------------------------------------------
         df_oc_sorted = df_oc.sort_values(by='strike').reset_index(drop=True)
         
-        # Identify top exit strikes (lowest / most negative change)
+        # Identify top exit strikes (most negative change)
         top_ce_exit_row = df_oc_sorted.loc[df_oc_sorted['ce_change_oi'].idxmin()]
         top_pe_exit_row = df_oc_sorted.loc[df_oc_sorted['pe_change_oi'].idxmin()]
         
-        # Identify top inflow strikes (highest / most positive change)
+        # Identify top inflow strikes (most positive change)
         top_ce_inflow_row = df_oc_sorted.loc[df_oc_sorted['ce_change_oi'].idxmax()]
         top_pe_inflow_row = df_oc_sorted.loc[df_oc_sorted['pe_change_oi'].idxmax()]
 
@@ -921,7 +918,6 @@ with sec2:
         pe_inflow_k = int(top_pe_inflow_row['strike'])
         pe_inflow_qty = int(top_pe_inflow_row['pe_change_oi'])
 
-        # Shift distances & verdicts
         ce_shift_dist = ce_inflow_k - ce_exit_k
         pe_shift_dist = pe_inflow_k - pe_exit_k
 
@@ -945,76 +941,68 @@ with sec2:
             pe_verdict = "🔒 Support Concentrated at Same Zone"
             pe_v_badge = "glow-pill-gold"
 
-        # -------------------------------------------------------------
-        # 2. TOP INSTITUTIONAL RADAR SUMMARY CARD
-        # -------------------------------------------------------------
-        st.markdown(f"""
-        <div class="cockpit-card" style="margin-bottom: 8px; border-left: 4px solid #00D2FF;">
-            <div class="card-header" style="border-bottom: 1px solid rgba(0, 210, 255, 0.2); padding-bottom: 6px;">
-                <span style="display: flex; align-items: center; gap: 8px;">
-                    <span style="font-size: 1.1rem;">🧭</span>
-                    <strong style="color: #00D2FF; font-size: 0.92rem; letter-spacing: 0.5px;">SMART MONEY OI SHIFTING & EXIT RADAR</strong>
-                </span>
-                <span class="glow-pill-cyan">REAL-TIME INSTITUTIONAL MIGRATION</span>
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px;">
-                <!-- CALL SHIFT BOX -->
-                <div style="background: rgba(255, 59, 105, 0.06); border: 1px solid rgba(255, 59, 105, 0.3); border-radius: 8px; padding: 8px 12px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 0.72rem; color: #FF3B69; font-weight: 800;">🔴 CALL WRITERS MIGRATION (RESISTANCE)</span>
-                        <span class="{ce_v_badge}" style="font-size: 0.68rem;">{ce_verdict.split('->')[-1].strip()}</span>
-                    </div>
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 6px; font-family: 'JetBrains Mono', monospace;">
-                        <div>
-                            <span style="font-size: 0.68rem; color: #8B949E;">EXIT ZONE:</span><br>
-                            <span style="font-size: 0.95rem; font-weight: 800; color: #FF3B69;">₹{ce_exit_k:,} CE</span>
-                            <span style="font-size: 0.75rem; color: #FFB800; font-weight: 700;">({ce_exit_qty:+,.0f})</span>
-                        </div>
-                        <div style="font-size: 1.2rem; color: #00D2FF; font-weight: 900;">➔</div>
-                        <div style="text-align: right;">
-                            <span style="font-size: 0.68rem; color: #8B949E;">SHIFT DESTINATION:</span><br>
-                            <span style="font-size: 0.95rem; font-weight: 800; color: #00F5A0;">₹{ce_inflow_k:,} CE</span>
-                            <span style="font-size: 0.75rem; color: #00F5A0; font-weight: 700;">({ce_inflow_qty:+,.0f})</span>
-                        </div>
-                    </div>
-                    <div style="font-size: 0.72rem; color: #C9D1D9; margin-top: 4px;">↳ {ce_verdict}</div>
-                </div>
+        # PURE UNINDENTED HTML TO PREVENT STREAMLIT MARKDOWN CODE BLOCK GLITCH
+        radar_html = f"""<div class="cockpit-card" style="margin-bottom: 8px; border-left: 4px solid #00D2FF;">
+<div class="card-header" style="border-bottom: 1px solid rgba(0, 210, 255, 0.2); padding-bottom: 6px;">
+<span style="display: flex; align-items: center; gap: 8px;">
+<span style="font-size: 1.1rem;">🧭</span>
+<strong style="color: #00D2FF; font-size: 0.92rem; letter-spacing: 0.5px;">SMART MONEY OI SHIFTING & EXIT RADAR</strong>
+</span>
+<span class="glow-pill-cyan">REAL-TIME INSTITUTIONAL MIGRATION</span>
+</div>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px;">
+<div style="background: rgba(255, 59, 105, 0.06); border: 1px solid rgba(255, 59, 105, 0.3); border-radius: 8px; padding: 8px 12px;">
+<div style="display: flex; justify-content: space-between; align-items: center;">
+<span style="font-size: 0.72rem; color: #FF3B69; font-weight: 800;">🔴 CALL WRITERS MIGRATION (RESISTANCE)</span>
+<span class="{ce_v_badge}" style="font-size: 0.68rem;">{ce_verdict.split('->')[-1].strip()}</span>
+</div>
+<div style="display: flex; align-items: center; justify-content: space-between; margin-top: 6px; font-family: 'JetBrains Mono', monospace;">
+<div>
+<span style="font-size: 0.68rem; color: #8B949E;">EXIT ZONE:</span><br>
+<span style="font-size: 0.95rem; font-weight: 800; color: #FF3B69;">₹{ce_exit_k:,} CE</span>
+<span style="font-size: 0.75rem; color: #FFB800; font-weight: 700;">({ce_exit_qty:+,.0f})</span>
+</div>
+<div style="font-size: 1.2rem; color: #00D2FF; font-weight: 900;">➔</div>
+<div style="text-align: right;">
+<span style="font-size: 0.68rem; color: #8B949E;">SHIFT DESTINATION:</span><br>
+<span style="font-size: 0.95rem; font-weight: 800; color: #00F5A0;">₹{ce_inflow_k:,} CE</span>
+<span style="font-size: 0.75rem; color: #00F5A0; font-weight: 700;">({ce_inflow_qty:+,.0f})</span>
+</div>
+</div>
+<div style="font-size: 0.72rem; color: #C9D1D9; margin-top: 4px;">↳ {ce_verdict}</div>
+</div>
+<div style="background: rgba(0, 245, 160, 0.06); border: 1px solid rgba(0, 245, 160, 0.3); border-radius: 8px; padding: 8px 12px;">
+<div style="display: flex; justify-content: space-between; align-items: center;">
+<span style="font-size: 0.72rem; color: #00F5A0; font-weight: 800;">🟢 PUT WRITERS MIGRATION (SUPPORT)</span>
+<span class="{pe_v_badge}" style="font-size: 0.68rem;">{pe_verdict.split('->')[-1].strip()}</span>
+</div>
+<div style="display: flex; align-items: center; justify-content: space-between; margin-top: 6px; font-family: 'JetBrains Mono', monospace;">
+<div>
+<span style="font-size: 0.68rem; color: #8B949E;">EXIT ZONE:</span><br>
+<span style="font-size: 0.95rem; font-weight: 800; color: #FF3B69;">₹{pe_exit_k:,} PE</span>
+<span style="font-size: 0.75rem; color: #FFB800; font-weight: 700;">({pe_exit_qty:+,.0f})</span>
+</div>
+<div style="font-size: 1.2rem; color: #00D2FF; font-weight: 900;">➔</div>
+<div style="text-align: right;">
+<span style="font-size: 0.68rem; color: #8B949E;">SHIFT DESTINATION:</span><br>
+<span style="font-size: 0.95rem; font-weight: 800; color: #00F5A0;">₹{pe_inflow_k:,} PE</span>
+<span style="font-size: 0.75rem; color: #00F5A0; font-weight: 700;">({pe_inflow_qty:+,.0f})</span>
+</div>
+</div>
+<div style="font-size: 0.72rem; color: #C9D1D9; margin-top: 4px;">↳ {pe_verdict}</div>
+</div>
+</div>
+</div>"""
+        st.markdown(radar_html, unsafe_allow_html=True)
 
-                <!-- PUT SHIFT BOX -->
-                <div style="background: rgba(0, 245, 160, 0.06); border: 1px solid rgba(0, 245, 160, 0.3); border-radius: 8px; padding: 8px 12px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 0.72rem; color: #00F5A0; font-weight: 800;">🟢 PUT WRITERS MIGRATION (SUPPORT)</span>
-                        <span class="{pe_v_badge}" style="font-size: 0.68rem;">{pe_verdict.split('->')[-1].strip()}</span>
-                    </div>
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 6px; font-family: 'JetBrains Mono', monospace;">
-                        <div>
-                            <span style="font-size: 0.68rem; color: #8B949E;">EXIT ZONE:</span><br>
-                            <span style="font-size: 0.95rem; font-weight: 800; color: #FF3B69;">₹{pe_exit_k:,} PE</span>
-                            <span style="font-size: 0.75rem; color: #FFB800; font-weight: 700;">({pe_exit_qty:+,.0f})</span>
-                        </div>
-                        <div style="font-size: 1.2rem; color: #00D2FF; font-weight: 900;">➔</div>
-                        <div style="text-align: right;">
-                            <span style="font-size: 0.68rem; color: #8B949E;">SHIFT DESTINATION:</span><br>
-                            <span style="font-size: 0.95rem; font-weight: 800; color: #00F5A0;">₹{pe_inflow_k:,} PE</span>
-                            <span style="font-size: 0.75rem; color: #00F5A0; font-weight: 700;">({pe_inflow_qty:+,.0f})</span>
-                        </div>
-                    </div>
-                    <div style="font-size: 0.72rem; color: #C9D1D9; margin-top: 4px;">↳ {pe_verdict}</div>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        # -------------------------------------------------------------
-        # 3. CONTROLS & DEPTH FILTER
-        # -------------------------------------------------------------
+        # Controls & Depth
         ctrl_col1, ctrl_col2, ctrl_col3 = st.columns([3.5, 3.5, 3.0])
         with ctrl_col1:
             oc_view_mode = st.radio(
                 "Chain Display Mode",
                 ["📊 Orderbook + Shift & Buildup Radar", "⚡ Full Greeks Matrix (Δ, Θ, Γ, V)"],
                 horizontal=True,
-                key="oc_view_mode_selector_v3"
+                key="oc_view_mode_selector_v4"
             )
         with ctrl_col2:
             strike_depth = st.selectbox(
@@ -1027,7 +1015,7 @@ with sec2:
                     "🔥 Complete Option Chain (ATM ± 30 Strikes / 61 Total)"
                 ],
                 index=1,
-                key="oc_depth_selector_v3"
+                key="oc_depth_selector_v4"
             )
         with ctrl_col3:
             st.markdown(f"""
@@ -1074,41 +1062,39 @@ with sec2:
             pe_ltp_v = float(r.get('pe_ltp', 110.0))
             
             # --- SHIFTING & EXIT BADGE LOGIC ---
-            # Call side shift tags
-            if k == ce_exit_k and ce_exit_qty < -100000:
+            if ce_chg_v <= -150000:
                 ce_shift_tag = "📤 EXIT"
                 ce_tag_class = "tag-exit"
-            elif k == ce_inflow_k and ce_inflow_qty > 200000:
+            elif ce_chg_v >= 400000:
                 ce_shift_tag = "📥 INFLOW"
                 ce_tag_class = "tag-inflow"
-            elif ce_chg_v < -100000:
+            elif ce_chg_v < -50000:
                 ce_shift_tag = "⚠️ UNWIND"
                 ce_tag_class = "tag-unwind"
-            elif ce_chg_v > 300000:
+            elif ce_chg_v > 150000:
                 ce_shift_tag = "🎯 ADDITION"
                 ce_tag_class = "tag-add"
             else:
                 ce_shift_tag = "LB" if ce_chg_v >= 0 and ce_ltp_v >= 50 else "SB" if ce_chg_v >= 0 else "SC" if ce_ltp_v >= 50 else "LU"
                 ce_tag_class = "tag-" + ce_shift_tag.lower()
 
-            # Put side shift tags
-            if k == pe_exit_k and pe_exit_qty < -100000:
+            if pe_chg_v <= -150000:
                 pe_shift_tag = "📤 EXIT"
                 pe_tag_class = "tag-exit"
-            elif k == pe_inflow_k and pe_inflow_qty > 200000:
+            elif pe_chg_v >= 400000:
                 pe_shift_tag = "📥 INFLOW"
                 pe_tag_class = "tag-inflow"
-            elif pe_chg_v < -100000:
+            elif pe_chg_v < -50000:
                 pe_shift_tag = "⚠️ UNWIND"
                 pe_tag_class = "tag-unwind"
-            elif pe_chg_v > 300000:
+            elif pe_chg_v > 150000:
                 pe_shift_tag = "🎯 ADDITION"
                 pe_tag_class = "tag-add"
             else:
                 pe_shift_tag = "LB" if pe_chg_v >= 0 and pe_ltp_v >= 50 else "SB" if pe_chg_v >= 0 else "SC" if pe_ltp_v >= 50 else "LU"
                 pe_tag_class = "tag-" + pe_shift_tag.lower()
 
-            # Greeks calculation
+            # Greeks calculation directly from df row
             ce_delta_v = float(r.get('ce_delta', 0.5))
             pe_delta_v = float(r.get('pe_delta', -0.5))
             ce_theta_v = round(float(r.get('ce_theta', -12.5)) * default_lot, 1) # In ₹/day
@@ -1154,9 +1140,7 @@ with sec2:
         js_data_json = json.dumps(js_rows_data)
         is_greeks_mode = "Greeks" in oc_view_mode
 
-        # -------------------------------------------------------------
-        # 4. ULTRA REAL-TIME TICKING HTML/JS TABLE WITH VISUAL SHIFTS
-        # -------------------------------------------------------------
+        # ULTRA REAL-TIME TICKING HTML/JS TABLE WITH ACCURATE GREEKS
         full_oc_table = f"""
         <!DOCTYPE html>
         <html>
@@ -1356,11 +1340,11 @@ with sec2:
                         <th>Shift Radar</th>
                         <th>Volume</th>
                         <th>IV</th>
-                        <th>Delta</th>
+                        <th>Delta (Δ)</th>
                         <th style="color: #00F5A0; font-weight: 800;">CALL LTP</th>
                         <th style="color: #FFB800; font-weight: 900;">STRIKE</th>
                         <th style="color: #FF3B69; font-weight: 800;">PUT LTP</th>
-                        <th>Delta</th>
+                        <th>Delta (Δ)</th>
                         <th>IV</th>
                         <th>Volume</th>
                         <th>Shift Radar</th>
@@ -1446,11 +1430,11 @@ with sec2:
                         <td class="${{ceBg}}" id="ce-tag-${{k}}">${{getTagHtml(row.ce_shift_tag, row.ce_tag_class)}}</td>
                         <td class="${{ceBg}}" id="ce-vol-${{k}}">${{formatNumber(row.ce_vol)}}</td>
                         <td class="${{ceBg}}" id="ce-iv-${{k}}">${{row.ce_iv.toFixed(1)}}%</td>
-                        <td class="${{ceBg}}" id="ce-delta-${{k}}" style="color: #00F5A0;">+${{row.ce_delta.toFixed(2)}}</td>
+                        <td class="${{ceBg}}" id="ce-delta-${{k}}" style="color: #00F5A0; font-weight: 700;">+${{row.ce_delta.toFixed(2)}}</td>
                         <td class="${{ceBg}}" id="ce-ltp-${{k}}" style="color: #00F5A0; font-weight: 800; font-size: 12px; background: rgba(0, 245, 160, 0.12);">₹${{row.ce_ltp.toFixed(1)}}</td>
                         <td style="color: #FFB800; font-weight: 900; font-size: 13px; background: rgba(255,255,255,0.04); border-left: 1px solid rgba(255,255,255,0.1); border-right: 1px solid rgba(255,255,255,0.1);">₹${{formatNumber(k)}}${{atmLabel}}</td>
                         <td class="${{peBg}}" id="pe-ltp-${{k}}" style="color: #FF3B69; font-weight: 800; font-size: 12px; background: rgba(255, 59, 105, 0.12);">₹${{row.pe_ltp.toFixed(1)}}</td>
-                        <td class="${{peBg}}" id="pe-delta-${{k}}" style="color: #FF3B69;">${{row.pe_delta.toFixed(2)}}</td>
+                        <td class="${{peBg}}" id="pe-delta-${{k}}" style="color: #FF3B69; font-weight: 700;">${{row.pe_delta.toFixed(2)}}</td>
                         <td class="${{peBg}}" id="pe-iv-${{k}}">${{row.pe_iv.toFixed(1)}}%</td>
                         <td class="${{peBg}}" id="pe-vol-${{k}}">${{formatNumber(row.pe_vol)}}</td>
                         <td class="${{peBg}}" id="pe-tag-${{k}}">${{getTagHtml(row.pe_shift_tag, row.pe_tag_class)}}</td>
@@ -1482,7 +1466,6 @@ with sec2:
 
         // HIGH-FREQUENCY REAL-TIME TICK SIMULATOR (800ms INTERVAL)
         setInterval(() => {{
-            // 1. Subtle Spot Drift
             const spotDrift = (Math.random() - 0.49) * 0.35;
             currentSpot = +(currentSpot + spotDrift).toFixed(2);
             const spotEl = document.getElementById('header-spot');
@@ -1490,7 +1473,6 @@ with sec2:
                 spotEl.innerText = `₹${{currentSpot.toLocaleString('en-IN', {{minimumFractionDigits: 2}})}}`;
             }}
 
-            // 2. Select 2-4 active near strikes to tick
             const numUpdates = Math.floor(Math.random() * 3) + 2;
             let atmCePrice = null;
             let atmPePrice = null;
@@ -1500,14 +1482,12 @@ with sec2:
                 const row = initialData[randIdx];
                 const k = row.strike;
 
-                // --- Call LTP & Volume Tick ---
                 const ceTick = (Math.random() - 0.48) * 0.40;
                 const oldCe = row.ce_ltp;
                 const newCe = Math.max(0.05, +(oldCe + ceTick).toFixed(2));
                 row.ce_ltp = newCe;
                 row.ce_vol += Math.floor(Math.random() * 150) + 75;
 
-                // --- Call OI & OI Change Tick ---
                 const ceOiDelta = (Math.random() > 0.42 ? 1 : -1) * (Math.floor(Math.random() * 4) + 1) * lotSize;
                 row.ce_oi = Math.max(1000, row.ce_oi + ceOiDelta);
                 row.ce_chg += ceOiDelta;
@@ -1540,14 +1520,12 @@ with sec2:
                     setTimeout(() => {{ ceChgCell.classList.remove('flash-up', 'flash-down'); }}, 450);
                 }}
 
-                // --- Put LTP & Volume Tick ---
                 const peTick = (Math.random() - 0.48) * 0.40;
                 const oldPe = row.pe_ltp;
                 const newPe = Math.max(0.05, +(oldPe + peTick).toFixed(2));
                 row.pe_ltp = newPe;
                 row.pe_vol += Math.floor(Math.random() * 150) + 75;
 
-                // --- Put OI & OI Change Tick ---
                 const peOiDelta = (Math.random() > 0.42 ? 1 : -1) * (Math.floor(Math.random() * 4) + 1) * lotSize;
                 row.pe_oi = Math.max(1000, row.pe_oi + peOiDelta);
                 row.pe_chg += peOiDelta;
@@ -1586,7 +1564,6 @@ with sec2:
                 }}
             }}
 
-            // 3. Update Header Card Values if ATM ticked
             if (atmCePrice !== null) {{
                 const cardCe = document.getElementById('card-ce-ltp');
                 if (cardCe) cardCe.innerText = `₹${{atmCePrice.toFixed(1)}}`;
