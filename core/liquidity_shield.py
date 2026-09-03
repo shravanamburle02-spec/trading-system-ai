@@ -64,7 +64,7 @@ class LiquidityShield:
         diff = expiry_dt - naive_current
         total_seconds = max(0, int(diff.total_seconds()))
 
-        days_left = total_seconds // 86400
+        days_left = (next_expiry_date - today_date).days
         hours_left = (total_seconds % 86400) // 3600
         mins_left = (total_seconds % 3600) // 60
 
@@ -74,7 +74,7 @@ class LiquidityShield:
             countdown_str = f"TODAY ({hours_left}h {mins_left}m remaining)"
             dte_badge = "🔥 EXPIRY DAY (0 DTE)"
         elif days_left == 1:
-            countdown_str = f"1 Day ({hours_left}h {mins_left}m remaining)"
+            countdown_str = f"1 Day ({hours_left}h remaining)"
             dte_badge = "⚡ 1 DTE (TOMORROW)"
         else:
             countdown_str = f"{days_left} Days ({hours_left}h remaining)"
