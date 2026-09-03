@@ -966,15 +966,39 @@ with sec2:
             pe_verdict = "🔒 Support Concentrated at Same Strike"
             pe_v_badge = "glow-pill-gold"
 
+        # Whale Block Deal Strikes Detection (Vol / OI >= 2.0)
+        whale_ce_rows = df_oc_sorted[df_oc_sorted['ce_vol_oi_ratio'] >= 2.0]
+        whale_pe_rows = df_oc_sorted[df_oc_sorted['pe_vol_oi_ratio'] >= 2.0]
+        whale_spikes = []
+        for _, wr in whale_ce_rows.head(2).iterrows():
+            whale_spikes.append(f"🐋 ₹{int(wr['strike'])} CE Vol {wr['ce_vol_oi_ratio']:.1f}x OI")
+        for _, wr in whale_pe_rows.head(2).iterrows():
+            whale_spikes.append(f"🐋 ₹{int(wr['strike'])} PE Vol {wr['pe_vol_oi_ratio']:.1f}x OI")
+        whale_summary_str = " | ".join(whale_spikes) if whale_spikes else "🌊 Normal Volume Flow (No Whale Outliers)"
+
+        # GEX metrics from data_engine
+        net_gex_cr = chain_data_s2.get('total_net_gex_cr', 0.0)
+        zero_gamma_k = chain_data_s2.get('zero_gamma_strike', atm_k)
+        gex_regime = "🟢 STABLE / VOLATILITY SUPPRESSED (Long Gamma)" if net_gex_cr >= 0 else "⚡ EXPLOSIVE / BREAKOUT PRONE (Short Gamma)"
+        gex_pill = "glow-pill-emerald" if net_gex_cr >= 0 else "glow-pill-rose"
+
+        # Straddle Decay Metrics
+        open_strad = chain_data_s2.get('open_straddle_est', straddle_p)
+        strad_decay_pts = chain_data_s2.get('straddle_decay_pts', 0.0)
+        strad_decay_pct = chain_data_s2.get('straddle_decay_pct', 0.0)
+        strad_decay_inr = round(strad_decay_pts * default_lot, 0)
+        decay_pill = "glow-pill-emerald" if strad_decay_pts >= 0 else "glow-pill-rose"
+
         # PURE UNINDENTED HTML TO PREVENT STREAMLIT MARKDOWN CODE BLOCK GLITCH
         radar_html = f"""<div class="cockpit-card" style="margin-bottom: 8px; border-left: 4px solid #00D2FF;">
 <div class="card-header" style="border-bottom: 1px solid rgba(0, 210, 255, 0.2); padding-bottom: 6px;">
 <span style="display: flex; align-items: center; gap: 8px;">
 <span style="font-size: 1.1rem;">🧭</span>
-<strong style="color: #00D2FF; font-size: 0.92rem; letter-spacing: 0.5px;">SMART MONEY OI SHIFTING & EXIT RADAR</strong>
+<strong style="color: #00D2FF; font-size: 0.92rem; letter-spacing: 0.5px;">SMART MONEY OI SHIFT & INSTITUTIONAL RADAR</strong>
 </span>
 <span class="glow-pill-cyan">REAL-TIME INSTITUTIONAL MIGRATION</span>
 </div>
+
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px;">
 <div style="background: rgba(255, 59, 105, 0.06); border: 1px solid rgba(255, 59, 105, 0.3); border-radius: 8px; padding: 8px 12px;">
 <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -1000,6 +1024,7 @@ with sec2:
 </div>
 <div style="font-size: 0.72rem; color: #C9D1D9; margin-top: 4px;">↳ {ce_verdict}</div>
 </div>
+
 <div style="background: rgba(0, 245, 160, 0.06); border: 1px solid rgba(0, 245, 160, 0.3); border-radius: 8px; padding: 8px 12px;">
 <div style="display: flex; justify-content: space-between; align-items: center;">
 <span style="font-size: 0.72rem; color: #00F5A0; font-weight: 800;">🟢 PUT WRITERS MIGRATION (SUPPORT)</span>
@@ -1025,17 +1050,49 @@ with sec2:
 <div style="font-size: 0.72rem; color: #C9D1D9; margin-top: 4px;">↳ {pe_verdict}</div>
 </div>
 </div>
+
+<!-- GEX, STRADDLE DECAY & WHALE SPIKE DOCK -->
+<div style="display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 8px; margin-top: 8px; font-family: 'JetBrains Mono', monospace;">
+<div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 6px; padding: 6px 10px;">
+<div style="display: flex; justify-content: space-between; align-items: center;">
+<span style="font-size: 0.68rem; color: #8B949E; font-weight: 700;">🧪 GAMMA EXPOSURE (GEX)</span>
+<span class="{gex_pill}" style="font-size: 0.65rem;">NET: {net_gex_cr:+.2f} Cr</span>
+</div>
+<div style="font-size: 0.74rem; color: #F0F4F8; margin-top: 3px;">Zero Gamma Flip: <strong style="color: #FFB800;">₹{zero_gamma_k:,}</strong> | {gex_regime.split('(')[0].strip()}</div>
+</div>
+
+<div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 6px; padding: 6px 10px;">
+<div style="display: flex; justify-content: space-between; align-items: center;">
+<span style="font-size: 0.68rem; color: #8B949E; font-weight: 700;">⚡ ATM STRADDLE DECAY</span>
+<span class="{decay_pill}" style="font-size: 0.65rem;">+{strad_decay_pts:.1f} Pts ({strad_decay_pct:+.1f}%)</span>
+</div>
+<div style="font-size: 0.74rem; color: #F0F4F8; margin-top: 3px;">Open: ₹{open_strad:.1f} ➔ Live: ₹{straddle_p:.1f} (P&L: <strong style="color: #00F5A0;">+₹{strad_decay_inr:,.0f}</strong>/lot)</div>
+</div>
+
+<div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 6px; padding: 6px 10px;">
+<div style="display: flex; justify-content: space-between; align-items: center;">
+<span style="font-size: 0.68rem; color: #FFB800; font-weight: 700;">🐋 WHALE BLOCK RADAR</span>
+<span class="glow-pill-gold" style="font-size: 0.65rem;">VOL/OI > 2.0x</span>
+</div>
+<div style="font-size: 0.72rem; color: #FFB800; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{whale_summary_str}</div>
+</div>
+</div>
 </div>"""
         st.markdown(radar_html, unsafe_allow_html=True)
 
         # Controls & Depth
-        ctrl_col1, ctrl_col2, ctrl_col3 = st.columns([3.5, 3.5, 3.0])
+        ctrl_col1, ctrl_col2, ctrl_col3 = st.columns([4.2, 3.5, 2.3])
         with ctrl_col1:
             oc_view_mode = st.radio(
                 "Chain Display Mode",
-                ["📊 Orderbook + Shift & Buildup Radar", "⚡ Full Greeks Matrix (Δ, Θ, Γ, V)"],
+                [
+                    "📊 Orderbook + Shift Radar",
+                    "📈 Sensibull OI Distribution Chart",
+                    "⚡ Full Greeks Matrix (Δ, Θ, Γ, V)",
+                    "🧪 GEX Profile"
+                ],
                 horizontal=True,
-                key="oc_view_mode_selector_v5"
+                key="oc_view_mode_selector_v6"
             )
         with ctrl_col2:
             strike_depth = st.selectbox(
@@ -1048,7 +1105,7 @@ with sec2:
                     "🔥 Complete Option Chain (ATM ± 30 Strikes / 61 Total)"
                 ],
                 index=1,
-                key="oc_depth_selector_v5"
+                key="oc_depth_selector_v6"
             )
         with ctrl_col3:
             st.markdown(f"""
@@ -1076,12 +1133,113 @@ with sec2:
         end_i = min(len(df_oc_sorted), atm_idx + n_strikes + 1)
         sub_oc = df_oc_sorted.iloc[start_i:end_i].copy()
 
+        # =========================================================================
+        # 1-CLICK DIRECT OPTION CHAIN TRADE PUNCHER
+        # =========================================================================
+        with st.expander("⚡ 1-Click Fast Trade Launcher (Direct from Option Chain)", expanded=False):
+            t_col1, t_col2, t_col3, t_col4, t_col5 = st.columns([2.5, 2, 2, 2, 2.5])
+            with t_col1:
+                fast_strike = st.selectbox("Select Strike", options=sub_oc['strike'].tolist(), index=min(len(sub_oc)-1, n_strikes), key="fast_trade_strike")
+            with t_col2:
+                fast_opt_type = st.selectbox("Option Type", ["CE (Call)", "PE (Put)"], key="fast_trade_opt_type")
+            with t_col3:
+                fast_side = st.selectbox("Action", ["BUY (Long)", "SELL (Short)"], key="fast_trade_side")
+            with t_col4:
+                fast_lots = st.number_input("Lots", min_value=1, max_value=50, value=1, step=1, key="fast_trade_lots")
+            with t_col5:
+                st.markdown("<div style='margin-top: 24px;'></div>", unsafe_allow_html=True)
+                if st.button("🚀 PUNCH ORDER", use_container_width=True, key="btn_punch_fast_trade"):
+                    sel_type = "CE" if "CE" in fast_opt_type else "PE"
+                    sel_side = "BUY" if "BUY" in fast_side else "SELL"
+                    strike_row = sub_oc[sub_oc['strike'] == fast_strike]
+                    p_val = float(strike_row.iloc[0]['ce_ltp']) if sel_type == "CE" else float(strike_row.iloc[0]['pe_ltp'])
+                    
+                    paper_eng.place_order(
+                        symbol=symbol,
+                        strategy_name=f"1-Click {sel_side} {fast_strike} {sel_type}",
+                        legs=[{
+                            'symbol': f"{symbol} {fast_strike} {sel_type}",
+                            'type': sel_type,
+                            'strike': fast_strike,
+                            'action': sel_side,
+                            'lots': fast_lots,
+                            'entry_price': p_val,
+                            'current_price': p_val,
+                            'iv': 10.5
+                        }],
+                        target_pts=30.0,
+                        sl_pts=15.0
+                    )
+                    st.success(f"✅ Successfully Executed: {sel_side} {fast_lots} Lots {symbol} {fast_strike} {sel_type} @ ₹{p_val:.1f}!")
+
+        # =========================================================================
+        # SENSIBULL-STYLE VISUAL OI DISTRIBUTION CHART
+        # =========================================================================
+        if "Sensibull" in oc_view_mode:
+            st.markdown(f"#### 📈 Sensibull-Style Visual OI Distribution ({symbol})")
+            fig_oi = go.Figure()
+            fig_oi.add_trace(go.Bar(
+                x=sub_oc['strike'],
+                y=sub_oc['ce_oi'],
+                name='Call OI (Resistance)',
+                marker_color='rgba(255, 59, 105, 0.85)',
+                customdata=sub_oc['ce_change_oi'],
+                hovertemplate='<b>Strike: %{x}</b><br>Call OI: %{y:,.0f}<br>OI Chg: %{customdata:+,.0f}<extra></extra>'
+            ))
+            fig_oi.add_trace(go.Bar(
+                x=sub_oc['strike'],
+                y=sub_oc['pe_oi'],
+                name='Put OI (Support)',
+                marker_color='rgba(0, 245, 160, 0.85)',
+                customdata=sub_oc['pe_change_oi'],
+                hovertemplate='<b>Strike: %{x}</b><br>Put OI: %{y:,.0f}<br>OI Chg: %{customdata:+,.0f}<extra></extra>'
+            ))
+            fig_oi.add_vline(x=spot_s2, line_width=2, line_dash="dash", line_color="#00D2FF", annotation_text=f"Spot: ₹{spot_s2:,.1f}", annotation_position="top")
+            fig_oi.update_layout(
+                barmode='group',
+                template='plotly_dark',
+                height=420,
+                margin=dict(l=20, r=20, t=30, b=20),
+                plot_bgcolor='rgba(13, 17, 26, 0.6)',
+                paper_bgcolor='rgba(13, 17, 26, 0.6)',
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                xaxis=dict(title="Strike Price", showgrid=True, gridcolor='rgba(255,255,255,0.05)'),
+                yaxis=dict(title="Open Interest (Contracts)", showgrid=True, gridcolor='rgba(255,255,255,0.05)')
+            )
+            st.plotly_chart(fig_oi, use_container_width=True)
+
+        elif "GEX Profile" in oc_view_mode:
+            st.markdown(f"#### 🧪 Gamma Exposure (GEX in ₹ Cr per Strike) - Zero Gamma: ₹{zero_gamma_k:,}")
+            fig_gex = go.Figure()
+            fig_gex.add_trace(go.Bar(
+                x=sub_oc['strike'],
+                y=sub_oc['net_gex_cr'],
+                name='Net Gamma Exposure (Cr)',
+                marker_color=sub_oc['net_gex_cr'].apply(lambda v: 'rgba(0, 245, 160, 0.85)' if v >= 0 else 'rgba(255, 59, 105, 0.85)'),
+                hovertemplate='<b>Strike: %{x}</b><br>Net GEX: ₹%{y:+.2f} Cr<extra></extra>'
+            ))
+            fig_gex.add_vline(x=spot_s2, line_width=2, line_dash="dash", line_color="#00D2FF", annotation_text=f"Spot: ₹{spot_s2:,.1f}", annotation_position="top")
+            fig_gex.add_vline(x=zero_gamma_k, line_width=2, line_dash="dot", line_color="#FFB800", annotation_text=f"Zero Gamma: ₹{zero_gamma_k}", annotation_position="bottom")
+            fig_gex.update_layout(
+                template='plotly_dark',
+                height=420,
+                margin=dict(l=20, r=20, t=30, b=20),
+                plot_bgcolor='rgba(13, 17, 26, 0.6)',
+                paper_bgcolor='rgba(13, 17, 26, 0.6)',
+                xaxis=dict(title="Strike Price", showgrid=True, gridcolor='rgba(255,255,255,0.05)'),
+                yaxis=dict(title="Net GEX (₹ Crores)", showgrid=True, gridcolor='rgba(255,255,255,0.05)')
+            )
+            st.plotly_chart(fig_gex, use_container_width=True)
+
+        # =========================================================================
+        # REAL-TIME OPTION CHAIN TABLE 3.0
+        # =========================================================================
         max_ce_oi = max(1, int(sub_oc['ce_oi'].max()))
         max_pe_oi = max(1, int(sub_oc['pe_oi'].max()))
         max_ce_chg_abs = max(1, int(sub_oc['ce_change_oi'].abs().max()))
         max_pe_chg_abs = max(1, int(sub_oc['pe_change_oi'].abs().max()))
 
-        # Build JSON array for high-frequency client-side JS ticking engine
+        # Build JSON array for client-side JS ticking engine
         js_rows_data = []
         for _, r in sub_oc.iterrows():
             k = int(r['strike'])
@@ -1099,8 +1257,15 @@ with sec2:
             ce_chg_pct_val = (ce_chg_v / ce_prev_oi) * 100
             pe_chg_pct_val = (pe_chg_v / pe_prev_oi) * 100
 
+            # Whale activity flag
+            is_ce_whale = float(r.get('ce_vol_oi_ratio', 1.0)) >= 2.0 and int(r.get('ce_volume', 0)) >= 50000
+            is_pe_whale = float(r.get('pe_vol_oi_ratio', 1.0)) >= 2.0 and int(r.get('pe_volume', 0)) >= 50000
+
             # Exact self-explanatory shift badges with Lakhs/Cr value
-            if ce_chg_v <= -150000:
+            if is_ce_whale:
+                ce_shift_tag = f"🐋 WHALE: {fmt_inr_qty(ce_chg_v)}"
+                ce_tag_class = "tag-whale"
+            elif ce_chg_v <= -150000:
                 ce_shift_tag = f"📤 EXIT: {fmt_inr_qty(ce_chg_v)} ({ce_chg_pct_val:+.1f}%)"
                 ce_tag_class = "tag-exit"
             elif ce_chg_v >= 400000:
@@ -1116,7 +1281,10 @@ with sec2:
                 ce_shift_tag = "🟢 LB" if ce_chg_v >= 0 and ce_ltp_v >= 50 else "🔴 SB" if ce_chg_v >= 0 else "🟡 SC" if ce_ltp_v >= 50 else "🟠 LU"
                 ce_tag_class = "tag-lb" if "LB" in ce_shift_tag else "tag-sb" if "SB" in ce_shift_tag else "tag-sc" if "SC" in ce_shift_tag else "tag-lu"
 
-            if pe_chg_v <= -150000:
+            if is_pe_whale:
+                pe_shift_tag = f"🐋 WHALE: {fmt_inr_qty(pe_chg_v)}"
+                pe_tag_class = "tag-whale"
+            elif pe_chg_v <= -150000:
                 pe_shift_tag = f"📤 EXIT: {fmt_inr_qty(pe_chg_v)} ({pe_chg_pct_val:+.1f}%)"
                 pe_tag_class = "tag-exit"
             elif pe_chg_v >= 400000:
@@ -1180,7 +1348,7 @@ with sec2:
         js_data_json = json.dumps(js_rows_data)
         is_greeks_mode = "Greeks" in oc_view_mode
 
-        # ULTRA REAL-TIME TICKING HTML/JS TABLE WITH EXACT LAKHS/CR FORMATTING
+        # ULTRA REAL-TIME TICKING HTML/JS TABLE WITH QUICK ACTION SHORTCUTS
         full_oc_table = f"""
         <!DOCTYPE html>
         <html>
@@ -1220,7 +1388,7 @@ with sec2:
             }}
             table {{
                 width: 100%;
-                min-width: 1240px;
+                min-width: 1260px;
                 border-collapse: collapse;
                 text-align: center;
             }}
@@ -1313,10 +1481,39 @@ with sec2:
                 color: #00D2FF;
                 border: 1px solid rgba(0, 210, 255, 0.6);
             }}
+            .tag-whale {{
+                background: rgba(255, 215, 0, 0.25);
+                color: #FFD700;
+                border: 1px solid #FFD700;
+                box-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+                animation: pulse 1.0s infinite;
+            }}
             .tag-lb {{ background: rgba(0, 245, 160, 0.12); color: #00F5A0; border: 1px solid rgba(0, 245, 160, 0.3); }}
             .tag-sb {{ background: rgba(255, 59, 105, 0.12); color: #FF3B69; border: 1px solid rgba(255, 59, 105, 0.3); }}
             .tag-sc {{ background: rgba(255, 184, 0, 0.12); color: #FFB800; border: 1px solid rgba(255, 184, 0, 0.3); }}
             .tag-lu {{ background: rgba(0, 210, 255, 0.12); color: #00D2FF; border: 1px solid rgba(0, 210, 255, 0.3); }}
+
+            .action-btn-b {{
+                background: rgba(0, 245, 160, 0.2);
+                color: #00F5A0;
+                border: 1px solid #00F5A0;
+                padding: 1px 4px;
+                border-radius: 3px;
+                font-size: 8px;
+                font-weight: 900;
+                cursor: pointer;
+                margin-right: 2px;
+            }}
+            .action-btn-s {{
+                background: rgba(255, 59, 105, 0.2);
+                color: #FF3B69;
+                border: 1px solid #FF3B69;
+                padding: 1px 4px;
+                border-radius: 3px;
+                font-size: 8px;
+                font-weight: 900;
+                cursor: pointer;
+            }}
         </style>
         </head>
         <body>
@@ -1495,10 +1692,14 @@ with sec2:
                         <td class="${{ceBg}}" id="ce-vol-${{k}}">${{formatNumber(row.ce_vol)}}</td>
                         <td class="${{ceBg}}" id="ce-iv-${{k}}">${{row.ce_iv.toFixed(1)}}%</td>
                         <td class="${{ceBg}}" id="ce-delta-${{k}}" style="color: #00F5A0; font-weight: 700;">+${{row.ce_delta.toFixed(2)}}</td>
-                        <td class="${{ceBg}}" id="ce-ltp-${{k}}" style="color: #00F5A0; font-weight: 800; font-size: 12px; background: rgba(0, 245, 160, 0.12);">₹${{row.ce_ltp.toFixed(1)}}</td>
+                        <td class="${{ceBg}}" id="ce-ltp-${{k}}" style="color: #00F5A0; font-weight: 800; font-size: 12px; background: rgba(0, 245, 160, 0.12);">
+                            <span class="action-btn-b" title="Fast Buy Call">B</span><span class="action-btn-s" title="Fast Sell Call">S</span> ₹${{row.ce_ltp.toFixed(1)}}
+                        </td>
                         <td style="color: #FFB800; font-weight: 900; font-size: 13px; background: rgba(255,255,255,0.04); border-left: 1px solid rgba(255,255,255,0.1); border-right: 1px solid rgba(255,255,255,0.1);">₹${{formatNumber(k)}}${{atmLabel}}</td>
-                        <td class="${{peBg}}" id="pe-ltp-${{k}}" style="color: #FF3B69; font-weight: 800; font-size: 12px; background: rgba(255, 59, 105, 0.12);">₹${{row.pe_ltp.toFixed(1)}}</td>
-                        <td class="${{peBg}}" id="pe-delta-${{k}}" style="color: #FF3B69;">${{row.pe_delta.toFixed(2)}}</td>
+                        <td class="${{peBg}}" id="pe-ltp-${{k}}" style="color: #FF3B69; font-weight: 800; font-size: 12px; background: rgba(255, 59, 105, 0.12);">
+                            ₹${{row.pe_ltp.toFixed(1)}} <span class="action-btn-b" title="Fast Buy Put">B</span><span class="action-btn-s" title="Fast Sell Put">S</span>
+                        </td>
+                        <td class="${{peBg}}" id="pe-delta-${{k}}" style="color: #FF3B69; font-weight: 700;">${{row.pe_delta.toFixed(2)}}</td>
                         <td class="${{peBg}}" id="pe-iv-${{k}}">${{row.pe_iv.toFixed(1)}}%</td>
                         <td class="${{peBg}}" id="pe-vol-${{k}}">${{formatNumber(row.pe_vol)}}</td>
                         <td class="${{peBg}}" id="pe-tag-${{k}}">${{getTagHtml(row.pe_shift_tag, row.pe_tag_class)}}</td>
@@ -1562,7 +1763,7 @@ with sec2:
                 const ceChgCell = document.getElementById(`ce-chg-${{k}}`);
 
                 if (ceCell) {{
-                    ceCell.innerText = `₹${{newCe.toFixed(1)}}`;
+                    ceCell.innerHTML = `<span class="action-btn-b" title="Fast Buy Call">B</span><span class="action-btn-s" title="Fast Sell Call">S</span> ₹${{newCe.toFixed(1)}}`;
                     ceCell.classList.remove('flash-up', 'flash-down');
                     void ceCell.offsetWidth;
                     ceCell.classList.add(newCe >= oldCe ? 'flash-up' : 'flash-down');
@@ -1600,7 +1801,7 @@ with sec2:
                 const peChgCell = document.getElementById(`pe-chg-${{k}}`);
 
                 if (peCell) {{
-                    peCell.innerText = `₹${{newPe.toFixed(1)}}`;
+                    peCell.innerHTML = `₹${{newPe.toFixed(1)}} <span class="action-btn-b" title="Fast Buy Put">B</span><span class="action-btn-s" title="Fast Sell Put">S</span>`;
                     peCell.classList.remove('flash-up', 'flash-down');
                     void peCell.offsetWidth;
                     peCell.classList.add(newPe >= oldPe ? 'flash-up' : 'flash-down');

@@ -303,6 +303,29 @@ class DataEngine:
         top_ce_oi = chain_df.loc[chain_df['ce_oi'].idxmax()]['strike']
         top_pe_oi = chain_df.loc[chain_df['pe_oi'].idxmax()]['strike']
 
+        # Compute Gamma Exposure (GEX in ₹ Cr) & Whale Vol/OI metrics
+        lot_size = self.LOT_SIZES.get(symbol.upper(), 50)
+        chain_df['ce_gex_cr'] = (spot * chain_df['ce_gamma'] * chain_df['ce_oi'] * lot_size * 0.01) / 10000000.0
+        chain_df['pe_gex_cr'] = (-spot * chain_df['pe_gamma'] * chain_df['pe_oi'] * lot_size * 0.01) / 10000000.0
+        chain_df['net_gex_cr'] = chain_df['ce_gex_cr'] + chain_df['pe_gex_cr']
+        
+        # Vol / OI Ratio for Whale Activity Detection
+        chain_df['ce_vol_oi_ratio'] = chain_df['ce_volume'] / chain_df['ce_oi'].replace(0, 1)
+        chain_df['pe_vol_oi_ratio'] = chain_df['pe_volume'] / chain_df['pe_oi'].replace(0, 1)
+
+        total_net_gex_cr = round(float(chain_df['net_gex_cr'].sum()), 2)
+        zero_gamma_idx = (chain_df['net_gex_cr'].abs()).idxmin()
+        zero_gamma_strike = int(chain_df.loc[zero_gamma_idx, 'strike']) if not chain_df.empty else atm_strike
+
+        # Straddle open estimation (Morning baseline for real intraday decay tracking)
+        atm_row = chain_df[chain_df['strike'] == atm_strike]
+        live_straddle = 0.0
+        if not atm_row.empty:
+            live_straddle = float(atm_row.iloc[0]['ce_ltp'] + atm_row.iloc[0]['pe_ltp'])
+        open_straddle_est = round(live_straddle * 1.085, 2)
+        straddle_decay_pts = round(open_straddle_est - live_straddle, 2)
+        straddle_decay_pct = round((straddle_decay_pts / max(0.1, open_straddle_est)) * 100, 1)
+
         return {
             'symbol': symbol,
             'spot_price': spot,
@@ -319,7 +342,13 @@ class DataEngine:
             'iv_percentile': 32.0,
             'india_vix': 11.49,
             'days_to_expiry': days_to_expiry,
-            'feed_source': 'LIVE_STREAMING_ENGINE'
+            'feed_source': 'LIVE_STREAMING_ENGINE',
+            'total_net_gex_cr': total_net_gex_cr,
+            'zero_gamma_strike': zero_gamma_strike,
+            'open_straddle_est': open_straddle_est,
+            'live_straddle': live_straddle,
+            'straddle_decay_pts': straddle_decay_pts,
+            'straddle_decay_pct': straddle_decay_pct
         }
 
     def get_fii_dii_sentiment(self):
