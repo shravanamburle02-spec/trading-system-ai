@@ -966,6 +966,14 @@ with sec2:
             pe_verdict = "🔒 Support Concentrated at Same Strike"
             pe_v_badge = "glow-pill-gold"
 
+                # Ensure all columns exist safely on df_oc_sorted
+        if 'ce_vol_oi_ratio' not in df_oc_sorted.columns:
+            df_oc_sorted['ce_vol_oi_ratio'] = df_oc_sorted['ce_volume'] / df_oc_sorted['ce_oi'].replace(0, 1)
+        if 'pe_vol_oi_ratio' not in df_oc_sorted.columns:
+            df_oc_sorted['pe_vol_oi_ratio'] = df_oc_sorted['pe_volume'] / df_oc_sorted['pe_oi'].replace(0, 1)
+        if 'net_gex_cr' not in df_oc_sorted.columns:
+            df_oc_sorted['net_gex_cr'] = 0.0
+
         # Whale Block Deal Strikes Detection (Vol / OI >= 2.0)
         whale_ce_rows = df_oc_sorted[df_oc_sorted['ce_vol_oi_ratio'] >= 2.0]
         whale_pe_rows = df_oc_sorted[df_oc_sorted['pe_vol_oi_ratio'] >= 2.0]

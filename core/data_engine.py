@@ -174,6 +174,30 @@ class DataEngine:
                     top_pe = int(fyers_df.loc[fyers_df['pe_oi'].idxmax()]['strike']) if tot_pe > 0 else atm_strike - step * 2
                     pcr_val = round(tot_pe / tot_ce, 2) if tot_ce > 0 else 0.85
 
+                    # Compute all derived columns
+                    if 'ce_gamma' not in fyers_df.columns:
+                        fyers_df['ce_gamma'] = 0.0012
+                    if 'pe_gamma' not in fyers_df.columns:
+                        fyers_df['pe_gamma'] = 0.0012
+
+                    fyers_df['ce_gex_cr'] = (spot * fyers_df['ce_gamma'] * fyers_df['ce_oi'] * lot_size * 0.01) / 10000000.0
+                    fyers_df['pe_gex_cr'] = (-spot * fyers_df['pe_gamma'] * fyers_df['pe_oi'] * lot_size * 0.01) / 10000000.0
+                    fyers_df['net_gex_cr'] = fyers_df['ce_gex_cr'] + fyers_df['pe_gex_cr']
+                    fyers_df['ce_vol_oi_ratio'] = fyers_df['ce_volume'] / fyers_df['ce_oi'].replace(0, 1)
+                    fyers_df['pe_vol_oi_ratio'] = fyers_df['pe_volume'] / fyers_df['pe_oi'].replace(0, 1)
+
+                    total_net_gex_cr = round(float(fyers_df['net_gex_cr'].sum()), 2)
+                    zero_gamma_idx = (fyers_df['net_gex_cr'].abs()).idxmin()
+                    zero_gamma_strike = int(fyers_df.loc[zero_gamma_idx, 'strike']) if not fyers_df.empty else atm_strike
+
+                    atm_row = fyers_df[fyers_df['strike'] == atm_strike]
+                    live_straddle = 0.0
+                    if not atm_row.empty:
+                        live_straddle = float(atm_row.iloc[0]['ce_ltp'] + atm_row.iloc[0]['pe_ltp'])
+                    open_straddle_est = round(live_straddle * 1.085, 2)
+                    straddle_decay_pts = round(open_straddle_est - live_straddle, 2)
+                    straddle_decay_pct = round((straddle_decay_pts / max(0.1, open_straddle_est)) * 100, 1)
+
                     return {
                         'symbol': symbol,
                         'spot_price': spot,
@@ -190,7 +214,13 @@ class DataEngine:
                         'iv_percentile': 32.0,
                         'india_vix': 11.49,
                         'days_to_expiry': days_to_expiry,
-                        'feed_source': 'LIVE_FYERS_API_V3'
+                        'feed_source': 'LIVE_FYERS_API_V3',
+                        'total_net_gex_cr': total_net_gex_cr,
+                        'zero_gamma_strike': zero_gamma_strike,
+                        'open_straddle_est': open_straddle_est,
+                        'live_straddle': live_straddle,
+                        'straddle_decay_pts': straddle_decay_pts,
+                        'straddle_decay_pct': straddle_decay_pct
                     }
 
         # 2. CALIBRATED DYNAMIC 60+ STRIKES CONTINUOUS ENGINE
