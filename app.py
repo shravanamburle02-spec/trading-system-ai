@@ -2114,10 +2114,10 @@ with sec_vel:
             if ce_rpm <= -15000:
                 verdict = "🚀 MAJOR SQUEEZE (Call Writers Fleeing)"
                 v_color = "#00F5A0"
-            elif pe_inflow_rpm >= 25000 and pe_rpm > 0:
+            elif pe_rpm >= 25000:
                 verdict = "🛡️ ROCK-SOLID FLOOR (Heavy PE Inflow)"
                 v_color = "#00F5A0"
-            elif ce_inflow_rpm >= 25000 and ce_rpm > 0:
+            elif ce_rpm >= 25000:
                 verdict = "🛑 RESISTANCE WALL (Heavy CE Inflow)"
                 v_color = "#FF3B69"
             elif pe_rpm <= -15000:
