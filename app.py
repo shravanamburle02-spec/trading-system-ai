@@ -907,6 +907,18 @@ with sec2:
     if df_oc is not None and not df_oc.empty:
         df_oc_sorted = df_oc.sort_values(by='strike').reset_index(drop=True)
         
+        # Helper for Lakhs / Cr format in Python
+        def fmt_inr_qty(val):
+            abs_v = abs(val)
+            sign = "+" if val >= 0 else "-"
+            if abs_v >= 10000000:
+                return f"{sign}{abs_v/10000000:.2f}Cr"
+            elif abs_v >= 100000:
+                return f"{sign}{abs_v/100000:.2f}L"
+            elif abs_v >= 1000:
+                return f"{sign}{abs_v/1000:.1f}K"
+            return f"{sign}{abs_v:,}"
+
         # Identify top exit strikes (most negative change)
         top_ce_exit_row = df_oc_sorted.loc[df_oc_sorted['ce_change_oi'].idxmin()]
         top_pe_exit_row = df_oc_sorted.loc[df_oc_sorted['pe_change_oi'].idxmin()]
@@ -928,14 +940,20 @@ with sec2:
         ce_shift_dist = ce_inflow_k - ce_exit_k
         pe_shift_dist = pe_inflow_k - pe_exit_k
 
+        # Aggregate total market exits and inflows
+        tot_ce_exit = int(df_oc_sorted[df_oc_sorted['ce_change_oi'] < 0]['ce_change_oi'].sum())
+        tot_ce_inflow = int(df_oc_sorted[df_oc_sorted['ce_change_oi'] > 0]['ce_change_oi'].sum())
+        tot_pe_exit = int(df_oc_sorted[df_oc_sorted['pe_change_oi'] < 0]['pe_change_oi'].sum())
+        tot_pe_inflow = int(df_oc_sorted[df_oc_sorted['pe_change_oi'] > 0]['pe_change_oi'].sum())
+
         if ce_shift_dist > 0:
-            ce_verdict = f"🚀 Resistance Pushed UP (+{ce_shift_dist} Pts) -> Bullish Expansion"
+            ce_verdict = f"🚀 Resistance Shifted UP (+{ce_shift_dist} Pts) -> Bullish Expansion"
             ce_v_badge = "glow-pill-emerald"
         elif ce_shift_dist < 0:
             ce_verdict = f"⚠️ Resistance Squeezed DOWN ({ce_shift_dist} Pts) -> Bearish Pressure"
             ce_v_badge = "glow-pill-rose"
         else:
-            ce_verdict = "🔒 Resistance Reinforced at Same Zone"
+            ce_verdict = "🔒 Resistance Reinforced at Same Strike"
             ce_v_badge = "glow-pill-gold"
 
         if pe_shift_dist > 0:
@@ -945,7 +963,7 @@ with sec2:
             pe_verdict = f"🚨 Support Broken & Shifted DOWN ({pe_shift_dist} Pts) -> Downside Risk"
             pe_v_badge = "glow-pill-rose"
         else:
-            pe_verdict = "🔒 Support Concentrated at Same Zone"
+            pe_verdict = "🔒 Support Concentrated at Same Strike"
             pe_v_badge = "glow-pill-gold"
 
         # PURE UNINDENTED HTML TO PREVENT STREAMLIT MARKDOWN CODE BLOCK GLITCH
@@ -967,14 +985,18 @@ with sec2:
 <div>
 <span style="font-size: 0.68rem; color: #8B949E;">EXIT ZONE:</span><br>
 <span style="font-size: 0.95rem; font-weight: 800; color: #FF3B69;">₹{ce_exit_k:,} CE</span>
-<span style="font-size: 0.75rem; color: #FFB800; font-weight: 700;">({ce_exit_qty:+,.0f})</span>
+<span style="font-size: 0.75rem; color: #FFB800; font-weight: 700;">({fmt_inr_qty(ce_exit_qty)})</span>
 </div>
 <div style="font-size: 1.2rem; color: #00D2FF; font-weight: 900;">➔</div>
 <div style="text-align: right;">
 <span style="font-size: 0.68rem; color: #8B949E;">SHIFT DESTINATION:</span><br>
 <span style="font-size: 0.95rem; font-weight: 800; color: #00F5A0;">₹{ce_inflow_k:,} CE</span>
-<span style="font-size: 0.75rem; color: #00F5A0; font-weight: 700;">({ce_inflow_qty:+,.0f})</span>
+<span style="font-size: 0.75rem; color: #00F5A0; font-weight: 700;">({fmt_inr_qty(ce_inflow_qty)})</span>
 </div>
+</div>
+<div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.70rem; color: #8B949E; margin-top: 6px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 4px;">
+<span>Total Call Exits: <strong style="color: #FF3B69;">{fmt_inr_qty(tot_ce_exit)}</strong></span>
+<span>Total Call Inflows: <strong style="color: #00F5A0;">{fmt_inr_qty(tot_ce_inflow)}</strong></span>
 </div>
 <div style="font-size: 0.72rem; color: #C9D1D9; margin-top: 4px;">↳ {ce_verdict}</div>
 </div>
@@ -987,14 +1009,18 @@ with sec2:
 <div>
 <span style="font-size: 0.68rem; color: #8B949E;">EXIT ZONE:</span><br>
 <span style="font-size: 0.95rem; font-weight: 800; color: #FF3B69;">₹{pe_exit_k:,} PE</span>
-<span style="font-size: 0.75rem; color: #FFB800; font-weight: 700;">({pe_exit_qty:+,.0f})</span>
+<span style="font-size: 0.75rem; color: #FFB800; font-weight: 700;">({fmt_inr_qty(pe_exit_qty)})</span>
 </div>
 <div style="font-size: 1.2rem; color: #00D2FF; font-weight: 900;">➔</div>
 <div style="text-align: right;">
 <span style="font-size: 0.68rem; color: #8B949E;">SHIFT DESTINATION:</span><br>
 <span style="font-size: 0.95rem; font-weight: 800; color: #00F5A0;">₹{pe_inflow_k:,} PE</span>
-<span style="font-size: 0.75rem; color: #00F5A0; font-weight: 700;">({pe_inflow_qty:+,.0f})</span>
+<span style="font-size: 0.75rem; color: #00F5A0; font-weight: 700;">({fmt_inr_qty(pe_inflow_qty)})</span>
 </div>
+</div>
+<div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.70rem; color: #8B949E; margin-top: 6px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 4px;">
+<span>Total Put Exits: <strong style="color: #FF3B69;">{fmt_inr_qty(tot_pe_exit)}</strong></span>
+<span>Total Put Inflows: <strong style="color: #00F5A0;">{fmt_inr_qty(tot_pe_inflow)}</strong></span>
 </div>
 <div style="font-size: 0.72rem; color: #C9D1D9; margin-top: 4px;">↳ {pe_verdict}</div>
 </div>
@@ -1009,7 +1035,7 @@ with sec2:
                 "Chain Display Mode",
                 ["📊 Orderbook + Shift & Buildup Radar", "⚡ Full Greeks Matrix (Δ, Θ, Γ, V)"],
                 horizontal=True,
-                key="oc_view_mode_selector_v4"
+                key="oc_view_mode_selector_v5"
             )
         with ctrl_col2:
             strike_depth = st.selectbox(
@@ -1022,7 +1048,7 @@ with sec2:
                     "🔥 Complete Option Chain (ATM ± 30 Strikes / 61 Total)"
                 ],
                 index=1,
-                key="oc_depth_selector_v4"
+                key="oc_depth_selector_v5"
             )
         with ctrl_col3:
             st.markdown(f"""
@@ -1050,7 +1076,6 @@ with sec2:
         end_i = min(len(df_oc_sorted), atm_idx + n_strikes + 1)
         sub_oc = df_oc_sorted.iloc[start_i:end_i].copy()
 
-        # Compute max metrics for in-cell percentage bars
         max_ce_oi = max(1, int(sub_oc['ce_oi'].max()))
         max_pe_oi = max(1, int(sub_oc['pe_oi'].max()))
         max_ce_chg_abs = max(1, int(sub_oc['ce_change_oi'].abs().max()))
@@ -1068,38 +1093,44 @@ with sec2:
             ce_ltp_v = float(r.get('ce_ltp', 120.0))
             pe_ltp_v = float(r.get('pe_ltp', 110.0))
             
-            # --- SHIFTING & EXIT BADGE LOGIC ---
+            # Compute percentage change relative to base OI
+            ce_prev_oi = max(1, ce_oi_v - ce_chg_v)
+            pe_prev_oi = max(1, pe_oi_v - pe_chg_v)
+            ce_chg_pct_val = (ce_chg_v / ce_prev_oi) * 100
+            pe_chg_pct_val = (pe_chg_v / pe_prev_oi) * 100
+
+            # Exact self-explanatory shift badges with Lakhs/Cr value
             if ce_chg_v <= -150000:
-                ce_shift_tag = "📤 EXIT"
+                ce_shift_tag = f"📤 EXIT: {fmt_inr_qty(ce_chg_v)} ({ce_chg_pct_val:+.1f}%)"
                 ce_tag_class = "tag-exit"
             elif ce_chg_v >= 400000:
-                ce_shift_tag = "📥 INFLOW"
+                ce_shift_tag = f"📥 INFLOW: {fmt_inr_qty(ce_chg_v)} ({ce_chg_pct_val:+.1f}%)"
                 ce_tag_class = "tag-inflow"
-            elif ce_chg_v < -50000:
-                ce_shift_tag = "⚠️ UNWIND"
+            elif ce_chg_v < -40000:
+                ce_shift_tag = f"⚠️ UNWIND: {fmt_inr_qty(ce_chg_v)} ({ce_chg_pct_val:+.1f}%)"
                 ce_tag_class = "tag-unwind"
-            elif ce_chg_v > 150000:
-                ce_shift_tag = "🎯 ADDITION"
+            elif ce_chg_v > 100000:
+                ce_shift_tag = f"🎯 ADDITION: {fmt_inr_qty(ce_chg_v)} ({ce_chg_pct_val:+.1f}%)"
                 ce_tag_class = "tag-add"
             else:
-                ce_shift_tag = "LB" if ce_chg_v >= 0 and ce_ltp_v >= 50 else "SB" if ce_chg_v >= 0 else "SC" if ce_ltp_v >= 50 else "LU"
-                ce_tag_class = "tag-" + ce_shift_tag.lower()
+                ce_shift_tag = "🟢 LB" if ce_chg_v >= 0 and ce_ltp_v >= 50 else "🔴 SB" if ce_chg_v >= 0 else "🟡 SC" if ce_ltp_v >= 50 else "🟠 LU"
+                ce_tag_class = "tag-lb" if "LB" in ce_shift_tag else "tag-sb" if "SB" in ce_shift_tag else "tag-sc" if "SC" in ce_shift_tag else "tag-lu"
 
             if pe_chg_v <= -150000:
-                pe_shift_tag = "📤 EXIT"
+                pe_shift_tag = f"📤 EXIT: {fmt_inr_qty(pe_chg_v)} ({pe_chg_pct_val:+.1f}%)"
                 pe_tag_class = "tag-exit"
             elif pe_chg_v >= 400000:
-                pe_shift_tag = "📥 INFLOW"
+                pe_shift_tag = f"📥 INFLOW: {fmt_inr_qty(pe_chg_v)} ({pe_chg_pct_val:+.1f}%)"
                 pe_tag_class = "tag-inflow"
-            elif pe_chg_v < -50000:
-                pe_shift_tag = "⚠️ UNWIND"
+            elif pe_chg_v < -40000:
+                pe_shift_tag = f"⚠️ UNWIND: {fmt_inr_qty(pe_chg_v)} ({pe_chg_pct_val:+.1f}%)"
                 pe_tag_class = "tag-unwind"
-            elif pe_chg_v > 150000:
-                pe_shift_tag = "🎯 ADDITION"
+            elif pe_chg_v > 100000:
+                pe_shift_tag = f"🎯 ADDITION: {fmt_inr_qty(pe_chg_v)} ({pe_chg_pct_val:+.1f}%)"
                 pe_tag_class = "tag-add"
             else:
-                pe_shift_tag = "LB" if pe_chg_v >= 0 and pe_ltp_v >= 50 else "SB" if pe_chg_v >= 0 else "SC" if pe_ltp_v >= 50 else "LU"
-                pe_tag_class = "tag-" + pe_shift_tag.lower()
+                pe_shift_tag = "🟢 LB" if pe_chg_v >= 0 and pe_ltp_v >= 50 else "🔴 SB" if pe_chg_v >= 0 else "🟡 SC" if pe_ltp_v >= 50 else "🟠 LU"
+                pe_tag_class = "tag-lb" if "LB" in pe_shift_tag else "tag-sb" if "SB" in pe_shift_tag else "tag-sc" if "SC" in pe_shift_tag else "tag-lu"
 
             # Greeks calculation directly from df row
             ce_delta_v = float(r.get('ce_delta', 0.5))
@@ -1119,6 +1150,7 @@ with sec2:
                 "ce_oi_pct": min(100, int((ce_oi_v / max_ce_oi) * 100)),
                 "ce_chg": ce_chg_v,
                 "ce_chg_pct": min(100, int((abs(ce_chg_v) / max_ce_chg_abs) * 100)),
+                "ce_chg_pct_val": ce_chg_pct_val,
                 "ce_shift_tag": ce_shift_tag,
                 "ce_tag_class": ce_tag_class,
                 "ce_vol": int(r.get('ce_volume', 25000)),
@@ -1132,6 +1164,7 @@ with sec2:
                 "pe_oi_pct": min(100, int((pe_oi_v / max_pe_oi) * 100)),
                 "pe_chg": pe_chg_v,
                 "pe_chg_pct": min(100, int((abs(pe_chg_v) / max_pe_chg_abs) * 100)),
+                "pe_chg_pct_val": pe_chg_pct_val,
                 "pe_shift_tag": pe_shift_tag,
                 "pe_tag_class": pe_tag_class,
                 "pe_vol": int(r.get('pe_volume', 25000)),
@@ -1147,7 +1180,7 @@ with sec2:
         js_data_json = json.dumps(js_rows_data)
         is_greeks_mode = "Greeks" in oc_view_mode
 
-        # ULTRA REAL-TIME TICKING HTML/JS TABLE WITH ACCURATE GREEKS
+        # ULTRA REAL-TIME TICKING HTML/JS TABLE WITH EXACT LAKHS/CR FORMATTING
         full_oc_table = f"""
         <!DOCTYPE html>
         <html>
@@ -1187,7 +1220,7 @@ with sec2:
             }}
             table {{
                 width: 100%;
-                min-width: 1200px;
+                min-width: 1240px;
                 border-collapse: collapse;
                 text-align: center;
             }}
@@ -1246,14 +1279,15 @@ with sec2:
                 100% {{ transform: scale(0.95); opacity: 0.7; }}
             }}
 
-            /* SHIFT & BUILDUP BADGES */
+            /* SHIFT & BUILDUP BADGES WITH VALUES */
             .badge-tag {{
                 font-size: 9px;
-                padding: 2px 5px;
+                padding: 2px 6px;
                 border-radius: 4px;
                 font-weight: 900;
                 display: inline-block;
-                letter-spacing: 0.3px;
+                letter-spacing: 0.2px;
+                white-space: nowrap;
             }}
             .tag-exit {{
                 background: rgba(255, 59, 105, 0.25);
@@ -1343,8 +1377,8 @@ with sec2:
             # ORDERBOOK + SHIFT RADAR VIEW
             full_oc_table += """
                         <th>Total OI (Heatmap)</th>
-                        <th style="color: #00F5A0;">OI Shift / Change</th>
-                        <th>Shift Radar</th>
+                        <th style="color: #00F5A0;">OI Shift (Qty / %)</th>
+                        <th>Institutional Shift Radar</th>
                         <th>Volume</th>
                         <th>IV</th>
                         <th>Delta (Δ)</th>
@@ -1354,8 +1388,8 @@ with sec2:
                         <th>Delta (Δ)</th>
                         <th>IV</th>
                         <th>Volume</th>
-                        <th>Shift Radar</th>
-                        <th style="color: #FF3B69;">OI Shift / Change</th>
+                        <th>Institutional Shift Radar</th>
+                        <th style="color: #FF3B69;">OI Shift (Qty / %)</th>
                         <th>Total OI (Heatmap)</th>
             """
         else:
@@ -1395,6 +1429,29 @@ with sec2:
             return num.toLocaleString('en-IN');
         }}
 
+        function formatQtyLakhs(val) {{
+            const absV = Math.abs(val);
+            const sign = val >= 0 ? '+' : '-';
+            if (absV >= 10000000) {{
+                return `${{sign}}${{(absV / 10000000).toFixed(2)}}Cr`;
+            }} else if (absV >= 100000) {{
+                return `${{sign}}${{(absV / 100000).toFixed(2)}}L`;
+            }} else if (absV >= 1000) {{
+                return `${{sign}}${{(absV / 1000).toFixed(1)}}K`;
+            }}
+            return `${{sign}}${{absV}}`;
+        }}
+
+        function formatTotalOILakhs(val) {{
+            const absV = Math.abs(val);
+            if (absV >= 10000000) {{
+                return `${{(absV / 10000000).toFixed(2)}}Cr (${{formatNumber(val)}})`;
+            }} else if (absV >= 100000) {{
+                return `${{(absV / 100000).toFixed(2)}}L (${{formatNumber(val)}})`;
+            }}
+            return formatNumber(val);
+        }}
+
         function getTagHtml(tag, tagClass) {{
             return `<span class="badge-tag ${{tagClass}}">${{tag}}</span>`;
         }}
@@ -1432,8 +1489,8 @@ with sec2:
 
                 if (!isGreeksMode) {{
                     tr.innerHTML = `
-                        <td class="${{ceBg}}" id="ce-oi-${{k}}" style="${{ceOiBar}} text-align: right; padding-right: 8px;">${{formatNumber(row.ce_oi)}}${{row.ce_wall}}</td>
-                        <td class="${{ceBg}}" id="ce-chg-${{k}}" style="${{ceChgBar}} color: ${{ceChgColor}}; font-weight: 800;">${{ceChgSign}}${{formatNumber(row.ce_chg)}}</td>
+                        <td class="${{ceBg}}" id="ce-oi-${{k}}" style="${{ceOiBar}} text-align: right; padding-right: 8px;">${{formatTotalOILakhs(row.ce_oi)}}${{row.ce_wall}}</td>
+                        <td class="${{ceBg}}" id="ce-chg-${{k}}" style="${{ceChgBar}} color: ${{ceChgColor}}; font-weight: 800;">${{formatQtyLakhs(row.ce_chg)}} <span style="font-size: 9px; opacity: 0.85;">(${{row.ce_chg_pct_val >= 0 ? '+' : ''}}${{row.ce_chg_pct_val.toFixed(1)}}%)</span></td>
                         <td class="${{ceBg}}" id="ce-tag-${{k}}">${{getTagHtml(row.ce_shift_tag, row.ce_tag_class)}}</td>
                         <td class="${{ceBg}}" id="ce-vol-${{k}}">${{formatNumber(row.ce_vol)}}</td>
                         <td class="${{ceBg}}" id="ce-iv-${{k}}">${{row.ce_iv.toFixed(1)}}%</td>
@@ -1441,12 +1498,12 @@ with sec2:
                         <td class="${{ceBg}}" id="ce-ltp-${{k}}" style="color: #00F5A0; font-weight: 800; font-size: 12px; background: rgba(0, 245, 160, 0.12);">₹${{row.ce_ltp.toFixed(1)}}</td>
                         <td style="color: #FFB800; font-weight: 900; font-size: 13px; background: rgba(255,255,255,0.04); border-left: 1px solid rgba(255,255,255,0.1); border-right: 1px solid rgba(255,255,255,0.1);">₹${{formatNumber(k)}}${{atmLabel}}</td>
                         <td class="${{peBg}}" id="pe-ltp-${{k}}" style="color: #FF3B69; font-weight: 800; font-size: 12px; background: rgba(255, 59, 105, 0.12);">₹${{row.pe_ltp.toFixed(1)}}</td>
-                        <td class="${{peBg}}" id="pe-delta-${{k}}" style="color: #FF3B69; font-weight: 700;">${{row.pe_delta.toFixed(2)}}</td>
+                        <td class="${{peBg}}" id="pe-delta-${{k}}" style="color: #FF3B69;">${{row.pe_delta.toFixed(2)}}</td>
                         <td class="${{peBg}}" id="pe-iv-${{k}}">${{row.pe_iv.toFixed(1)}}%</td>
                         <td class="${{peBg}}" id="pe-vol-${{k}}">${{formatNumber(row.pe_vol)}}</td>
                         <td class="${{peBg}}" id="pe-tag-${{k}}">${{getTagHtml(row.pe_shift_tag, row.pe_tag_class)}}</td>
-                        <td class="${{peBg}}" id="pe-chg-${{k}}" style="${{peChgBar}} color: ${{peChgColor}}; font-weight: 800;">${{peChgSign}}${{formatNumber(row.pe_chg)}}</td>
-                        <td class="${{peBg}}" id="pe-oi-${{k}}" style="${{peOiBar}} text-align: left; padding-left: 8px;">${{formatNumber(row.pe_oi)}}${{row.pe_wall}}</td>
+                        <td class="${{peBg}}" id="pe-chg-${{k}}" style="${{peChgBar}} color: ${{peChgColor}}; font-weight: 800;">${{formatQtyLakhs(row.pe_chg)}} <span style="font-size: 9px; opacity: 0.85;">(${{row.pe_chg_pct_val >= 0 ? '+' : ''}}${{row.pe_chg_pct_val.toFixed(1)}}%)</span></td>
+                        <td class="${{peBg}}" id="pe-oi-${{k}}" style="${{peOiBar}} text-align: left; padding-left: 8px;">${{formatTotalOILakhs(row.pe_oi)}}${{row.pe_wall}}</td>
                     `;
                 }} else {{
                     tr.innerHTML = `
@@ -1515,11 +1572,11 @@ with sec2:
                     ceVolCell.innerText = formatNumber(row.ce_vol);
                 }}
                 if (ceOiCell) {{
-                    ceOiCell.innerText = `${{formatNumber(row.ce_oi)}}${{row.ce_wall}}`;
+                    ceOiCell.innerText = `${{formatTotalOILakhs(row.ce_oi)}}${{row.ce_wall}}`;
                 }}
                 if (ceChgCell) {{
-                    const sign = row.ce_chg >= 0 ? '+' : '';
-                    ceChgCell.innerText = `${{sign}}${{formatNumber(row.ce_chg)}}`;
+                    const pctVal = ((row.ce_chg / Math.max(1, row.ce_oi - row.ce_chg)) * 100).toFixed(1);
+                    ceChgCell.innerHTML = `${{formatQtyLakhs(row.ce_chg)}} <span style="font-size: 9px; opacity: 0.85;">(${{row.ce_chg >= 0 ? '+' : ''}}${{pctVal}}%)</span>`;
                     ceChgCell.style.color = row.ce_chg >= 0 ? '#00F5A0' : '#FF3B69';
                     ceChgCell.classList.remove('flash-up', 'flash-down');
                     void ceChgCell.offsetWidth;
@@ -1553,11 +1610,11 @@ with sec2:
                     peVolCell.innerText = formatNumber(row.pe_vol);
                 }}
                 if (peOiCell) {{
-                    peOiCell.innerText = `${{formatNumber(row.pe_oi)}}${{row.pe_wall}}`;
+                    peOiCell.innerText = `${{formatTotalOILakhs(row.pe_oi)}}${{row.pe_wall}}`;
                 }}
                 if (peChgCell) {{
-                    const sign = row.pe_chg >= 0 ? '+' : '';
-                    peChgCell.innerText = `${{sign}}${{formatNumber(row.pe_chg)}}`;
+                    const pctVal = ((row.pe_chg / Math.max(1, row.pe_oi - row.pe_chg)) * 100).toFixed(1);
+                    peChgCell.innerHTML = `${{formatQtyLakhs(row.pe_chg)}} <span style="font-size: 9px; opacity: 0.85;">(${{row.pe_chg >= 0 ? '+' : ''}}${{pctVal}}%)</span>`;
                     peChgCell.style.color = row.pe_chg >= 0 ? '#00F5A0' : '#FF3B69';
                     peChgCell.classList.remove('flash-up', 'flash-down');
                     void peChgCell.offsetWidth;
