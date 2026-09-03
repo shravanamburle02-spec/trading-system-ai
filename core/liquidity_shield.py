@@ -2,7 +2,7 @@
 Master Trading System - Institutional Option Liquidity & Expiry Validator Engine
 Updated with 100% Verified NSE & BSE Regulatory Expiry Framework:
 - NSE (NIFTY 50, BANKNIFTY, FINNIFTY, MIDCPNIFTY): Expire on TUESDAYS (Nifty Weekly + Monthly on Last Tuesday; BankNifty/FinNifty/MidcpNifty Monthly on Last Tuesday).
-- BSE (SENSEX): Weekly & Monthly Expire on THURSDAYS (Sensex Weekly + Monthly on Last Thursday).
+- BSE (SENSEX): Weekly Expiry on FRIDAYS (Sensex Weekly Cycle: Monday -> Friday).
 """
 
 import datetime
