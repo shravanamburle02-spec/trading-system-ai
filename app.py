@@ -1269,43 +1269,41 @@ with sec2:
             is_ce_whale = float(r.get('ce_vol_oi_ratio', 1.0)) >= 2.0 and int(r.get('ce_volume', 0)) >= 50000
             is_pe_whale = float(r.get('pe_vol_oi_ratio', 1.0)) >= 2.0 and int(r.get('pe_volume', 0)) >= 50000
 
-            # Exact self-explanatory shift badges with Lakhs/Cr value
-            if is_ce_whale:
-                ce_shift_tag = f"🐋 WHALE: {fmt_inr_qty(ce_chg_v)}"
-                ce_tag_class = "tag-whale"
-            elif ce_chg_v <= -150000:
-                ce_shift_tag = f"📤 EXIT: {fmt_inr_qty(ce_chg_v)} ({ce_chg_pct_val:+.1f}%)"
+            # Whale flag prefix (only attached as bonus icon if extreme vol/oi)
+            ce_w_prefix = "🐋 " if is_ce_whale else ""
+            pe_w_prefix = "🐋 " if is_pe_whale else ""
+
+            # Exact self-explanatory shift badges with Lakhs/Cr value (PRIMARY STATUS)
+            if ce_chg_v <= -100000:
+                ce_shift_tag = f"{ce_w_prefix}📤 EXIT: {fmt_inr_qty(ce_chg_v)} ({ce_chg_pct_val:+.1f}%)"
                 ce_tag_class = "tag-exit"
-            elif ce_chg_v >= 400000:
-                ce_shift_tag = f"📥 INFLOW: {fmt_inr_qty(ce_chg_v)} ({ce_chg_pct_val:+.1f}%)"
+            elif ce_chg_v >= 250000:
+                ce_shift_tag = f"{ce_w_prefix}📥 INFLOW: {fmt_inr_qty(ce_chg_v)} ({ce_chg_pct_val:+.1f}%)"
                 ce_tag_class = "tag-inflow"
-            elif ce_chg_v < -40000:
-                ce_shift_tag = f"⚠️ UNWIND: {fmt_inr_qty(ce_chg_v)} ({ce_chg_pct_val:+.1f}%)"
+            elif ce_chg_v < -20000:
+                ce_shift_tag = f"{ce_w_prefix}⚠️ UNWIND: {fmt_inr_qty(ce_chg_v)} ({ce_chg_pct_val:+.1f}%)"
                 ce_tag_class = "tag-unwind"
-            elif ce_chg_v > 100000:
-                ce_shift_tag = f"🎯 ADDITION: {fmt_inr_qty(ce_chg_v)} ({ce_chg_pct_val:+.1f}%)"
+            elif ce_chg_v > 40000:
+                ce_shift_tag = f"{ce_w_prefix}🎯 ADDITION: {fmt_inr_qty(ce_chg_v)} ({ce_chg_pct_val:+.1f}%)"
                 ce_tag_class = "tag-add"
             else:
-                ce_shift_tag = "🟢 LB" if ce_chg_v >= 0 and ce_ltp_v >= 50 else "🔴 SB" if ce_chg_v >= 0 else "🟡 SC" if ce_ltp_v >= 50 else "🟠 LU"
+                ce_shift_tag = f"{ce_w_prefix}🟢 LB" if ce_chg_v >= 0 and ce_ltp_v >= 50 else f"{ce_w_prefix}🔴 SB" if ce_chg_v >= 0 else f"{ce_w_prefix}🟡 SC" if ce_ltp_v >= 50 else f"{ce_w_prefix}🟠 LU"
                 ce_tag_class = "tag-lb" if "LB" in ce_shift_tag else "tag-sb" if "SB" in ce_shift_tag else "tag-sc" if "SC" in ce_shift_tag else "tag-lu"
 
-            if is_pe_whale:
-                pe_shift_tag = f"🐋 WHALE: {fmt_inr_qty(pe_chg_v)}"
-                pe_tag_class = "tag-whale"
-            elif pe_chg_v <= -150000:
-                pe_shift_tag = f"📤 EXIT: {fmt_inr_qty(pe_chg_v)} ({pe_chg_pct_val:+.1f}%)"
+            if pe_chg_v <= -100000:
+                pe_shift_tag = f"{pe_w_prefix}📤 EXIT: {fmt_inr_qty(pe_chg_v)} ({pe_chg_pct_val:+.1f}%)"
                 pe_tag_class = "tag-exit"
-            elif pe_chg_v >= 400000:
-                pe_shift_tag = f"📥 INFLOW: {fmt_inr_qty(pe_chg_v)} ({pe_chg_pct_val:+.1f}%)"
+            elif pe_chg_v >= 250000:
+                pe_shift_tag = f"{pe_w_prefix}📥 INFLOW: {fmt_inr_qty(pe_chg_v)} ({pe_chg_pct_val:+.1f}%)"
                 pe_tag_class = "tag-inflow"
-            elif pe_chg_v < -40000:
-                pe_shift_tag = f"⚠️ UNWIND: {fmt_inr_qty(pe_chg_v)} ({pe_chg_pct_val:+.1f}%)"
+            elif pe_chg_v < -20000:
+                pe_shift_tag = f"{pe_w_prefix}⚠️ UNWIND: {fmt_inr_qty(pe_chg_v)} ({pe_chg_pct_val:+.1f}%)"
                 pe_tag_class = "tag-unwind"
-            elif pe_chg_v > 100000:
-                pe_shift_tag = f"🎯 ADDITION: {fmt_inr_qty(pe_chg_v)} ({pe_chg_pct_val:+.1f}%)"
+            elif pe_chg_v > 40000:
+                pe_shift_tag = f"{pe_w_prefix}🎯 ADDITION: {fmt_inr_qty(pe_chg_v)} ({pe_chg_pct_val:+.1f}%)"
                 pe_tag_class = "tag-add"
             else:
-                pe_shift_tag = "🟢 LB" if pe_chg_v >= 0 and pe_ltp_v >= 50 else "🔴 SB" if pe_chg_v >= 0 else "🟡 SC" if pe_ltp_v >= 50 else "🟠 LU"
+                pe_shift_tag = f"{pe_w_prefix}🟢 LB" if pe_chg_v >= 0 and pe_ltp_v >= 50 else f"{pe_w_prefix}🔴 SB" if pe_chg_v >= 0 else f"{pe_w_prefix}🟡 SC" if pe_ltp_v >= 50 else f"{pe_w_prefix}🟠 LU"
                 pe_tag_class = "tag-lb" if "LB" in pe_shift_tag else "tag-sb" if "SB" in pe_shift_tag else "tag-sc" if "SC" in pe_shift_tag else "tag-lu"
 
             # Greeks calculation directly from df row
