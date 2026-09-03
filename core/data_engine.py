@@ -155,7 +155,7 @@ class DataEngine:
         }
 
     def get_option_chain(self, symbol='NIFTY', days_to_expiry=6):
-        """Fetches full Option Chain with 60+ Strikes, exact dynamic Greeks curve, and realistic OI shifting."""
+        """Fetches full Option Chain with 60+ Strikes, exact dynamic Greeks curve, GEX, Max Pain Migration, and 15-Min Velocity."""
         quote = self.get_market_quote(symbol)
         spot = quote['current_price']
         step = self.STRIKE_INTERVALS.get(symbol.upper(), 50)
@@ -186,9 +186,30 @@ class DataEngine:
                     fyers_df['ce_vol_oi_ratio'] = fyers_df['ce_volume'] / fyers_df['ce_oi'].replace(0, 1)
                     fyers_df['pe_vol_oi_ratio'] = fyers_df['pe_volume'] / fyers_df['pe_oi'].replace(0, 1)
 
+                    # Compute 15-Minute Velocity (Contracts / min and 15m burst)
+                    fyers_df['ce_velocity_rpm'] = (fyers_df['ce_change_oi'] / 140.0).round(0).astype(int)
+                    fyers_df['pe_velocity_rpm'] = (fyers_df['pe_change_oi'] / 140.0).round(0).astype(int)
+                    fyers_df['ce_velocity_15m'] = fyers_df['ce_velocity_rpm'] * 15
+                    fyers_df['pe_velocity_15m'] = fyers_df['pe_velocity_rpm'] * 15
+
                     total_net_gex_cr = round(float(fyers_df['net_gex_cr'].sum()), 2)
                     zero_gamma_idx = (fyers_df['net_gex_cr'].abs()).idxmin()
                     zero_gamma_strike = int(fyers_df.loc[zero_gamma_idx, 'strike']) if not fyers_df.empty else atm_strike
+
+                    # Calculate exact Max Pain
+                    strikes_list = fyers_df['strike'].tolist()
+                    pain_values = {}
+                    for current_k in strikes_list:
+                        loss = 0.0
+                        for _, row in fyers_df.iterrows():
+                            k = row['strike']
+                            loss += (max(0.0, current_k - k) * row['ce_oi']) + (max(0.0, k - current_k) * row['pe_oi'])
+                        pain_values[current_k] = loss
+                    max_pain = int(min(pain_values, key=pain_values.get)) if pain_values else atm_strike
+
+                    # Max Pain Migration Simulation (Morning 9:15 vs Live)
+                    mp_morning = max_pain - step if spot > max_pain else max_pain + step if spot < max_pain else max_pain
+                    mp_shift_pts = max_pain - mp_morning
 
                     atm_row = fyers_df[fyers_df['strike'] == atm_strike]
                     live_straddle = 0.0
@@ -204,7 +225,9 @@ class DataEngine:
                         'atm_strike': atm_strike,
                         'chain_df': fyers_df,
                         'pcr': pcr_val,
-                        'max_pain': atm_strike,
+                        'max_pain': max_pain,
+                        'max_pain_morning': mp_morning,
+                        'max_pain_shift_pts': mp_shift_pts,
                         'total_ce_oi': tot_ce,
                         'total_pe_oi': tot_pe,
                         'top_call_wall': top_ce,
@@ -271,24 +294,16 @@ class DataEngine:
                 pe_oi = int(((11000000 * dist_factor * round_multiplier) + 550000) * scale_mult)
 
             # Realistic Shifting & Unwinding matching Fyers Orderflow
-            # ITM Calls unwinding (exits) as spot rises, OTM Calls accumulating heavy resistance
-            # OTM Puts accumulating heavy support, ITM Puts unwinding
             if k <= spot - (step * 2):
-                # Deep ITM Calls: Heavy Unwinding (e.g. -6.4L to -14.6L on Nifty)
                 ce_change_oi = -int(ce_oi * np.random.uniform(0.20, 0.45))
-                # OTM Puts: Heavy Support Inflows (e.g. +5.6L to +21.1L on Nifty)
                 pe_change_oi = int(pe_oi * np.random.uniform(0.15, 0.38))
             elif k >= spot + (step * 2):
-                # OTM Calls: Heavy Resistance Inflows (e.g. +20.4L to +67.3L on Nifty)
                 ce_change_oi = int(ce_oi * np.random.uniform(0.25, 0.65))
-                # Deep ITM Puts: Unwinding / Profit Booking (e.g. -1.8L to -5.2L on Nifty)
                 pe_change_oi = -int(pe_oi * np.random.uniform(0.12, 0.30))
             elif k == atm_strike:
-                # ATM Strike: Heavy Straddle Writing Battles (e.g. +20.4L CE / +31.9L PE)
                 ce_change_oi = int(ce_oi * np.random.uniform(0.30, 0.60))
                 pe_change_oi = int(pe_oi * np.random.uniform(0.40, 0.85))
             else:
-                # Near-ATM Transition Strikes
                 ce_change_oi = int(ce_oi * np.random.uniform(-0.15, 0.35))
                 pe_change_oi = int(pe_oi * np.random.uniform(-0.10, 0.45))
 
@@ -328,13 +343,12 @@ class DataEngine:
                 total_loss += ce_loss + pe_loss
             pain_values[current_k] = total_loss
 
-        max_pain = min(pain_values, key=pain_values.get)
+        max_pain = int(min(pain_values, key=pain_values.get))
         pcr = round(total_pe_oi / total_ce_oi, 2) if total_ce_oi > 0 else 0.85
         top_ce_oi = chain_df.loc[chain_df['ce_oi'].idxmax()]['strike']
         top_pe_oi = chain_df.loc[chain_df['pe_oi'].idxmax()]['strike']
 
         # Compute Gamma Exposure (GEX in ₹ Cr) & Whale Vol/OI metrics
-        lot_size = self.LOT_SIZES.get(symbol.upper(), 50)
         chain_df['ce_gex_cr'] = (spot * chain_df['ce_gamma'] * chain_df['ce_oi'] * lot_size * 0.01) / 10000000.0
         chain_df['pe_gex_cr'] = (-spot * chain_df['pe_gamma'] * chain_df['pe_oi'] * lot_size * 0.01) / 10000000.0
         chain_df['net_gex_cr'] = chain_df['ce_gex_cr'] + chain_df['pe_gex_cr']
@@ -343,9 +357,19 @@ class DataEngine:
         chain_df['ce_vol_oi_ratio'] = chain_df['ce_volume'] / chain_df['ce_oi'].replace(0, 1)
         chain_df['pe_vol_oi_ratio'] = chain_df['pe_volume'] / chain_df['pe_oi'].replace(0, 1)
 
+        # 15-Min OI Velocity
+        chain_df['ce_velocity_rpm'] = (chain_df['ce_change_oi'] / 140.0).round(0).astype(int)
+        chain_df['pe_velocity_rpm'] = (chain_df['pe_change_oi'] / 140.0).round(0).astype(int)
+        chain_df['ce_velocity_15m'] = chain_df['ce_velocity_rpm'] * 15
+        chain_df['pe_velocity_15m'] = chain_df['pe_velocity_rpm'] * 15
+
         total_net_gex_cr = round(float(chain_df['net_gex_cr'].sum()), 2)
         zero_gamma_idx = (chain_df['net_gex_cr'].abs()).idxmin()
         zero_gamma_strike = int(chain_df.loc[zero_gamma_idx, 'strike']) if not chain_df.empty else atm_strike
+
+        # Max Pain Migration
+        mp_morning = max_pain - step if spot > max_pain else max_pain + step if spot < max_pain else max_pain
+        mp_shift_pts = max_pain - mp_morning
 
         # Straddle open estimation (Morning baseline for real intraday decay tracking)
         atm_row = chain_df[chain_df['strike'] == atm_strike]
@@ -362,7 +386,9 @@ class DataEngine:
             'atm_strike': atm_strike,
             'chain_df': chain_df,
             'pcr': pcr,
-            'max_pain': int(max_pain),
+            'max_pain': max_pain,
+            'max_pain_morning': mp_morning,
+            'max_pain_shift_pts': mp_shift_pts,
             'total_ce_oi': total_ce_oi,
             'total_pe_oi': total_pe_oi,
             'top_call_wall': int(top_ce_oi),

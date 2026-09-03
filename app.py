@@ -919,6 +919,18 @@ with sec2:
                 return f"{sign}{abs_v/1000:.1f}K"
             return f"{sign}{abs_v:,}"
 
+        # Ensure all columns exist safely on df_oc_sorted
+        if 'ce_vol_oi_ratio' not in df_oc_sorted.columns:
+            df_oc_sorted['ce_vol_oi_ratio'] = df_oc_sorted['ce_volume'] / df_oc_sorted['ce_oi'].replace(0, 1)
+        if 'pe_vol_oi_ratio' not in df_oc_sorted.columns:
+            df_oc_sorted['pe_vol_oi_ratio'] = df_oc_sorted['pe_volume'] / df_oc_sorted['pe_oi'].replace(0, 1)
+        if 'net_gex_cr' not in df_oc_sorted.columns:
+            df_oc_sorted['net_gex_cr'] = 0.0
+        if 'ce_velocity_rpm' not in df_oc_sorted.columns:
+            df_oc_sorted['ce_velocity_rpm'] = (df_oc_sorted['ce_change_oi'] / 140.0).round(0).astype(int)
+        if 'pe_velocity_rpm' not in df_oc_sorted.columns:
+            df_oc_sorted['pe_velocity_rpm'] = (df_oc_sorted['pe_change_oi'] / 140.0).round(0).astype(int)
+
         # Identify top exit strikes (most negative change)
         top_ce_exit_row = df_oc_sorted.loc[df_oc_sorted['ce_change_oi'].idxmin()]
         top_pe_exit_row = df_oc_sorted.loc[df_oc_sorted['pe_change_oi'].idxmin()]
@@ -966,13 +978,40 @@ with sec2:
             pe_verdict = "🔒 Support Concentrated at Same Strike"
             pe_v_badge = "glow-pill-gold"
 
-                # Ensure all columns exist safely on df_oc_sorted
-        if 'ce_vol_oi_ratio' not in df_oc_sorted.columns:
-            df_oc_sorted['ce_vol_oi_ratio'] = df_oc_sorted['ce_volume'] / df_oc_sorted['ce_oi'].replace(0, 1)
-        if 'pe_vol_oi_ratio' not in df_oc_sorted.columns:
-            df_oc_sorted['pe_vol_oi_ratio'] = df_oc_sorted['pe_volume'] / df_oc_sorted['pe_oi'].replace(0, 1)
-        if 'net_gex_cr' not in df_oc_sorted.columns:
-            df_oc_sorted['net_gex_cr'] = 0.0
+        # Max Pain Migration
+        mp_live = chain_data_s2.get('max_pain', atm_k)
+        mp_morning = chain_data_s2.get('max_pain_morning', mp_live)
+        mp_shift_pts = chain_data_s2.get('max_pain_shift_pts', 0)
+        
+        if mp_shift_pts > 0:
+            mp_badge_text = f"🚀 Bullish Magnet (+{mp_shift_pts} Pts Shift UP)"
+            mp_pill = "glow-pill-emerald"
+        elif mp_shift_pts < 0:
+            mp_badge_text = f"🚨 Bearish Gravity ({mp_shift_pts} Pts Shift DOWN)"
+            mp_pill = "glow-pill-rose"
+        else:
+            mp_badge_text = "🔒 Solid Expiry Center Pinning"
+            mp_pill = "glow-pill-gold"
+
+        # 15-Minute Velocity Speedometer Metrics
+        fastest_ce_exit = df_oc_sorted.loc[df_oc_sorted['ce_velocity_rpm'].idxmin()]
+        fastest_ce_add = df_oc_sorted.loc[df_oc_sorted['ce_velocity_rpm'].idxmax()]
+        fastest_pe_add = df_oc_sorted.loc[df_oc_sorted['pe_velocity_rpm'].idxmax()]
+
+        top_sc_k = int(fastest_ce_exit['strike'])
+        top_sc_rpm = int(fastest_ce_exit['ce_velocity_rpm'])
+        top_inflow_k = int(fastest_ce_add['strike'])
+        top_inflow_rpm = int(fastest_ce_add['ce_velocity_rpm'])
+
+        if abs(top_sc_rpm) >= 20000:
+            vel_status = "⚡ ROCKET SHORT COVERING SQUEEZE"
+            vel_pill = "glow-pill-rose"
+        elif abs(top_sc_rpm) >= 8000:
+            vel_status = "🔥 HIGH VELOCITY COVERING"
+            vel_pill = "glow-pill-gold"
+        else:
+            vel_status = "🚗 STEADY ORDERFLOW"
+            vel_pill = "glow-pill-cyan"
 
         # Whale Block Deal Strikes Detection (Vol / OI >= 2.0)
         whale_ce_rows = df_oc_sorted[df_oc_sorted['ce_vol_oi_ratio'] >= 2.0]
@@ -987,7 +1026,7 @@ with sec2:
         # GEX metrics from data_engine
         net_gex_cr = chain_data_s2.get('total_net_gex_cr', 0.0)
         zero_gamma_k = chain_data_s2.get('zero_gamma_strike', atm_k)
-        gex_regime = "🟢 STABLE / VOLATILITY SUPPRESSED (Long Gamma)" if net_gex_cr >= 0 else "⚡ EXPLOSIVE / BREAKOUT PRONE (Short Gamma)"
+        gex_regime = "🟢 STABLE / VOLATILITY SUPPRESSED" if net_gex_cr >= 0 else "⚡ EXPLOSIVE BREAKOUT ZONE"
         gex_pill = "glow-pill-emerald" if net_gex_cr >= 0 else "glow-pill-rose"
 
         # Straddle Decay Metrics
@@ -1059,30 +1098,51 @@ with sec2:
 </div>
 </div>
 
-<!-- GEX, STRADDLE DECAY & WHALE SPIKE DOCK -->
-<div style="display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 8px; margin-top: 8px; font-family: 'JetBrains Mono', monospace;">
-<div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 6px; padding: 6px 10px;">
+<!-- TOP ANALYTICS DOCK: MAX PAIN MIGRATION & 15-MIN OI VELOCITY SPEEDOMETER -->
+<div style="display: grid; grid-template-columns: 1.1fr 1.1fr 1fr; gap: 8px; margin-top: 8px; font-family: 'JetBrains Mono', monospace;">
+<div style="background: rgba(255, 184, 0, 0.05); border: 1px solid rgba(255, 184, 0, 0.3); border-radius: 6px; padding: 6px 10px;">
 <div style="display: flex; justify-content: space-between; align-items: center;">
-<span style="font-size: 0.68rem; color: #8B949E; font-weight: 700;">🧪 GAMMA EXPOSURE (GEX)</span>
-<span class="{gex_pill}" style="font-size: 0.65rem;">NET: {net_gex_cr:+.2f} Cr</span>
+<span style="font-size: 0.68rem; color: #FFB800; font-weight: 800;">🎯 MAX PAIN MIGRATION TRACKER</span>
+<span class="{mp_pill}" style="font-size: 0.65rem;">{mp_badge_text.split('(')[0].strip()}</span>
 </div>
-<div style="font-size: 0.74rem; color: #F0F4F8; margin-top: 3px;">Zero Gamma Flip: <strong style="color: #FFB800;">₹{zero_gamma_k:,}</strong> | {gex_regime.split('(')[0].strip()}</div>
+<div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px;">
+<div>
+<span style="font-size: 0.65rem; color: #8B949E;">OPEN:</span> <strong style="color: #8B949E;">₹{mp_morning:,}</strong>
+</div>
+<div style="font-size: 0.9rem; color: #FFB800; font-weight: 900;">➔</div>
+<div>
+<span style="font-size: 0.65rem; color: #8B949E;">LIVE MAGNET:</span> <strong style="color: #00F5A0; font-size: 0.85rem;">₹{mp_live:,}</strong>
+</div>
+<div>
+<span class="badge-tag" style="background: rgba(255,184,0,0.2); color: #FFB800; font-size: 0.68rem;">{mp_shift_pts:+d} Pts Drift</span>
+</div>
+</div>
+</div>
+
+<div style="background: rgba(0, 210, 255, 0.05); border: 1px solid rgba(0, 210, 255, 0.3); border-radius: 6px; padding: 6px 10px;">
+<div style="display: flex; justify-content: space-between; align-items: center;">
+<span style="font-size: 0.68rem; color: #00D2FF; font-weight: 800;">⏱️ 15-MIN OI VELOCITY (SPEEDOMETER)</span>
+<span class="{vel_pill}" style="font-size: 0.65rem;">{vel_status}</span>
+</div>
+<div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px; font-size: 0.72rem;">
+<div>
+<span style="color: #8B949E;">Covering:</span> <strong style="color: #FF3B69;">₹{top_sc_k:,} CE ({top_sc_rpm:,}/m)</strong>
+</div>
+<div>
+<span style="color: #8B949E;">Wall Inflow:</span> <strong style="color: #00F5A0;">₹{top_inflow_k:,} CE ({top_inflow_rpm:+,}/m)</strong>
+</div>
+</div>
 </div>
 
 <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 6px; padding: 6px 10px;">
 <div style="display: flex; justify-content: space-between; align-items: center;">
-<span style="font-size: 0.68rem; color: #8B949E; font-weight: 700;">⚡ ATM STRADDLE DECAY</span>
-<span class="{decay_pill}" style="font-size: 0.65rem;">+{strad_decay_pts:.1f} Pts ({strad_decay_pct:+.1f}%)</span>
+<span style="font-size: 0.68rem; color: #8B949E; font-weight: 700;">⚡ STRADDLE & GEX DOCK</span>
+<span class="{decay_pill}" style="font-size: 0.65rem;">+{strad_decay_pts:.1f} Pts</span>
 </div>
-<div style="font-size: 0.74rem; color: #F0F4F8; margin-top: 3px;">Open: ₹{open_strad:.1f} ➔ Live: ₹{straddle_p:.1f} (P&L: <strong style="color: #00F5A0;">+₹{strad_decay_inr:,.0f}</strong>/lot)</div>
+<div style="font-size: 0.72rem; color: #F0F4F8; margin-top: 3px; display: flex; justify-content: space-between;">
+<span>Decay: <strong style="color: #00F5A0;">+₹{strad_decay_inr:,.0f}</strong>/lot</span>
+<span>Zero Gamma: <strong style="color: #FFB800;">₹{zero_gamma_k:,}</strong></span>
 </div>
-
-<div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 6px; padding: 6px 10px;">
-<div style="display: flex; justify-content: space-between; align-items: center;">
-<span style="font-size: 0.68rem; color: #FFB800; font-weight: 700;">🐋 WHALE BLOCK RADAR</span>
-<span class="glow-pill-gold" style="font-size: 0.65rem;">VOL/OI > 2.0x</span>
-</div>
-<div style="font-size: 0.72rem; color: #FFB800; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{whale_summary_str}</div>
 </div>
 </div>
 </div>"""
@@ -1100,7 +1160,7 @@ with sec2:
                     "🧪 GEX Profile"
                 ],
                 horizontal=True,
-                key="oc_view_mode_selector_v6"
+                key="oc_view_mode_selector_v7"
             )
         with ctrl_col2:
             strike_depth = st.selectbox(
@@ -1113,7 +1173,7 @@ with sec2:
                     "🔥 Complete Option Chain (ATM ± 30 Strikes / 61 Total)"
                 ],
                 index=1,
-                key="oc_depth_selector_v6"
+                key="oc_depth_selector_v7"
             )
         with ctrl_col3:
             st.markdown(f"""
@@ -1265,42 +1325,48 @@ with sec2:
             ce_chg_pct_val = (ce_chg_v / ce_prev_oi) * 100
             pe_chg_pct_val = (pe_chg_v / pe_prev_oi) * 100
 
+            # Velocity rate per minute
+            ce_rpm_v = int(r.get('ce_velocity_rpm', 0))
+            pe_rpm_v = int(r.get('pe_velocity_rpm', 0))
+
             # Whale activity flag
             is_ce_whale = float(r.get('ce_vol_oi_ratio', 1.0)) >= 2.0 and int(r.get('ce_volume', 0)) >= 50000
             is_pe_whale = float(r.get('pe_vol_oi_ratio', 1.0)) >= 2.0 and int(r.get('pe_volume', 0)) >= 50000
-
-            # Whale flag prefix (only attached as bonus icon if extreme vol/oi)
             ce_w_prefix = "🐋 " if is_ce_whale else ""
             pe_w_prefix = "🐋 " if is_pe_whale else ""
 
+            # Velocity lightning booster if high speed
+            ce_vel_icon = " ⚡" if abs(ce_rpm_v) >= 15000 else ""
+            pe_vel_icon = " ⚡" if abs(pe_rpm_v) >= 15000 else ""
+
             # Exact self-explanatory shift badges with Lakhs/Cr value (PRIMARY STATUS)
             if ce_chg_v <= -100000:
-                ce_shift_tag = f"{ce_w_prefix}📤 EXIT: {fmt_inr_qty(ce_chg_v)} ({ce_chg_pct_val:+.1f}%)"
+                ce_shift_tag = f"{ce_w_prefix}📤 EXIT: {fmt_inr_qty(ce_chg_v)} ({ce_chg_pct_val:+.1f}%){ce_vel_icon}"
                 ce_tag_class = "tag-exit"
             elif ce_chg_v >= 250000:
-                ce_shift_tag = f"{ce_w_prefix}📥 INFLOW: {fmt_inr_qty(ce_chg_v)} ({ce_chg_pct_val:+.1f}%)"
+                ce_shift_tag = f"{ce_w_prefix}📥 INFLOW: {fmt_inr_qty(ce_chg_v)} ({ce_chg_pct_val:+.1f}%){ce_vel_icon}"
                 ce_tag_class = "tag-inflow"
             elif ce_chg_v < -20000:
-                ce_shift_tag = f"{ce_w_prefix}⚠️ UNWIND: {fmt_inr_qty(ce_chg_v)} ({ce_chg_pct_val:+.1f}%)"
+                ce_shift_tag = f"{ce_w_prefix}⚠️ UNWIND: {fmt_inr_qty(ce_chg_v)} ({ce_chg_pct_val:+.1f}%){ce_vel_icon}"
                 ce_tag_class = "tag-unwind"
             elif ce_chg_v > 40000:
-                ce_shift_tag = f"{ce_w_prefix}🎯 ADDITION: {fmt_inr_qty(ce_chg_v)} ({ce_chg_pct_val:+.1f}%)"
+                ce_shift_tag = f"{ce_w_prefix}🎯 ADDITION: {fmt_inr_qty(ce_chg_v)} ({ce_chg_pct_val:+.1f}%){ce_vel_icon}"
                 ce_tag_class = "tag-add"
             else:
                 ce_shift_tag = f"{ce_w_prefix}🟢 LB" if ce_chg_v >= 0 and ce_ltp_v >= 50 else f"{ce_w_prefix}🔴 SB" if ce_chg_v >= 0 else f"{ce_w_prefix}🟡 SC" if ce_ltp_v >= 50 else f"{ce_w_prefix}🟠 LU"
                 ce_tag_class = "tag-lb" if "LB" in ce_shift_tag else "tag-sb" if "SB" in ce_shift_tag else "tag-sc" if "SC" in ce_shift_tag else "tag-lu"
 
             if pe_chg_v <= -100000:
-                pe_shift_tag = f"{pe_w_prefix}📤 EXIT: {fmt_inr_qty(pe_chg_v)} ({pe_chg_pct_val:+.1f}%)"
+                pe_shift_tag = f"{pe_w_prefix}📤 EXIT: {fmt_inr_qty(pe_chg_v)} ({pe_chg_pct_val:+.1f}%){pe_vel_icon}"
                 pe_tag_class = "tag-exit"
             elif pe_chg_v >= 250000:
-                pe_shift_tag = f"{pe_w_prefix}📥 INFLOW: {fmt_inr_qty(pe_chg_v)} ({pe_chg_pct_val:+.1f}%)"
+                pe_shift_tag = f"{pe_w_prefix}📥 INFLOW: {fmt_inr_qty(pe_chg_v)} ({pe_chg_pct_val:+.1f}%){pe_vel_icon}"
                 pe_tag_class = "tag-inflow"
             elif pe_chg_v < -20000:
-                pe_shift_tag = f"{pe_w_prefix}⚠️ UNWIND: {fmt_inr_qty(pe_chg_v)} ({pe_chg_pct_val:+.1f}%)"
+                pe_shift_tag = f"{pe_w_prefix}⚠️ UNWIND: {fmt_inr_qty(pe_chg_v)} ({pe_chg_pct_val:+.1f}%){pe_vel_icon}"
                 pe_tag_class = "tag-unwind"
             elif pe_chg_v > 40000:
-                pe_shift_tag = f"{pe_w_prefix}🎯 ADDITION: {fmt_inr_qty(pe_chg_v)} ({pe_chg_pct_val:+.1f}%)"
+                pe_shift_tag = f"{pe_w_prefix}🎯 ADDITION: {fmt_inr_qty(pe_chg_v)} ({pe_chg_pct_val:+.1f}%){pe_vel_icon}"
                 pe_tag_class = "tag-add"
             else:
                 pe_shift_tag = f"{pe_w_prefix}🟢 LB" if pe_chg_v >= 0 and pe_ltp_v >= 50 else f"{pe_w_prefix}🔴 SB" if pe_chg_v >= 0 else f"{pe_w_prefix}🟡 SC" if pe_ltp_v >= 50 else f"{pe_w_prefix}🟠 LU"
@@ -1325,6 +1391,7 @@ with sec2:
                 "ce_chg": ce_chg_v,
                 "ce_chg_pct": min(100, int((abs(ce_chg_v) / max_ce_chg_abs) * 100)),
                 "ce_chg_pct_val": ce_chg_pct_val,
+                "ce_rpm": ce_rpm_v,
                 "ce_shift_tag": ce_shift_tag,
                 "ce_tag_class": ce_tag_class,
                 "ce_vol": int(r.get('ce_volume', 25000)),
@@ -1339,6 +1406,7 @@ with sec2:
                 "pe_chg": pe_chg_v,
                 "pe_chg_pct": min(100, int((abs(pe_chg_v) / max_pe_chg_abs) * 100)),
                 "pe_chg_pct_val": pe_chg_pct_val,
+                "pe_rpm": pe_rpm_v,
                 "pe_shift_tag": pe_shift_tag,
                 "pe_tag_class": pe_tag_class,
                 "pe_vol": int(r.get('pe_volume', 25000)),
@@ -1559,7 +1627,7 @@ with sec2:
                 </div>
                 <div class="card-cell" style="background: rgba(255, 255, 255, 0.04); border-color: rgba(255, 255, 255, 0.15);">
                     <div class="card-title">PCR / MAX PAIN</div>
-                    <div class="card-val" id="card-pcr" style="color: #F0F4F8;">{chain_data_s2['pcr']:.2f} / ₹{chain_data_s2['max_pain']}</div>
+                    <div class="card-val" id="card-pcr" style="color: #F0F4F8;">{chain_data_s2['pcr']:.2f} / ₹{mp_live}</div>
                 </div>
             </div>
         </div>
@@ -1705,7 +1773,7 @@ with sec2:
                         <td class="${{peBg}}" id="pe-ltp-${{k}}" style="color: #FF3B69; font-weight: 800; font-size: 12px; background: rgba(255, 59, 105, 0.12);">
                             ₹${{row.pe_ltp.toFixed(1)}} <span class="action-btn-b" title="Fast Buy Put">B</span><span class="action-btn-s" title="Fast Sell Put">S</span>
                         </td>
-                        <td class="${{peBg}}" id="pe-delta-${{k}}" style="color: #FF3B69; font-weight: 700;">${{row.pe_delta.toFixed(2)}}</td>
+                        <td class="${{peBg}}" id="pe-delta-${{k}}" style="color: #FF3B69;">${{row.pe_delta.toFixed(2)}}</td>
                         <td class="${{peBg}}" id="pe-iv-${{k}}">${{row.pe_iv.toFixed(1)}}%</td>
                         <td class="${{peBg}}" id="pe-vol-${{k}}">${{formatNumber(row.pe_vol)}}</td>
                         <td class="${{peBg}}" id="pe-tag-${{k}}">${{getTagHtml(row.pe_shift_tag, row.pe_tag_class)}}</td>
