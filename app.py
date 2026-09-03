@@ -1936,12 +1936,17 @@ with sec2:
             cycle_info = shift_res['cycle_info']
             shift_events = shift_res['events']
 
+            tot_sup_shifts = sum(1 for e in shift_events if 'SUPPORT' in e['type'])
+            tot_res_shifts = sum(1 for e in shift_events if 'RESISTANCE' in e['type'])
+            net_floor_lift = sum(e['shift_pts'] for e in shift_events if 'SUPPORT' in e['type'])
+            net_ceil_shift = sum(e['shift_pts'] for e in shift_events if 'RESISTANCE' in e['type'])
+
             j1, j2, j3, j4 = st.columns(4)
             with j1:
                 st.markdown(f"""
                 <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 8px 12px;">
                     <div style="font-size: 0.68rem; color: #8B949E; font-weight: 700;">📅 ACTIVE EXPIRY CYCLE</div>
-                    <div style="font-size: 0.92rem; font-weight: 900; color: #00D2FF; margin-top: 2px;">{cycle_info['cycle_name']}</div>
+                    <div style="font-size: 0.88rem; font-weight: 900; color: #00D2FF; margin-top: 2px;">{cycle_info['cycle_name']}</div>
                     <div style="font-size: 0.68rem; color: #8B949E; margin-top: 2px;">Expiry: <strong style="color: #FFB800;">{cycle_info['end_date_str']} ({dte} DTE)</strong></div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -1949,16 +1954,16 @@ with sec2:
                 st.markdown(f"""
                 <div style="background: rgba(0, 245, 160, 0.08); border: 1px solid rgba(0, 245, 160, 0.3); border-radius: 8px; padding: 8px 12px;">
                     <div style="font-size: 0.68rem; color: #00F5A0; font-weight: 800;">🟢 TOTAL SUPPORT SHIFTS</div>
-                    <div style="font-size: 1.15rem; font-weight: 900; color: #00F5A0; margin-top: 2px;">5 Shifts <span style="font-size: 0.72rem; color: #8B949E;">(All UP)</span></div>
-                    <div style="font-size: 0.68rem; color: #8B949E; margin-top: 2px;">Net Floor Lift: <strong style="color: #00F5A0;">+250 Pts UP</strong></div>
+                    <div style="font-size: 1.15rem; font-weight: 900; color: #00F5A0; margin-top: 2px;">{tot_sup_shifts} Shifts <span style="font-size: 0.72rem; color: #8B949E;">(Floor Lifts)</span></div>
+                    <div style="font-size: 0.68rem; color: #8B949E; margin-top: 2px;">Net Floor Lift: <strong style="color: #00F5A0;">+{net_floor_lift} Pts UP</strong></div>
                 </div>
                 """, unsafe_allow_html=True)
             with j3:
                 st.markdown(f"""
                 <div style="background: rgba(255, 59, 105, 0.08); border: 1px solid rgba(255, 59, 105, 0.3); border-radius: 8px; padding: 8px 12px;">
                     <div style="font-size: 0.68rem; color: #FF3B69; font-weight: 800;">🔴 TOTAL RESISTANCE SHIFTS</div>
-                    <div style="font-size: 1.15rem; font-weight: 900; color: #FF3B69; margin-top: 2px;">3 Shifts <span style="font-size: 0.72rem; color: #8B949E;">(2 UP / 1 Squeeze)</span></div>
-                    <div style="font-size: 0.68rem; color: #8B949E; margin-top: 2px;">Net Ceiling Shift: <strong style="color: #FFB800;">+100 Pts UP</strong></div>
+                    <div style="font-size: 1.15rem; font-weight: 900; color: #FF3B69; margin-top: 2px;">{tot_res_shifts} Shifts <span style="font-size: 0.72rem; color: #8B949E;">(Defended)</span></div>
+                    <div style="font-size: 0.68rem; color: #8B949E; margin-top: 2px;">Net Ceiling Shift: <strong style="color: #FFB800;">{net_ceil_shift:+d} Pts Squeeze</strong></div>
                 </div>
                 """, unsafe_allow_html=True)
             with j4:
