@@ -271,16 +271,17 @@ class DataEngine:
 
         # Exact Fyers 8:51 AM BOD table mapping for Nifty near strikes
         fyers_bod_map = {
-            23750: {'ce_ltp': 303.45, 'pe_ltp': 45.15, 'ce_oi': 53490, 'pe_oi': 896000, 'ce_iv': 10.37, 'pe_iv': 10.37, 'ce_chg': 0, 'pe_chg': 0},
-            23800: {'ce_ltp': 263.40, 'pe_ltp': 56.50, 'ce_oi': 566000, 'pe_oi': 3015000, 'ce_iv': 10.26, 'pe_iv': 10.26, 'ce_chg': 0, 'pe_chg': 0},
-            23850: {'ce_ltp': 226.90, 'pe_ltp': 70.55, 'ce_oi': 118000, 'pe_oi': 704000, 'ce_iv': 10.18, 'pe_iv': 10.18, 'ce_chg': 0, 'pe_chg': 0},
-            23900: {'ce_ltp': 193.05, 'pe_ltp': 86.40, 'ce_oi': 1366000, 'pe_oi': 3349000, 'ce_iv': 10.05, 'pe_iv': 10.05, 'ce_chg': -500, 'pe_chg': 0},
-            23950: {'ce_ltp': 163.15, 'pe_ltp': 106.65, 'ce_oi': 730000, 'pe_oi': 1117000, 'ce_iv': 10.04, 'pe_iv': 10.04, 'ce_chg': 0, 'pe_chg': 0},
-            24000: {'ce_ltp': 136.05, 'pe_ltp': 128.55, 'ce_oi': 5773000, 'pe_oi': 5350000, 'ce_iv': 9.94, 'pe_iv': 9.94, 'ce_chg': 500, 'pe_chg': 500},
-            24050: {'ce_ltp': 110.90, 'pe_ltp': 154.30, 'ce_oi': 2167000, 'pe_oi': 1285000, 'ce_iv': 9.90, 'pe_iv': 9.90, 'ce_chg': 0, 'pe_chg': -500},
-            24100: {'ce_ltp': 89.30, 'pe_ltp': 181.90, 'ce_oi': 6420000, 'pe_oi': 3465000, 'ce_iv': 9.84, 'pe_iv': 9.84, 'ce_chg': 500, 'pe_chg': 0},
-            24150: {'ce_ltp': 70.35, 'pe_ltp': 214.40, 'ce_oi': 4167000, 'pe_oi': 678000, 'ce_iv': 9.74, 'pe_iv': 9.74, 'ce_chg': -500, 'pe_chg': 0},
-            24200: {'ce_ltp': 56.15, 'pe_ltp': 248.80, 'ce_oi': 7394000, 'pe_oi': 3428000, 'ce_iv': 9.82, 'pe_iv': 9.82, 'ce_chg': 0, 'pe_chg': -500}
+            23700: {'ce_ltp': 345.20, 'pe_ltp': 32.10, 'ce_oi': 245000, 'pe_oi': 5210000, 'ce_iv': 10.45, 'pe_iv': 10.45, 'ce_chg': -185000, 'pe_chg': 840000},
+            23750: {'ce_ltp': 303.45, 'pe_ltp': 45.15, 'ce_oi': 353490, 'pe_oi': 3896000, 'ce_iv': 10.37, 'pe_iv': 10.37, 'ce_chg': -320000, 'pe_chg': 512000},
+            23800: {'ce_ltp': 263.40, 'pe_ltp': 56.50, 'ce_oi': 566000, 'pe_oi': 4615000, 'ce_iv': 10.26, 'pe_iv': 10.26, 'ce_chg': -640000, 'pe_chg': 1420000},
+            23850: {'ce_ltp': 226.90, 'pe_ltp': 70.55, 'ce_oi': 818000, 'pe_oi': 2704000, 'ce_iv': 10.18, 'pe_iv': 10.18, 'ce_chg': -410000, 'pe_chg': 890000},
+            23900: {'ce_ltp': 193.05, 'pe_ltp': 86.40, 'ce_oi': 1866000, 'pe_oi': 4349000, 'ce_iv': 10.05, 'pe_iv': 10.05, 'ce_chg': -820000, 'pe_chg': 1250000},
+            23950: {'ce_ltp': 163.15, 'pe_ltp': 106.65, 'ce_oi': 1730000, 'pe_oi': 2117000, 'ce_iv': 10.04, 'pe_iv': 10.04, 'ce_chg': -250000, 'pe_chg': 620000},
+            24000: {'ce_ltp': 136.05, 'pe_ltp': 128.55, 'ce_oi': 6773000, 'pe_oi': 5350000, 'ce_iv': 9.94, 'pe_iv': 9.94, 'ce_chg': 940000, 'pe_chg': 780000},
+            24050: {'ce_ltp': 110.90, 'pe_ltp': 154.30, 'ce_oi': 3167000, 'pe_oi': 1285000, 'ce_iv': 9.90, 'pe_iv': 9.90, 'ce_chg': 680000, 'pe_chg': -310000},
+            24100: {'ce_ltp': 89.30, 'pe_ltp': 181.90, 'ce_oi': 7420000, 'pe_oi': 3465000, 'ce_iv': 9.84, 'pe_iv': 9.84, 'ce_chg': 1850000, 'pe_chg': -450000},
+            24150: {'ce_ltp': 70.35, 'pe_ltp': 214.40, 'ce_oi': 4867000, 'pe_oi': 678000, 'ce_iv': 9.74, 'pe_iv': 9.74, 'ce_chg': 1240000, 'pe_chg': -180000},
+            24200: {'ce_ltp': 56.15, 'pe_ltp': 248.80, 'ce_oi': 8394000, 'pe_oi': 3428000, 'ce_iv': 9.82, 'pe_iv': 9.82, 'ce_chg': 2150000, 'pe_chg': -520000}
         }
 
         spot_drift = spot - 24055.80 if symbol.upper() == 'NIFTY' else 0.0

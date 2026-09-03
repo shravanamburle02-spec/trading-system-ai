@@ -875,7 +875,7 @@ with sec1:
 
 
 # =============================================================
-# SECTION 2: ULTRA ADVANCED INSTITUTIONAL OPTION CHAIN 3.0
+# SECTION 2: SMART MONEY OI SHIFTING RADAR & ULTRA OPTION CHAIN 3.0
 # =============================================================
 with sec2:
     chain_data_s2 = data_eng.get_option_chain(symbol, days_to_expiry=dte)
@@ -898,13 +898,123 @@ with sec2:
     source_label = "🟢 LIVE FYERS BROKER FEED" if data_eng.fyers.is_connected() else "⚡ REAL-TIME TICK ENGINE (800ms)"
 
     if df_oc is not None and not df_oc.empty:
+        # -------------------------------------------------------------
+        # 1. SMART MONEY SHIFTING & EXIT DETECTION ENGINE
+        # -------------------------------------------------------------
+        df_oc_sorted = df_oc.sort_values(by='strike').reset_index(drop=True)
+        
+        # Identify top exit strikes (lowest / most negative change)
+        top_ce_exit_row = df_oc_sorted.loc[df_oc_sorted['ce_change_oi'].idxmin()]
+        top_pe_exit_row = df_oc_sorted.loc[df_oc_sorted['pe_change_oi'].idxmin()]
+        
+        # Identify top inflow strikes (highest / most positive change)
+        top_ce_inflow_row = df_oc_sorted.loc[df_oc_sorted['ce_change_oi'].idxmax()]
+        top_pe_inflow_row = df_oc_sorted.loc[df_oc_sorted['pe_change_oi'].idxmax()]
+
+        ce_exit_k = int(top_ce_exit_row['strike'])
+        ce_exit_qty = int(top_ce_exit_row['ce_change_oi'])
+        ce_inflow_k = int(top_ce_inflow_row['strike'])
+        ce_inflow_qty = int(top_ce_inflow_row['ce_change_oi'])
+
+        pe_exit_k = int(top_pe_exit_row['strike'])
+        pe_exit_qty = int(top_pe_exit_row['pe_change_oi'])
+        pe_inflow_k = int(top_pe_inflow_row['strike'])
+        pe_inflow_qty = int(top_pe_inflow_row['pe_change_oi'])
+
+        # Shift distances & verdicts
+        ce_shift_dist = ce_inflow_k - ce_exit_k
+        pe_shift_dist = pe_inflow_k - pe_exit_k
+
+        if ce_shift_dist > 0:
+            ce_verdict = f"🚀 Resistance Pushed UP (+{ce_shift_dist} Pts) -> Bullish Expansion"
+            ce_v_badge = "glow-pill-emerald"
+        elif ce_shift_dist < 0:
+            ce_verdict = f"⚠️ Resistance Squeezed DOWN ({ce_shift_dist} Pts) -> Bearish Pressure"
+            ce_v_badge = "glow-pill-rose"
+        else:
+            ce_verdict = "🔒 Resistance Reinforced at Same Zone"
+            ce_v_badge = "glow-pill-gold"
+
+        if pe_shift_dist > 0:
+            pe_verdict = f"🛡️ Support Shifted UP (+{pe_shift_dist} Pts) -> Higher Floor Established"
+            pe_v_badge = "glow-pill-emerald"
+        elif pe_shift_dist < 0:
+            pe_verdict = f"🚨 Support Broken & Shifted DOWN ({pe_shift_dist} Pts) -> Downside Risk"
+            pe_v_badge = "glow-pill-rose"
+        else:
+            pe_verdict = "🔒 Support Concentrated at Same Zone"
+            pe_v_badge = "glow-pill-gold"
+
+        # -------------------------------------------------------------
+        # 2. TOP INSTITUTIONAL RADAR SUMMARY CARD
+        # -------------------------------------------------------------
+        st.markdown(f"""
+        <div class="cockpit-card" style="margin-bottom: 8px; border-left: 4px solid #00D2FF;">
+            <div class="card-header" style="border-bottom: 1px solid rgba(0, 210, 255, 0.2); padding-bottom: 6px;">
+                <span style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 1.1rem;">🧭</span>
+                    <strong style="color: #00D2FF; font-size: 0.92rem; letter-spacing: 0.5px;">SMART MONEY OI SHIFTING & EXIT RADAR</strong>
+                </span>
+                <span class="glow-pill-cyan">REAL-TIME INSTITUTIONAL MIGRATION</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px;">
+                <!-- CALL SHIFT BOX -->
+                <div style="background: rgba(255, 59, 105, 0.06); border: 1px solid rgba(255, 59, 105, 0.3); border-radius: 8px; padding: 8px 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.72rem; color: #FF3B69; font-weight: 800;">🔴 CALL WRITERS MIGRATION (RESISTANCE)</span>
+                        <span class="{ce_v_badge}" style="font-size: 0.68rem;">{ce_verdict.split('->')[-1].strip()}</span>
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 6px; font-family: 'JetBrains Mono', monospace;">
+                        <div>
+                            <span style="font-size: 0.68rem; color: #8B949E;">EXIT ZONE:</span><br>
+                            <span style="font-size: 0.95rem; font-weight: 800; color: #FF3B69;">₹{ce_exit_k:,} CE</span>
+                            <span style="font-size: 0.75rem; color: #FFB800; font-weight: 700;">({ce_exit_qty:+,.0f})</span>
+                        </div>
+                        <div style="font-size: 1.2rem; color: #00D2FF; font-weight: 900;">➔</div>
+                        <div style="text-align: right;">
+                            <span style="font-size: 0.68rem; color: #8B949E;">SHIFT DESTINATION:</span><br>
+                            <span style="font-size: 0.95rem; font-weight: 800; color: #00F5A0;">₹{ce_inflow_k:,} CE</span>
+                            <span style="font-size: 0.75rem; color: #00F5A0; font-weight: 700;">({ce_inflow_qty:+,.0f})</span>
+                        </div>
+                    </div>
+                    <div style="font-size: 0.72rem; color: #C9D1D9; margin-top: 4px;">↳ {ce_verdict}</div>
+                </div>
+
+                <!-- PUT SHIFT BOX -->
+                <div style="background: rgba(0, 245, 160, 0.06); border: 1px solid rgba(0, 245, 160, 0.3); border-radius: 8px; padding: 8px 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.72rem; color: #00F5A0; font-weight: 800;">🟢 PUT WRITERS MIGRATION (SUPPORT)</span>
+                        <span class="{pe_v_badge}" style="font-size: 0.68rem;">{pe_verdict.split('->')[-1].strip()}</span>
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 6px; font-family: 'JetBrains Mono', monospace;">
+                        <div>
+                            <span style="font-size: 0.68rem; color: #8B949E;">EXIT ZONE:</span><br>
+                            <span style="font-size: 0.95rem; font-weight: 800; color: #FF3B69;">₹{pe_exit_k:,} PE</span>
+                            <span style="font-size: 0.75rem; color: #FFB800; font-weight: 700;">({pe_exit_qty:+,.0f})</span>
+                        </div>
+                        <div style="font-size: 1.2rem; color: #00D2FF; font-weight: 900;">➔</div>
+                        <div style="text-align: right;">
+                            <span style="font-size: 0.68rem; color: #8B949E;">SHIFT DESTINATION:</span><br>
+                            <span style="font-size: 0.95rem; font-weight: 800; color: #00F5A0;">₹{pe_inflow_k:,} PE</span>
+                            <span style="font-size: 0.75rem; color: #00F5A0; font-weight: 700;">({pe_inflow_qty:+,.0f})</span>
+                        </div>
+                    </div>
+                    <div style="font-size: 0.72rem; color: #C9D1D9; margin-top: 4px;">↳ {pe_verdict}</div>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # -------------------------------------------------------------
+        # 3. CONTROLS & DEPTH FILTER
+        # -------------------------------------------------------------
         ctrl_col1, ctrl_col2, ctrl_col3 = st.columns([3.5, 3.5, 3.0])
         with ctrl_col1:
             oc_view_mode = st.radio(
                 "Chain Display Mode",
-                ["📊 Orderbook & Buildup Heatmap", "⚡ Full Greeks Matrix (Δ, Θ, Γ, V)"],
+                ["📊 Orderbook + Shift & Buildup Radar", "⚡ Full Greeks Matrix (Δ, Θ, Γ, V)"],
                 horizontal=True,
-                key="oc_view_mode_selector"
+                key="oc_view_mode_selector_v3"
             )
         with ctrl_col2:
             strike_depth = st.selectbox(
@@ -917,7 +1027,7 @@ with sec2:
                     "🔥 Complete Option Chain (ATM ± 30 Strikes / 61 Total)"
                 ],
                 index=1,
-                key="oc_depth_selector"
+                key="oc_depth_selector_v3"
             )
         with ctrl_col3:
             st.markdown(f"""
@@ -938,17 +1048,18 @@ with sec2:
         elif "30" in strike_depth:
             n_strikes = 30
         else:
-            n_strikes = 15
+            n_strikes = 10
 
-        df_oc_sorted = df_oc.sort_values(by='strike').reset_index(drop=True)
         atm_idx = (df_oc_sorted['strike'] - spot_s2).abs().idxmin()
         start_i = max(0, atm_idx - n_strikes)
         end_i = min(len(df_oc_sorted), atm_idx + n_strikes + 1)
         sub_oc = df_oc_sorted.iloc[start_i:end_i].copy()
 
-        # Compute max OI across sub_oc for in-cell percentage bars
+        # Compute max metrics for in-cell percentage bars
         max_ce_oi = max(1, int(sub_oc['ce_oi'].max()))
         max_pe_oi = max(1, int(sub_oc['pe_oi'].max()))
+        max_ce_chg_abs = max(1, int(sub_oc['ce_change_oi'].abs().max()))
+        max_pe_chg_abs = max(1, int(sub_oc['pe_change_oi'].abs().max()))
 
         # Build JSON array for high-frequency client-side JS ticking engine
         js_rows_data = []
@@ -962,11 +1073,40 @@ with sec2:
             ce_ltp_v = float(r.get('ce_ltp', 120.0))
             pe_ltp_v = float(r.get('pe_ltp', 110.0))
             
-            # Buildup logic
-            # Price UP + OI UP = Long Buildup (LB), Price DOWN + OI UP = Short Buildup (SB)
-            # Price UP + OI DOWN = Short Covering (SC), Price DOWN + OI DOWN = Long Unwinding (LU)
-            ce_tag = "LB" if ce_chg_v >= 0 and ce_ltp_v >= 50 else "SB" if ce_chg_v >= 0 else "SC" if ce_ltp_v >= 50 else "LU"
-            pe_tag = "LB" if pe_chg_v >= 0 and pe_ltp_v >= 50 else "SB" if pe_chg_v >= 0 else "SC" if pe_ltp_v >= 50 else "LU"
+            # --- SHIFTING & EXIT BADGE LOGIC ---
+            # Call side shift tags
+            if k == ce_exit_k and ce_exit_qty < -100000:
+                ce_shift_tag = "📤 EXIT"
+                ce_tag_class = "tag-exit"
+            elif k == ce_inflow_k and ce_inflow_qty > 200000:
+                ce_shift_tag = "📥 INFLOW"
+                ce_tag_class = "tag-inflow"
+            elif ce_chg_v < -100000:
+                ce_shift_tag = "⚠️ UNWIND"
+                ce_tag_class = "tag-unwind"
+            elif ce_chg_v > 300000:
+                ce_shift_tag = "🎯 ADDITION"
+                ce_tag_class = "tag-add"
+            else:
+                ce_shift_tag = "LB" if ce_chg_v >= 0 and ce_ltp_v >= 50 else "SB" if ce_chg_v >= 0 else "SC" if ce_ltp_v >= 50 else "LU"
+                ce_tag_class = "tag-" + ce_shift_tag.lower()
+
+            # Put side shift tags
+            if k == pe_exit_k and pe_exit_qty < -100000:
+                pe_shift_tag = "📤 EXIT"
+                pe_tag_class = "tag-exit"
+            elif k == pe_inflow_k and pe_inflow_qty > 200000:
+                pe_shift_tag = "📥 INFLOW"
+                pe_tag_class = "tag-inflow"
+            elif pe_chg_v < -100000:
+                pe_shift_tag = "⚠️ UNWIND"
+                pe_tag_class = "tag-unwind"
+            elif pe_chg_v > 300000:
+                pe_shift_tag = "🎯 ADDITION"
+                pe_tag_class = "tag-add"
+            else:
+                pe_shift_tag = "LB" if pe_chg_v >= 0 and pe_ltp_v >= 50 else "SB" if pe_chg_v >= 0 else "SC" if pe_ltp_v >= 50 else "LU"
+                pe_tag_class = "tag-" + pe_shift_tag.lower()
 
             # Greeks calculation
             ce_delta_v = float(r.get('ce_delta', 0.5))
@@ -985,24 +1125,28 @@ with sec2:
                 "ce_oi": ce_oi_v,
                 "ce_oi_pct": min(100, int((ce_oi_v / max_ce_oi) * 100)),
                 "ce_chg": ce_chg_v,
+                "ce_chg_pct": min(100, int((abs(ce_chg_v) / max_ce_chg_abs) * 100)),
+                "ce_shift_tag": ce_shift_tag,
+                "ce_tag_class": ce_tag_class,
                 "ce_vol": int(r.get('ce_volume', 25000)),
                 "ce_iv": float(r.get('ce_iv', 10.0)),
                 "ce_delta": ce_delta_v,
                 "ce_theta": ce_theta_v,
                 "ce_gamma": ce_gamma_v,
                 "ce_vega": ce_vega_v,
-                "ce_tag": ce_tag,
                 "pe_ltp": pe_ltp_v,
                 "pe_oi": pe_oi_v,
                 "pe_oi_pct": min(100, int((pe_oi_v / max_pe_oi) * 100)),
                 "pe_chg": pe_chg_v,
+                "pe_chg_pct": min(100, int((abs(pe_chg_v) / max_pe_chg_abs) * 100)),
+                "pe_shift_tag": pe_shift_tag,
+                "pe_tag_class": pe_tag_class,
                 "pe_vol": int(r.get('pe_volume', 25000)),
                 "pe_iv": float(r.get('pe_iv', 10.0)),
                 "pe_delta": pe_delta_v,
                 "pe_theta": pe_theta_v,
                 "pe_gamma": pe_gamma_v,
                 "pe_vega": pe_vega_v,
-                "pe_tag": pe_tag,
                 "ce_wall": " 🟥RES" if k == chain_data_s2['top_call_wall'] else "",
                 "pe_wall": " 🟩SUP" if k == chain_data_s2['top_put_wall'] else ""
             })
@@ -1010,7 +1154,9 @@ with sec2:
         js_data_json = json.dumps(js_rows_data)
         is_greeks_mode = "Greeks" in oc_view_mode
 
-        # ULTRA ADVANCED REAL-TIME TICKING HTML/JS ENGINE 3.0
+        # -------------------------------------------------------------
+        # 4. ULTRA REAL-TIME TICKING HTML/JS TABLE WITH VISUAL SHIFTS
+        # -------------------------------------------------------------
         full_oc_table = f"""
         <!DOCTYPE html>
         <html>
@@ -1050,7 +1196,7 @@ with sec2:
             }}
             table {{
                 width: 100%;
-                min-width: 1180px;
+                min-width: 1200px;
                 border-collapse: collapse;
                 text-align: center;
             }}
@@ -1109,17 +1255,43 @@ with sec2:
                 100% {{ transform: scale(0.95); opacity: 0.7; }}
             }}
 
+            /* SHIFT & BUILDUP BADGES */
             .badge-tag {{
                 font-size: 9px;
-                padding: 1px 4px;
+                padding: 2px 5px;
                 border-radius: 4px;
-                font-weight: 800;
+                font-weight: 900;
                 display: inline-block;
+                letter-spacing: 0.3px;
             }}
-            .tag-lb {{ background: rgba(0, 245, 160, 0.18); color: #00F5A0; border: 1px solid rgba(0, 245, 160, 0.4); }}
-            .tag-sb {{ background: rgba(255, 59, 105, 0.18); color: #FF3B69; border: 1px solid rgba(255, 59, 105, 0.4); }}
-            .tag-sc {{ background: rgba(255, 184, 0, 0.18); color: #FFB800; border: 1px solid rgba(255, 184, 0, 0.4); }}
-            .tag-lu {{ background: rgba(0, 210, 255, 0.18); color: #00D2FF; border: 1px solid rgba(0, 210, 255, 0.4); }}
+            .tag-exit {{
+                background: rgba(255, 59, 105, 0.25);
+                color: #FF3B69;
+                border: 1px solid #FF3B69;
+                box-shadow: 0 0 6px rgba(255, 59, 105, 0.4);
+                animation: pulse 1.5s infinite;
+            }}
+            .tag-inflow {{
+                background: rgba(0, 245, 160, 0.25);
+                color: #00F5A0;
+                border: 1px solid #00F5A0;
+                box-shadow: 0 0 6px rgba(0, 245, 160, 0.4);
+                animation: pulse 1.5s infinite;
+            }}
+            .tag-unwind {{
+                background: rgba(255, 184, 0, 0.2);
+                color: #FFB800;
+                border: 1px solid rgba(255, 184, 0, 0.6);
+            }}
+            .tag-add {{
+                background: rgba(0, 210, 255, 0.2);
+                color: #00D2FF;
+                border: 1px solid rgba(0, 210, 255, 0.6);
+            }}
+            .tag-lb {{ background: rgba(0, 245, 160, 0.12); color: #00F5A0; border: 1px solid rgba(0, 245, 160, 0.3); }}
+            .tag-sb {{ background: rgba(255, 59, 105, 0.12); color: #FF3B69; border: 1px solid rgba(255, 59, 105, 0.3); }}
+            .tag-sc {{ background: rgba(255, 184, 0, 0.12); color: #FFB800; border: 1px solid rgba(255, 184, 0, 0.3); }}
+            .tag-lu {{ background: rgba(0, 210, 255, 0.12); color: #00D2FF; border: 1px solid rgba(0, 210, 255, 0.3); }}
         </style>
         </head>
         <body>
@@ -1129,7 +1301,7 @@ with sec2:
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                 <span style="font-weight: 800; font-size: 0.82rem; color: #FFFFFF; display: flex; align-items: center; gap: 6px;">
                     <span class="pulse-dot"></span>
-                    📊 {symbol} INSTITUTIONAL OPTION CHAIN 3.0 ({exp_info['expiry_date_str']})
+                    📊 {symbol} INSTITUTIONAL OPTION CHAIN WITH SMART MONEY SHIFT RADAR ({exp_info['expiry_date_str']})
                 </span>
                 <span style="font-size: 0.72rem; color: #00F5A0; font-weight: 700; background: rgba(0,245,160,0.12); padding: 2px 8px; border-radius: 12px; border: 1px solid rgba(0,245,160,0.3);">
                     {source_label} | SPOT: <span id="header-spot">₹{spot_s2:,.2f}</span>
@@ -1177,11 +1349,11 @@ with sec2:
         """
 
         if not is_greeks_mode:
-            # ORDERBOOK & BUILDUP HEATMAP VIEW
+            # ORDERBOOK + SHIFT RADAR VIEW
             full_oc_table += """
-                        <th>OI (Heatmap)</th>
-                        <th style="color: #00F5A0;">OI Chg</th>
-                        <th>Buildup</th>
+                        <th>Total OI (Heatmap)</th>
+                        <th style="color: #00F5A0;">OI Shift / Change</th>
+                        <th>Shift Radar</th>
                         <th>Volume</th>
                         <th>IV</th>
                         <th>Delta</th>
@@ -1191,9 +1363,9 @@ with sec2:
                         <th>Delta</th>
                         <th>IV</th>
                         <th>Volume</th>
-                        <th>Buildup</th>
-                        <th style="color: #FF3B69;">OI Chg</th>
-                        <th>OI (Heatmap)</th>
+                        <th>Shift Radar</th>
+                        <th style="color: #FF3B69;">OI Shift / Change</th>
+                        <th>Total OI (Heatmap)</th>
             """
         else:
             # FULL GREEKS MATRIX VIEW
@@ -1232,8 +1404,7 @@ with sec2:
             return num.toLocaleString('en-IN');
         }}
 
-        function getTagHtml(tag) {{
-            const tagClass = 'tag-' + tag.toLowerCase();
+        function getTagHtml(tag, tagClass) {{
             return `<span class="badge-tag ${{tagClass}}">${{tag}}</span>`;
         }}
 
@@ -1258,6 +1429,12 @@ with sec2:
                 const ceOiBar = `background: linear-gradient(90deg, rgba(255, 59, 105, 0.22) ${{row.ce_oi_pct}}%, transparent ${{row.ce_oi_pct}}%);`;
                 const peOiBar = `background: linear-gradient(270deg, rgba(0, 245, 160, 0.22) ${{row.pe_oi_pct}}%, transparent ${{row.pe_oi_pct}}%);`;
 
+                // In-cell visual OI Change Delta bar
+                const ceDeltaColor = row.ce_chg >= 0 ? 'rgba(0, 245, 160, 0.28)' : 'rgba(255, 59, 105, 0.28)';
+                const peDeltaColor = row.pe_chg >= 0 ? 'rgba(0, 245, 160, 0.28)' : 'rgba(255, 59, 105, 0.28)';
+                const ceChgBar = `background: linear-gradient(90deg, ${{ceDeltaColor}} ${{row.ce_chg_pct}}%, transparent ${{row.ce_chg_pct}}%);`;
+                const peChgBar = `background: linear-gradient(270deg, ${{peDeltaColor}} ${{row.pe_chg_pct}}%, transparent ${{row.pe_chg_pct}}%);`;
+
                 const tr = document.createElement('tr');
                 tr.className = rowClass;
                 tr.id = `row-${{k}}`;
@@ -1265,8 +1442,8 @@ with sec2:
                 if (!isGreeksMode) {{
                     tr.innerHTML = `
                         <td class="${{ceBg}}" id="ce-oi-${{k}}" style="${{ceOiBar}} text-align: right; padding-right: 8px;">${{formatNumber(row.ce_oi)}}${{row.ce_wall}}</td>
-                        <td class="${{ceBg}}" id="ce-chg-${{k}}" style="color: ${{ceChgColor}}; font-weight: 700;">${{ceChgSign}}${{formatNumber(row.ce_chg)}}</td>
-                        <td class="${{ceBg}}" id="ce-tag-${{k}}">${{getTagHtml(row.ce_tag)}}</td>
+                        <td class="${{ceBg}}" id="ce-chg-${{k}}" style="${{ceChgBar}} color: ${{ceChgColor}}; font-weight: 800;">${{ceChgSign}}${{formatNumber(row.ce_chg)}}</td>
+                        <td class="${{ceBg}}" id="ce-tag-${{k}}">${{getTagHtml(row.ce_shift_tag, row.ce_tag_class)}}</td>
                         <td class="${{ceBg}}" id="ce-vol-${{k}}">${{formatNumber(row.ce_vol)}}</td>
                         <td class="${{ceBg}}" id="ce-iv-${{k}}">${{row.ce_iv.toFixed(1)}}%</td>
                         <td class="${{ceBg}}" id="ce-delta-${{k}}" style="color: #00F5A0;">+${{row.ce_delta.toFixed(2)}}</td>
@@ -1276,8 +1453,8 @@ with sec2:
                         <td class="${{peBg}}" id="pe-delta-${{k}}" style="color: #FF3B69;">${{row.pe_delta.toFixed(2)}}</td>
                         <td class="${{peBg}}" id="pe-iv-${{k}}">${{row.pe_iv.toFixed(1)}}%</td>
                         <td class="${{peBg}}" id="pe-vol-${{k}}">${{formatNumber(row.pe_vol)}}</td>
-                        <td class="${{peBg}}" id="pe-tag-${{k}}">${{getTagHtml(row.pe_tag)}}</td>
-                        <td class="${{peBg}}" id="pe-chg-${{k}}" style="color: ${{peChgColor}}; font-weight: 700;">${{peChgSign}}${{formatNumber(row.pe_chg)}}</td>
+                        <td class="${{peBg}}" id="pe-tag-${{k}}">${{getTagHtml(row.pe_shift_tag, row.pe_tag_class)}}</td>
+                        <td class="${{peBg}}" id="pe-chg-${{k}}" style="${{peChgBar}} color: ${{peChgColor}}; font-weight: 800;">${{peChgSign}}${{formatNumber(row.pe_chg)}}</td>
                         <td class="${{peBg}}" id="pe-oi-${{k}}" style="${{peOiBar}} text-align: left; padding-left: 8px;">${{formatNumber(row.pe_oi)}}${{row.pe_wall}}</td>
                     `;
                 }} else {{
@@ -1433,7 +1610,7 @@ with sec2:
         </html>
         """
 
-        table_height = min(760, max(440, len(sub_oc) * 36 + 160))
+        table_height = min(780, max(440, len(sub_oc) * 36 + 180))
         components.html(full_oc_table, height=table_height, scrolling=True)
     else:
         st.info("Generating live Option Chain data...")
