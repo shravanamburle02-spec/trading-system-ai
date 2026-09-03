@@ -13,7 +13,7 @@ import numpy as np
 class LiquidityShield:
     INDEX_EXPIRY_RULES = {
         'NIFTY': {'type': 'WEEKLY', 'day_name': 'Tuesday', 'weekday': 1, 'start_day_name': 'Wednesday', 'start_weekday': 2, 'exchange': 'NSE', 'lot_size': 75, 'min_oi': 50000},
-        'SENSEX': {'type': 'WEEKLY', 'day_name': 'Friday', 'weekday': 4, 'start_day_name': 'Monday', 'start_weekday': 0, 'exchange': 'BSE', 'lot_size': 20, 'min_oi': 30000},
+        'SENSEX': {'type': 'WEEKLY', 'day_name': 'Thursday', 'weekday': 3, 'start_day_name': 'Friday', 'start_weekday': 4, 'exchange': 'BSE', 'lot_size': 20, 'min_oi': 30000},
         'BANKNIFTY': {'type': 'MONTHLY', 'day_name': 'Last Tuesday', 'weekday': 1, 'start_day_name': 'Wednesday', 'start_weekday': 2, 'exchange': 'NSE', 'lot_size': 30, 'min_oi': 40000},
         'FINNIFTY': {'type': 'MONTHLY', 'day_name': 'Last Tuesday', 'weekday': 1, 'start_day_name': 'Wednesday', 'start_weekday': 2, 'exchange': 'NSE', 'lot_size': 65, 'min_oi': 25000},
         'MIDCPNIFTY': {'type': 'MONTHLY', 'day_name': 'Last Tuesday', 'weekday': 1, 'start_day_name': 'Wednesday', 'start_weekday': 2, 'exchange': 'NSE', 'lot_size': 120, 'min_oi': 20000}

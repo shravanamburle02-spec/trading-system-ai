@@ -544,10 +544,10 @@ class DataEngine:
                 }
             ]
         elif symbol_upper == 'SENSEX':
-            # SENSEX Weekly: Monday 31-Aug-2026 -> Friday 04-Sep-2026 (0 DTE Tomorrow)
-            cycle_name = "31-Aug (Mon) -> 04-Sep (Fri) [WEEKLY CONTRACT]"
-            cycle_start_label = "31-Aug (Mon)"
-            cycle_end_label = "04-Sep (Friday)"
+            # SENSEX Weekly: Friday 28-Aug-2026 -> Thursday 03-Sep-2026 (0 DTE Today / Expiry Day)
+            cycle_name = "28-Aug (Fri) -> 03-Sep (Thu) [WEEKLY CONTRACT - THURSDAY EXPIRY]"
+            cycle_start_label = "28-Aug (Fri)"
+            cycle_end_label = "03-Sep (Thursday Expiry)"
 
             base_support = top_pe - step * 2
             base_resistance = top_ce + step * 2
@@ -555,10 +555,10 @@ class DataEngine:
             events = [
                 {
                     "id": "EVT-S01",
-                    "timestamp": "31-Aug (Mon) 09:15 AM",
+                    "timestamp": "28-Aug (Fri) 09:15 AM",
                     "type": "🔒 NEW EXPIRY OPEN",
                     "badge_class": "glow-pill-gold",
-                    "event_title": "New Weekly Contracts Inception (Monday Open)",
+                    "event_title": "New Weekly Contracts Inception (Friday Open)",
                     "from_strike": int(base_support),
                     "to_strike": int(base_resistance),
                     "shift_pts": 0,
@@ -568,68 +568,81 @@ class DataEngine:
                 },
                 {
                     "id": "EVT-S02",
-                    "timestamp": "01-Sep (Tue) 02:30 PM",
+                    "timestamp": "31-Aug (Mon) 02:30 PM",
                     "type": "🟢 SUPPORT SHIFT UP",
                     "badge_class": "glow-pill-emerald",
                     "event_title": "Day 2 Put Writers Floor Lift",
                     "from_strike": int(base_support),
                     "to_strike": int(base_support + step),
                     "shift_pts": step,
-                    "spot_at_event": round(spot - step * 1.2, 1),
+                    "spot_at_event": round(spot - step * 1.4, 1),
                     "trigger_oi": f"+18.4L Fresh PE Inflow added at ₹{int(base_support + step):,} PE",
                     "verdict": f"🛡️ Step 1 Floor Lift (+{step} Pts) - Post-Inception Accumulation"
                 },
                 {
                     "id": "EVT-S03",
-                    "timestamp": "02-Sep (Wed) 03:00 PM",
+                    "timestamp": "01-Sep (Tue) 03:00 PM",
                     "type": "🔴 RESISTANCE SQUEEZE",
                     "badge_class": "glow-pill-rose",
-                    "event_title": "Mid-Week Call Writers Resistance Wall",
+                    "event_title": "Call Writers Defending Resistance",
                     "from_strike": int(base_resistance),
                     "to_strike": int(top_ce),
                     "shift_pts": int(top_ce - base_resistance),
-                    "spot_at_event": round(spot - step * 0.4, 1),
+                    "spot_at_event": round(spot - step * 0.8, 1),
                     "trigger_oi": f"+22.0L Fresh Call Writing Wall Capped at ₹{int(top_ce):,} CE",
                     "verdict": f"🔒 Resistance Squeezed DOWN ({int(top_ce - base_resistance)} Pts) - Upper Boundary Capped"
                 },
                 {
                     "id": "EVT-S04",
-                    "timestamp": "03-Sep (Thu) 11:30 AM",
+                    "timestamp": "02-Sep (Wed) 02:45 PM",
                     "type": "🟢 SUPPORT SHIFT UP",
                     "badge_class": "glow-pill-emerald",
                     "event_title": "Near-ATM Put Support Established",
                     "from_strike": int(base_support + step),
                     "to_strike": int(top_pe),
                     "shift_pts": step,
-                    "spot_at_event": round(spot - step * 0.1, 1),
+                    "spot_at_event": round(spot - step * 0.3, 1),
                     "trigger_oi": f"+24.5L Fresh PE Inflow at Primary Support ₹{int(top_pe):,} PE",
                     "verdict": f"🛡️ Higher Floor Established (+{step} Pts UP) - Safe Floor Directly Below Spot"
                 },
                 {
                     "id": "EVT-S05",
+                    "timestamp": "03-Sep (Thu) 11:30 AM",
+                    "type": "🔴 RESISTANCE SQUEEZE",
+                    "badge_class": "glow-pill-rose",
+                    "event_title": "Expiry Day Call Pinning Defense",
+                    "from_strike": int(top_ce + step),
+                    "to_strike": int(top_ce),
+                    "shift_pts": -step,
+                    "spot_at_event": round(spot - step * 0.1, 1),
+                    "trigger_oi": f"+28.0L Heavy Call Writing Wall Capped at ₹{int(top_ce):,} CE",
+                    "verdict": f"🛑 Expiry Day Upper Ceiling Pinned at ₹{int(top_ce):,} CE"
+                },
+                {
+                    "id": "EVT-S06",
                     "timestamp": "03-Sep (Thu) 02:15 PM",
                     "type": "🟢 SUPPORT SHIFT UP",
                     "badge_class": "glow-pill-emerald",
-                    "event_title": "Pre-Expiry Support Pinning",
+                    "event_title": "Expiry Day Support Lock",
                     "from_strike": int(top_pe - step),
                     "to_strike": int(top_pe),
                     "shift_pts": step,
                     "spot_at_event": round(spot, 1),
-                    "trigger_oi": f"+26.8L Heavy Institutional Put Inflow at ₹{int(top_pe):,} PE",
-                    "verdict": f"🛡️ Solid Base Floor Secured into Expiry Eve"
+                    "trigger_oi": f"+32.4L Final Expiry Day Put Inflow at ₹{int(top_pe):,} PE",
+                    "verdict": f"🛡️ Solid Base Floor Secured into Expiry Settlement"
                 },
                 {
-                    "id": "EVT-S06",
+                    "id": "EVT-S07",
                     "timestamp": "⚡ LIVE NOW",
                     "type": "🎯 ACTIVE REGIME",
                     "badge_class": "glow-pill-cyan",
-                    "event_title": "Live Pre-Expiry State (0 DTE Tomorrow)",
+                    "event_title": "Live Expiry Settlement State (Thursday Expiry)",
                     "from_strike": int(top_pe),
                     "to_strike": int(top_ce),
                     "shift_pts": int(top_ce - top_pe),
                     "spot_at_event": round(spot, 1),
                     "trigger_oi": f"Support: ₹{int(top_pe):,} PE | Resistance: ₹{int(top_ce):,} CE | Max Pain: ₹{int(max_pain):,}",
-                    "verdict": f"🚀 Bullish Staircase (+{int(top_pe - base_support)} Pts Net Support Shift Since Monday Inception)"
+                    "verdict": f"🚀 Bullish Staircase (+{int(top_pe - base_support)} Pts Net Support Shift Since Friday Inception)"
                 }
             ]
         else:
