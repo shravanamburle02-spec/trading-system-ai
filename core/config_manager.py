@@ -1,4 +1,4 @@
-﻿"""
+"""
 Master Trading System - Persistent Configuration Manager
 Ensures API Keys (Fyers, Gemini) are permanently stored and never reset on browser refresh.
 """
@@ -11,10 +11,15 @@ CONFIG_FILE = "config.json"
 ENV_FILE = ".env"
 
 DEFAULT_CONFIG = {
+    "ACTIVE_BROKER": "FYERS",
     "FYERS_APP_ID": "2O4CWNTG7T-100",
     "FYERS_SECRET_ID": "5NAJDN8GG9",
     "FYERS_REDIRECT_URI": "https://trade.fyers.in/api-login/",
     "FYERS_ACCESS_TOKEN": "",
+    "UPSTOX_API_KEY": "",
+    "UPSTOX_SECRET_KEY": "",
+    "UPSTOX_REDIRECT_URI": "https://127.0.0.1:5000/",
+    "UPSTOX_ACCESS_TOKEN": "",
     "GEMINI_API_KEY": "AQ.Ab8RN6IpAXUBwBWoRCIp9FpMfgz5mxZlWsJ5AFdpXAWhFhtl6w"
 }
 
@@ -48,10 +53,15 @@ class ConfigManager:
         # Save to .env
         try:
             env_text = f"""# Master Trading System Auto-Config
+ACTIVE_BROKER={config.get('ACTIVE_BROKER', 'FYERS')}
 FYERS_APP_ID={config.get('FYERS_APP_ID', '')}
 FYERS_SECRET_ID={config.get('FYERS_SECRET_ID', '')}
 FYERS_REDIRECT_URI={config.get('FYERS_REDIRECT_URI', 'https://trade.fyers.in/api-login/')}
 FYERS_ACCESS_TOKEN={config.get('FYERS_ACCESS_TOKEN', '')}
+UPSTOX_API_KEY={config.get('UPSTOX_API_KEY', '')}
+UPSTOX_SECRET_KEY={config.get('UPSTOX_SECRET_KEY', '')}
+UPSTOX_REDIRECT_URI={config.get('UPSTOX_REDIRECT_URI', 'https://127.0.0.1:5000/')}
+UPSTOX_ACCESS_TOKEN={config.get('UPSTOX_ACCESS_TOKEN', '')}
 GEMINI_API_KEY={config.get('GEMINI_API_KEY', '')}
 """
             with open(ENV_FILE, "w", encoding="utf-8") as f:

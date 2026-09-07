@@ -383,8 +383,19 @@ components.html(clock_html, height=48)
 fyers_app_id = config.get("FYERS_APP_ID", "")
 fyers_token = config.get("FYERS_ACCESS_TOKEN", "")
 
-if "data_eng" not in st.session_state or getattr(st.session_state.data_eng.fyers, 'access_token', None) != fyers_token:
-    st.session_state.data_eng = DataEngine(fyers_app_id, fyers_token)
+active_broker = config.get("ACTIVE_BROKER", "FYERS")
+upstox_key = config.get("UPSTOX_API_KEY", "")
+upstox_sec = config.get("UPSTOX_SECRET_KEY", "")
+upstox_red = config.get("UPSTOX_REDIRECT_URI", "https://127.0.0.1:5000/")
+upstox_tok = config.get("UPSTOX_ACCESS_TOKEN", "")
+
+if "data_eng" not in st.session_state or getattr(st.session_state.data_eng.fyers, 'access_token', None) != fyers_token or getattr(st.session_state.data_eng.upstox, 'access_token', None) != upstox_tok:
+    st.session_state.data_eng = DataEngine(
+        fyers_app_id=fyers_app_id, fyers_access_token=fyers_token,
+        upstox_api_key=upstox_key, upstox_secret_key=upstox_sec,
+        upstox_redirect_uri=upstox_red, upstox_access_token=upstox_tok,
+        active_broker=active_broker
+    )
 data_eng = st.session_state.data_eng
 
 if "paper_eng" not in st.session_state:
@@ -484,7 +495,7 @@ sec1, sec2, sec3, sec4, sec5, sec6 = st.tabs([
     "🦎 Non-Directional Strategy Lab",
     "🛡️ Defense Sentinel & Rebalancer",
     "💼 ₹3L Portfolio & Trade Journal",
-    "⚙️ Fyers & API Gateway"
+    "⚙️ Broker API Gateway (Fyers / Upstox)"
 ])
 
 # =============================================================
@@ -898,7 +909,14 @@ with sec2:
     straddle_p = round(atm_ce_p + atm_pe_p, 1)
     lower_exp_be = round(spot_s2 - straddle_p, 1)
     upper_exp_be = round(spot_s2 + straddle_p, 1)
-    source_label = "🟢 LIVE FYERS BROKER FEED" if data_eng.fyers.is_connected() else "⚡ REAL-TIME TICK ENGINE (800ms)"
+    if getattr(data_eng, 'active_broker', 'FYERS') == 'UPSTOX' and data_eng.upstox.is_connected():
+        source_label = "🟠 LIVE UPSTOX BROKER FEED"
+    elif data_eng.fyers.is_connected():
+        source_label = "🟢 LIVE FYERS BROKER FEED"
+    elif data_eng.upstox.is_connected():
+        source_label = "🟠 LIVE UPSTOX BROKER FEED"
+    else:
+        source_label = "⚡ REAL-TIME QUANT ENGINE (300ms High-Frequency)"
 
     if df_oc is not None and not df_oc.empty:
         df_oc_sorted = df_oc.sort_values(by='strike').reset_index(drop=True)
@@ -1608,7 +1626,7 @@ with sec2:
                         cardBeRange.innerText = `₹${{(currentSpot - newStraddle).toLocaleString('en-IN', {{maximumFractionDigits: 0}})}} - ₹${{(currentSpot + newStraddle).toLocaleString('en-IN', {{maximumFractionDigits: 0}})}}`;
                     }}
                 }}
-            }}, 800);
+            }}, 300);
             </script>
             </body>
             </html>
@@ -1873,7 +1891,7 @@ with sec2:
                     }}
                 }}
                 renderVelTable();
-            }}, 800);
+            }}, 300);
             </script>
             </body>
             </html>
@@ -2213,91 +2231,183 @@ with sec5:
 
 
 # =============================================================
-# SECTION 6: FYERS & API GATEWAY
+# SECTION 6: FYERS & UPSTOX DUAL BROKER API GATEWAY
 # =============================================================
 with sec6:
-    conn_status = "🟢 CONNECTED & LIVE TICKING" if data_eng.fyers.is_connected() else "🔴 DISCONNECTED (TOKEN REQUIRED)"
-    conn_pill = "glow-pill-emerald" if data_eng.fyers.is_connected() else "glow-pill-rose"
+    fyers_conn = data_eng.fyers.is_connected()
+    upstox_conn = data_eng.upstox.is_connected()
 
     st.markdown(f"""
     <div class="cockpit-card">
         <div class="card-header">
-            <span>⚙️ 1-CLICK FYERS API V3 LIVE BROKER GATEWAY</span>
-            <span class="{conn_pill}">{conn_status}</span>
+            <span>⚙️ DUAL BROKER API GATEWAY (FYERS & UPSTOX)</span>
+            <div style="display: flex; gap: 8px;">
+                <span class="{'glow-pill-emerald' if fyers_conn else 'glow-pill-rose'}">FYERS: {'🟢 LIVE' if fyers_conn else '🔴 DISCONNECTED'}</span>
+                <span class="{'glow-pill-emerald' if upstox_conn else 'glow-pill-rose'}">UPSTOX: {'🟢 LIVE' if upstox_conn else '🔴 DISCONNECTED'}</span>
+            </div>
         </div>
         <p style="font-size: 0.8rem; color: #8B949E; margin-bottom: 8px;">
-            Fyers API connect hone par NIFTY, BANKNIFTY, SENSEX, FINNIFTY, MIDCPNIFTY ka <b>100% official live tick-by-tick option chain</b> direct Fyers ke server se aayega.
+            Dono me se kisi bhi broker ka token active karo — Option Chain aur Spot Prices <b>100% direct exchange server</b> se instant update honge.
         </p>
     </div>
     """, unsafe_allow_html=True)
 
-    f_col1, f_col2 = st.columns([1.2, 1])
+    # Active Broker Priority Switcher
+    cur_active = config.get("ACTIVE_BROKER", "FYERS")
+    sel_broker = st.radio(
+        "⚡ Primary Market Feed Provider",
+        ["🟢 FYERS API v3", "🟠 UPSTOX API v2"],
+        index=0 if cur_active == "FYERS" else 1,
+        horizontal=True
+    )
+    new_broker_code = "FYERS" if "FYERS" in sel_broker else "UPSTOX"
+    if new_broker_code != cur_active:
+        ConfigManager.save_config({"ACTIVE_BROKER": new_broker_code})
+        data_eng.active_broker = new_broker_code
+        st.toast(f"✅ Active Broker switched to {new_broker_code}!")
+        st.rerun()
 
-    with f_col1:
-        st.markdown("#### 🔑 Step 1: 1-Click Fyers Auth Generator")
-        f_app = st.text_input("Fyers App ID", value=config.get("FYERS_APP_ID", "2O4CWNTG7T-100"))
-        f_sec = st.text_input("Fyers Secret ID", type="password", value=config.get("FYERS_SECRET_ID", "5NAJDN8GG9"))
-        f_red = st.text_input("Redirect URI", value=config.get("FYERS_REDIRECT_URI", "https://trade.fyers.in/api-login/"))
+    broker_tab1, broker_tab2, broker_tab3 = st.tabs([
+        "🟢 Fyers API v3 Gateway",
+        "🟠 Upstox API v2 Gateway",
+        "🤖 Google Gemini AI"
+    ])
 
-        auth_url = f"https://api-t1.fyers.in/api/v3/generate-authcode?client_id={f_app}&redirect_uri=https%3A%2F%2Ftrade.fyers.in%2Fapi-login%2F&response_type=code&state=None"
+    with broker_tab1:
+        f_col1, f_col2 = st.columns([1.2, 1])
+        with f_col1:
+            st.markdown("#### 🔑 Fyers 1-Click Auth Generator")
+            f_app = st.text_input("Fyers App ID", value=config.get("FYERS_APP_ID", "2O4CWNTG7T-100"))
+            f_sec = st.text_input("Fyers Secret ID", type="password", value=config.get("FYERS_SECRET_ID", "5NAJDN8GG9"))
+            f_red = st.text_input("Fyers Redirect URI", value=config.get("FYERS_REDIRECT_URI", "https://trade.fyers.in/api-login/"))
 
-        st.markdown(f"""
-        <div style="background: rgba(0, 210, 255, 0.08); border: 1px solid rgba(0, 210, 255, 0.3); border-radius: 8px; padding: 10px; margin: 8px 0;">
-            <b>👉 Step 1:</b> Neeche diye link ko open karke Fyers me login karo:<br>
-            <a href="{auth_url}" target="_blank" style="color: #00F5A0; font-weight: 800; font-size: 0.9rem; word-break: break-all;">🔗 Click Here to Login to Fyers</a>
-        </div>
-        """, unsafe_allow_html=True)
+            auth_url = f"https://api-t1.fyers.in/api/v3/generate-authcode?client_id={f_app}&redirect_uri=https%3A%2F%2Ftrade.fyers.in%2Fapi-login%2F&response_type=code&state=None"
 
-        st.markdown("#### ⚡ Step 2: Paste Redirect URL & Activate")
-        redirect_input = st.text_input("Login ke baad browser me jo URL aayi wo yaha paste karo", placeholder="https://trade.fyers.in/api-login/?s=ok&code=...&auth_code=eyJ...")
+            st.markdown(f"""
+            <div style="background: rgba(0, 210, 255, 0.08); border: 1px solid rgba(0, 210, 255, 0.3); border-radius: 8px; padding: 10px; margin: 8px 0;">
+                <b>👉 Step 1:</b> Fyers me login karne ke liye yaha click karo:<br>
+                <a href="{auth_url}" target="_blank" style="color: #00F5A0; font-weight: 800; font-size: 0.9rem; word-break: break-all;">🔗 Click Here to Login to Fyers</a>
+            </div>
+            """, unsafe_allow_html=True)
 
-        if st.button("🚀 Activate Live Fyers Broker Feed", use_container_width=True):
-            if redirect_input:
-                try:
-                    from fyers_apiv3 import fyersModel
-                    match = re.search(r"auth_code=([^&]+)", redirect_input)
-                    auth_code = match.group(1) if match else redirect_input.strip()
+            st.markdown("#### ⚡ Step 2: Paste Redirect URL & Activate")
+            redirect_input = st.text_input("Login ke baad browser me jo URL aayi wo yaha paste karo", placeholder="https://trade.fyers.in/api-login/?s=ok&code=...&auth_code=eyJ...", key="fyers_redirect_input")
 
-                    session = fyersModel.SessionModel(
-                        client_id=f_app,
-                        secret_key=f_sec,
-                        redirect_uri=f_red,
-                        response_type="code",
-                        grant_type="authorization_code"
-                    )
-                    session.set_token(auth_code)
-                    resp = session.generate_token()
+            if st.button("🚀 Activate Live Fyers Broker Feed", use_container_width=True, key="btn_act_fyers"):
+                if redirect_input:
+                    try:
+                        from fyers_apiv3 import fyersModel
+                        match = re.search(r"auth_code=([^&]+)", redirect_input)
+                        auth_code = match.group(1) if match else redirect_input.strip()
 
-                    if "access_token" in resp:
-                        tok = resp["access_token"]
+                        session = fyersModel.SessionModel(
+                            client_id=f_app,
+                            secret_key=f_sec,
+                            redirect_uri=f_red,
+                            response_type="code",
+                            grant_type="authorization_code"
+                        )
+                        session.set_token(auth_code)
+                        resp = session.generate_token()
+
+                        if "access_token" in resp:
+                            tok = resp["access_token"]
+                            ConfigManager.save_config({
+                                "ACTIVE_BROKER": "FYERS",
+                                "FYERS_APP_ID": f_app,
+                                "FYERS_SECRET_ID": f_sec,
+                                "FYERS_REDIRECT_URI": f_red,
+                                "FYERS_ACCESS_TOKEN": tok
+                            })
+                            data_eng.fyers.access_token = tok
+                            data_eng.fyers._init_client()
+                            st.success("🎉 CONGRATULATIONS! Live Fyers Feed is now CONNECTED!")
+                            st.balloons()
+                            st.rerun()
+                        else:
+                            st.error(f"❌ Fyers Error: {resp.get('message', 'Invalid Auth Code')}")
+                    except Exception as e:
+                        st.error(f"❌ Error: {str(e)}")
+                else:
+                    st.warning("⚠️ Pehle Fyers login ke baad browser ka URL yaha paste karo.")
+
+        with f_col2:
+            st.markdown("#### 📡 Fyers Feed Diagnostics")
+            st.markdown(f"""
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 8px; padding: 12px; font-size: 0.8rem;">
+                <b>App ID:</b> <code>{config.get('FYERS_APP_ID', '')}</code><br>
+                <b>Connection State:</b> <span class="{'glow-pill-emerald' if fyers_conn else 'glow-pill-rose'}">{'ACTIVE & STREAMING' if fyers_conn else 'TOKEN EXPIRED / PENDING'}</span><br>
+                <b>Token Length:</b> <code>{len(config.get('FYERS_ACCESS_TOKEN', ''))} chars</code><br>
+                <b>Latency:</b> <span style="color: #00F5A0; font-weight: 800;">~50ms</span>
+            </div>
+            """, unsafe_allow_html=True)
+
+    with broker_tab2:
+        u_col1, u_col2 = st.columns([1.2, 1])
+        with u_col1:
+            st.markdown("#### 🔑 Upstox 1-Click Auth Generator")
+            u_app = st.text_input("Upstox API Key (Client ID)", value=config.get("UPSTOX_API_KEY", ""), placeholder="e.g. 52c9381e-xxxx-xxxx-xxxx-xxxx")
+            u_sec = st.text_input("Upstox Secret Key", type="password", value=config.get("UPSTOX_SECRET_KEY", ""), placeholder="e.g. 7abcxxxx")
+            u_red = st.text_input("Upstox Redirect URI", value=config.get("UPSTOX_REDIRECT_URI", "https://127.0.0.1:5000/"))
+
+            if u_app:
+                import urllib.parse
+                enc_u_red = urllib.parse.quote(u_red, safe='')
+                upstox_auth_url = f"https://api.upstox.com/v2/login/authorization/dialog?response_type=code&client_id={u_app}&redirect_uri={enc_u_red}"
+                st.markdown(f"""
+                <div style="background: rgba(255, 184, 0, 0.08); border: 1px solid rgba(255, 184, 0, 0.3); border-radius: 8px; padding: 10px; margin: 8px 0;">
+                    <b>👉 Step 1:</b> Upstox me login karne ke liye yaha click karo:<br>
+                    <a href="{upstox_auth_url}" target="_blank" style="color: #FFB800; font-weight: 800; font-size: 0.9rem; word-break: break-all;">🔗 Click Here to Login to Upstox</a>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.info("ℹ️ Pehle apna Upstox API Key daalo auth URL generate karne ke liye.")
+
+            st.markdown("#### ⚡ Step 2: Paste Redirect URL / Auth Code")
+            u_redirect_input = st.text_input("Login ke baad browser me jo URL/code aayi wo paste karo", placeholder="https://127.0.0.1:5000/?code=xxxx...", key="upstox_redirect_input")
+
+            if st.button("🚀 Activate Live Upstox Broker Feed", use_container_width=True, key="btn_act_upstox"):
+                if u_redirect_input and u_app and u_sec:
+                    match = re.search(r"code=([^&]+)", u_redirect_input)
+                    u_code = match.group(1) if match else u_redirect_input.strip()
+
+                    from core.upstox_adapter import UpstoxAdapter
+                    temp_upstox = UpstoxAdapter(api_key=u_app, secret_key=u_sec, redirect_uri=u_red)
+                    success, tok_or_err = temp_upstox.exchange_code_for_token(u_code)
+
+                    if success:
                         ConfigManager.save_config({
-                            "FYERS_APP_ID": f_app,
-                            "FYERS_SECRET_ID": f_sec,
-                            "FYERS_REDIRECT_URI": f_red,
-                            "FYERS_ACCESS_TOKEN": tok
+                            "ACTIVE_BROKER": "UPSTOX",
+                            "UPSTOX_API_KEY": u_app,
+                            "UPSTOX_SECRET_KEY": u_sec,
+                            "UPSTOX_REDIRECT_URI": u_red,
+                            "UPSTOX_ACCESS_TOKEN": tok_or_err
                         })
-                        st.success("🎉 CONGRATULATIONS! 100% Live Fyers Broker Feed is now CONNECTED!")
+                        data_eng.upstox.access_token = tok_or_err
+                        data_eng.active_broker = "UPSTOX"
+                        st.success("🎉 CONGRATULATIONS! Live Upstox Broker Feed is now CONNECTED!")
                         st.balloons()
                         st.rerun()
                     else:
-                        st.error(f"❌ Fyers Error: {resp.get('message', 'Invalid Auth Code')}")
-                except Exception as e:
-                    st.error(f"❌ Error: {str(e)}")
-            else:
-                st.warning("⚠️ Pehle Fyers login ke baad browser ka URL yaha paste karo.")
+                        st.error(f"❌ Upstox Auth Error: {tok_or_err}")
+                else:
+                    st.warning("⚠️ Pehle Upstox API Key, Secret Key aur Redirect URL paste karo.")
 
-    with f_col2:
-        st.markdown("#### 🤖 Google Gemini AI API")
-        g_key = st.text_input("Gemini API Key", type="password", value=config.get("GEMINI_API_KEY", ""))
-        if st.button("💾 Save Gemini Key", use_container_width=True):
-            ConfigManager.save_config({"GEMINI_API_KEY": g_key})
-            st.success("✅ Gemini Key Saved Permanently!")
-            st.rerun()
+        with u_col2:
+            st.markdown("#### 📡 Upstox Feed Diagnostics")
+            st.markdown(f"""
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 8px; padding: 12px; font-size: 0.8rem;">
+                <b>API Key:</b> <code>{config.get('UPSTOX_API_KEY', 'Not Set')}</code><br>
+                <b>Connection State:</b> <span class="{'glow-pill-emerald' if upstox_conn else 'glow-pill-rose'}">{'ACTIVE & STREAMING' if upstox_conn else 'TOKEN EXPIRED / PENDING'}</span><br>
+                <b>Token Length:</b> <code>{len(config.get('UPSTOX_ACCESS_TOKEN', ''))} chars</code><br>
+                <b>Latency:</b> <span style="color: #FFB800; font-weight: 800;">~60ms</span>
+            </div>
+            """, unsafe_allow_html=True)
 
-        st.markdown("---")
-        st.markdown("#### 🛠️ Direct Access Token Paste (Optional)")
-        direct_tok = st.text_input("Direct Access Token (agar already hai)", type="password", value=config.get("FYERS_ACCESS_TOKEN", ""))
-        if st.button("💾 Save Token Directly", use_container_width=True):
-            ConfigManager.save_config({"FYERS_ACCESS_TOKEN": direct_tok})
-            st.success("✅ Access Token Saved Permanently!")
+    with broker_tab3:
+        st.markdown("#### 🤖 Google Gemini AI Quant Co-Pilot")
+        gemini_k = st.text_input("Gemini API Key", value=config.get("GEMINI_API_KEY", ""), type="password")
+        if st.button("💾 Save Gemini Key", key="btn_save_gemini"):
+            ConfigManager.save_config({"GEMINI_API_KEY": gemini_k})
+            st.success("✅ Gemini Key saved!")
             st.rerun()

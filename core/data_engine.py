@@ -14,6 +14,7 @@ import pandas as pd
 import numpy as np
 from core.fyers_adapter import FyersAdapter as FyersGateway
 from core.fyers_option_parser import FyersOptionChainParser
+from core.upstox_adapter import UpstoxAdapter
 from scipy.special import ndtr
 _INV_SQRT_2PI = 0.3989422804014327
 
@@ -113,8 +114,12 @@ class DataEngine:
     _quote_cache = {}
     _option_chain_cache = {}
 
-    def __init__(self, fyers_app_id=None, fyers_access_token=None):
+    def __init__(self, fyers_app_id=None, fyers_access_token=None,
+                 upstox_api_key=None, upstox_secret_key=None, upstox_redirect_uri=None, upstox_access_token=None,
+                 active_broker='FYERS'):
+        self.active_broker = str(active_broker).upper() if active_broker else 'FYERS'
         self.fyers = FyersGateway(fyers_app_id, fyers_access_token)
+        self.upstox = UpstoxAdapter(upstox_api_key, upstox_secret_key, upstox_redirect_uri, upstox_access_token)
         self.market_states = {
             'NIFTY': {'base': 24000.0, 'cur': 24055.8, 'high': 24100.0, 'low': 23980.0},
             'BANKNIFTY': {'base': 51200.0, 'cur': 51240.5, 'high': 51380.0, 'low': 51190.0},
@@ -132,9 +137,26 @@ class DataEngine:
             if now - c_time < 0.8:
                 return c_val
 
-        # Priority: Live Fyers API v3 direct quote
+        # Priority 1: Check Active Broker (Fyers vs Upstox)
+        if self.active_broker == 'UPSTOX' and self.upstox.is_connected():
+            q = self.upstox.get_quote(symbol)
+            if q is not None:
+                self._quote_cache[sym_key] = (now, q)
+                return q
+        elif self.active_broker == 'FYERS' and self.fyers.is_connected():
+            q = self.fyers.get_quote(symbol)
+            if q is not None:
+                self._quote_cache[sym_key] = (now, q)
+                return q
+
+        # Priority 2: Failover to other connected broker
         if self.fyers.is_connected():
             q = self.fyers.get_quote(symbol)
+            if q is not None:
+                self._quote_cache[sym_key] = (now, q)
+                return q
+        elif self.upstox.is_connected():
+            q = self.upstox.get_quote(symbol)
             if q is not None:
                 self._quote_cache[sym_key] = (now, q)
                 return q
