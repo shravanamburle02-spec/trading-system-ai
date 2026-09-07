@@ -1,3 +1,4 @@
+import time
 """
 Master Trading System - Fyers API v3 Adapter
 Full Symbol Mapping for NIFTY, BANKNIFTY, SENSEX, FINNIFTY, MIDCPNIFTY and Top Equities.
@@ -33,6 +34,8 @@ class FyersAdapter:
         self.client_id = client_id
         self.access_token = access_token
         self.fyers_model = None
+        self._quote_cache = {}
+        self._oc_cache = {}
         if client_id and access_token:
             self._init_client()
 
@@ -55,6 +58,13 @@ class FyersAdapter:
         """Fetches real-time quotes using Fyers API v3 with valid candlestick DataFrame."""
         if not self.is_connected():
             return None
+
+        now = time.time()
+        sym_key = symbol.upper()
+        if sym_key in self._quote_cache:
+            c_time, c_val = self._quote_cache[sym_key]
+            if now - c_time < 1.0:
+                return c_val
 
         fyers_sym = self.FYERS_SYMBOLS.get(symbol.upper(), 'NSE:NIFTY50-INDEX')
         try:
@@ -80,7 +90,7 @@ class FyersAdapter:
                     'Volume': np.random.randint(5000, 35000, size=60)
                 }, index=dates)
 
-                return {
+                res = {
                     'symbol': symbol,
                     'current_price': round(lp, 2),
                     'change': round(ch, 2),
@@ -89,6 +99,8 @@ class FyersAdapter:
                     'day_low': round(low, 2),
                     'df': df
                 }
+                self._quote_cache[sym_key] = (now, res)
+                return res
         except Exception:
             return None
         return None
@@ -98,6 +110,13 @@ class FyersAdapter:
         if not self.is_connected():
             return None
 
+        now = time.time()
+        cache_key = (symbol.upper(), strikecount)
+        if cache_key in self._oc_cache:
+            c_time, c_val = self._oc_cache[cache_key]
+            if now - c_time < 1.5:
+                return c_val
+
         fyers_sym = self.FYERS_SYMBOLS.get(symbol.upper(), 'NSE:NIFTY50-INDEX')
         try:
             data = {
@@ -106,7 +125,9 @@ class FyersAdapter:
             }
             response = self.fyers_model.optionchain(data=data)
             if response.get("s") == "ok" and response.get("data"):
-                return response["data"]
+                oc_data = response["data"]
+                self._oc_cache[cache_key] = (now, oc_data)
+                return oc_data
         except Exception:
             return None
         return None

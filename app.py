@@ -1220,7 +1220,7 @@ with sec2:
             max_pe_chg_abs = max(1, int(sub_oc['pe_change_oi'].abs().max()))
 
             js_rows_data = []
-            for _, r in sub_oc.iterrows():
+            for r in sub_oc.to_dict(orient='records'):
                 k = int(r['strike'])
                 is_atm = bool(abs(k - spot_s2) < (df_oc_sorted['strike'].diff().abs().min() or 50) / 2)
                 ce_oi_v = int(r.get('ce_oi', 50000))
@@ -1639,7 +1639,7 @@ with sec2:
 
             # Build enriched 11-strike JSON with 4 distinct orderflow velocities
             vel_rows_data = []
-            for _, r in core_11_df.iterrows():
+            for r in core_11_df.to_dict(orient='records'):
                 k = int(r['strike'])
                 is_atm = (k == atm_k)
                 ce_oi_val = int(r.get('ce_oi', 50000))
