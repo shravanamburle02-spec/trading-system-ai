@@ -30,12 +30,13 @@ class FyersAdapter:
         'LT': 'NSE:LT-EQ'
     }
 
+    _quote_cache = {}
+    _oc_cache = {}
+
     def __init__(self, client_id=None, access_token=None):
         self.client_id = client_id
         self.access_token = access_token
         self.fyers_model = None
-        self._quote_cache = {}
-        self._oc_cache = {}
         if client_id and access_token:
             self._init_client()
 

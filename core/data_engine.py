@@ -12,9 +12,16 @@ import datetime
 import requests
 import pandas as pd
 import numpy as np
-from scipy.stats import norm
 from core.fyers_adapter import FyersAdapter as FyersGateway
 from core.fyers_option_parser import FyersOptionChainParser
+from scipy.special import ndtr
+_INV_SQRT_2PI = 0.3989422804014327
+
+def _norm_cdf(x):
+    return float(ndtr(x))
+
+def _norm_pdf(x):
+    return float(_INV_SQRT_2PI * np.exp(-0.5 * (x ** 2)))
 
 class BlackScholes:
     @staticmethod
@@ -33,7 +40,7 @@ class BlackScholes:
             return max(0.0, S - K)
         d1 = BlackScholes.d1(S, K, T, r, sigma)
         d2 = BlackScholes.d2(S, K, T, r, sigma)
-        return S * norm.cdf(d1) - K * np.exp(-r * T) * norm.cdf(d2)
+        return S * _norm_cdf(d1) - K * np.exp(-r * T) * _norm_cdf(d2)
 
     @staticmethod
     def put_price(S, K, T, r, sigma):
@@ -41,7 +48,7 @@ class BlackScholes:
             return max(0.0, K - S)
         d1 = BlackScholes.d1(S, K, T, r, sigma)
         d2 = BlackScholes.d2(S, K, T, r, sigma)
-        return K * np.exp(-r * T) * norm.cdf(-d2) - S * norm.cdf(-d1)
+        return K * np.exp(-r * T) * _norm_cdf(-d2) - S * _norm_cdf(-d1)
 
     @staticmethod
     def calculate_greeks(S, K, T, r, sigma, option_type='CE'):
@@ -49,18 +56,18 @@ class BlackScholes:
         sigma = max(0.01, sigma)
         d1 = BlackScholes.d1(S, K, T, r, sigma)
         d2 = BlackScholes.d2(S, K, T, r, sigma)
-        pdf_d1 = norm.pdf(d1)
+        pdf_d1 = _norm_pdf(d1)
         sqrt_T = np.sqrt(T)
 
         gamma = pdf_d1 / (S * sigma * sqrt_T)
         vega = (S * pdf_d1 * sqrt_T) / 100.0
 
         if option_type.upper() in ['CE', 'CALL']:
-            delta = norm.cdf(d1)
-            theta = (- (S * pdf_d1 * sigma) / (2 * sqrt_T) - r * K * np.exp(-r * T) * norm.cdf(d2)) / 365.0
+            delta = _norm_cdf(d1)
+            theta = (- (S * pdf_d1 * sigma) / (2 * sqrt_T) - r * K * np.exp(-r * T) * _norm_cdf(d2)) / 365.0
         else:
-            delta = norm.cdf(d1) - 1.0
-            theta = (- (S * pdf_d1 * sigma) / (2 * sqrt_T) + r * K * np.exp(-r * T) * norm.cdf(-d2)) / 365.0
+            delta = _norm_cdf(d1) - 1.0
+            theta = (- (S * pdf_d1 * sigma) / (2 * sqrt_T) + r * K * np.exp(-r * T) * _norm_cdf(-d2)) / 365.0
 
         return {
             'delta': round(float(delta), 2),
@@ -103,10 +110,11 @@ class DataEngine:
         'MIDCPNIFTY': {'spot': 12850.00, 'prev': 12880.00, 'high': 12910.0, 'low': 12830.0, 'last_tick': time.time()}
     }
 
+    _quote_cache = {}
+    _option_chain_cache = {}
+
     def __init__(self, fyers_app_id=None, fyers_access_token=None):
         self.fyers = FyersGateway(fyers_app_id, fyers_access_token)
-        self._quote_cache = {}
-        self._option_chain_cache = {}
         self.market_states = {
             'NIFTY': {'base': 24000.0, 'cur': 24055.8, 'high': 24100.0, 'low': 23980.0},
             'BANKNIFTY': {'base': 51200.0, 'cur': 51240.5, 'high': 51380.0, 'low': 51190.0},

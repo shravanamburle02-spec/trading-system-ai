@@ -29,23 +29,7 @@ from core.voice_ai_copilot import VoiceAICopilot
 from core.gemini_live_chat import GeminiLiveChat
 from core.auto_rebalancer_daemon import AutoRebalancerSentinel
 
-import sys
-import importlib
-
-# Force flush and reload all core modules on every run to eliminate any stale module cache in Streamlit Cloud
-core_modules = [
-    'core.config_manager', 'core.data_engine', 'core.indicator_engine',
-    'core.smc_engine', 'core.confluence_engine', 'core.strategy_optimizer',
-    'core.adjustment_engine', 'core.liquidity_shield', 'core.risk_shield',
-    'core.paper_trading', 'core.auto_rebalancer_daemon', 'core.voice_ai_copilot',
-    'core.gemini_live_chat'
-]
-for mod in core_modules:
-    if mod in sys.modules:
-        try:
-            importlib.reload(sys.modules[mod])
-        except Exception:
-            pass
+# High-performance static module loading (reload loop removed to eliminate 11s latency)
 
 st.set_page_config(
     page_title="QUANT CORE | Institutional Prop-Desk",
@@ -399,9 +383,15 @@ components.html(clock_html, height=48)
 fyers_app_id = config.get("FYERS_APP_ID", "")
 fyers_token = config.get("FYERS_ACCESS_TOKEN", "")
 
-data_eng = DataEngine(fyers_app_id, fyers_token)
-paper_eng = PaperTradingEngine()
-paper_eng.init_db(default_capital=300000.0)
+if "data_eng" not in st.session_state or getattr(st.session_state.data_eng.fyers, 'access_token', None) != fyers_token:
+    st.session_state.data_eng = DataEngine(fyers_app_id, fyers_token)
+data_eng = st.session_state.data_eng
+
+if "paper_eng" not in st.session_state:
+    pe = PaperTradingEngine()
+    pe.init_db(default_capital=300000.0)
+    st.session_state.paper_eng = pe
+paper_eng = st.session_state.paper_eng
 
 # Global Asset Selector (Persistent)
 col_asset, col_space = st.columns([2.2, 7.8])
