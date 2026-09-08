@@ -1054,55 +1054,98 @@ with sec2:
 <div class="card-header" style="border-bottom: 1px solid rgba(0, 210, 255, 0.2); padding-bottom: 6px;">
 <span style="display: flex; align-items: center; gap: 8px;">
 <span style="font-size: 1.1rem;">🧭</span>
-<strong style="color: #00D2FF; font-size: 0.92rem; letter-spacing: 0.5px;">LTP MIGRATION RADAR & INSTITUTIONAL REVERSAL DOCK</strong>
+<strong style="color: #00D2FF; font-size: 0.92rem; letter-spacing: 0.5px;">SMART MONEY INFLOW/EXIT RADAR & LTP REVERSAL DOCK</strong>
 </span>
 <div style="display: flex; gap: 6px;">
+<span class="glow-pill-cyan">REAL-TIME INSTITUTIONAL FLOW</span>
 <span class="glow-pill-gold">✨ {im_line_val}</span>
 <span class="{pcr_v_pill}">{pcr_v_badge}</span>
 </div>
 </div>
 
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px;">
-<div style="background: rgba(255, 59, 105, 0.06); border: 1px solid rgba(255, 59, 105, 0.3); border-radius: 8px; padding: 8px 12px;">
+<div style="background: rgba(255, 59, 105, 0.06); border: 1px solid rgba(255, 59, 105, 0.3); border-radius: 8px; padding: 10px 14px;">
 <div style="display: flex; justify-content: space-between; align-items: center;">
-<span style="font-size: 0.72rem; color: #FF3B69; font-weight: 800;">🔴 CALL RESISTANCE MIGRATION (LTP COA)</span>
-<span class="{c_mig_pill}" style="font-size: 0.68rem;">{quant_pkg['ce_mig_badge'] if quant_pkg else 'RESISTANCE'}</span>
-</div>
-<div style="display: flex; align-items: center; justify-content: space-between; margin-top: 6px; font-family: 'JetBrains Mono', monospace;">
-<div>
-<span style="font-size: 0.68rem; color: #8B949E;">PRIMARY RESISTANCE:</span><br>
-<span style="font-size: 0.95rem; font-weight: 800; color: #FF3B69;">₹{quant_pkg['top1_ce_k'] if quant_pkg else ce_exit_k:,} CE</span>
-</div>
-<div style="font-size: 1.2rem; color: #00D2FF; font-weight: 900;">➔</div>
-<div style="text-align: right;">
-<span style="font-size: 0.68rem; color: #8B949E;">EOR REVERSAL LEVEL:</span><br>
-<span style="font-size: 0.95rem; font-weight: 800; color: #FFB800;">₹{primary_eor_val:,.1f}</span>
-</div>
-</div>
-<div style="font-size: 0.72rem; color: #C9D1D9; margin-top: 6px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 4px;">
-↳ {c_mig_text}
+<span style="font-size: 0.75rem; color: #FF3B69; font-weight: 800;">🔴 CALL WRITERS MIGRATION (RESISTANCE & INFLOW/EXIT)</span>
+<div style="display: flex; gap: 4px;">
+<span class="{ce_v_badge}" style="font-size: 0.65rem;">{ce_verdict.split('->')[-1].strip()}</span>
+<span class="{c_mig_pill}" style="font-size: 0.65rem;">{quant_pkg['ce_mig_badge'] if quant_pkg else 'RESISTANCE'}</span>
 </div>
 </div>
 
-<div style="background: rgba(0, 245, 160, 0.06); border: 1px solid rgba(0, 245, 160, 0.3); border-radius: 8px; padding: 8px 12px;">
-<div style="display: flex; justify-content: space-between; align-items: center;">
-<span style="font-size: 0.72rem; color: #00F5A0; font-weight: 800;">🟢 PUT SUPPORT MIGRATION (LTP COA)</span>
-<span class="{p_mig_pill}" style="font-size: 0.68rem;">{quant_pkg['pe_mig_badge'] if quant_pkg else 'SUPPORT'}</span>
-</div>
-<div style="display: flex; align-items: center; justify-content: space-between; margin-top: 6px; font-family: 'JetBrains Mono', monospace;">
+<div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px; font-family: 'JetBrains Mono', monospace; background: rgba(0,0,0,0.22); padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.04);">
 <div>
-<span style="font-size: 0.68rem; color: #8B949E;">PRIMARY SUPPORT:</span><br>
-<span style="font-size: 0.95rem; font-weight: 800; color: #00F5A0;">₹{quant_pkg['top1_pe_k'] if quant_pkg else pe_exit_k:,} PE</span>
+<span style="font-size: 0.65rem; color: #8B949E;">EXIT ZONE (UNWIND):</span><br>
+<span style="font-size: 0.92rem; font-weight: 800; color: #FF3B69;">₹{ce_exit_k:,} CE</span>
+<span style="font-size: 0.72rem; color: #FFB800; font-weight: 700;">({fmt_inr_qty(ce_exit_qty)})</span>
 </div>
-<div style="font-size: 1.2rem; color: #00D2FF; font-weight: 900;">➔</div>
+<div style="font-size: 1.1rem; color: #00D2FF; font-weight: 900;">➔</div>
 <div style="text-align: right;">
-<span style="font-size: 0.68rem; color: #8B949E;">EOS REVERSAL LEVEL:</span><br>
-<span style="font-size: 0.95rem; font-weight: 800; color: #00F5A0;">₹{primary_eos_val:,.1f}</span>
+<span style="font-size: 0.65rem; color: #8B949E;">SHIFT DESTINATION (INFLOW):</span><br>
+<span style="font-size: 0.92rem; font-weight: 800; color: #00F5A0;">₹{ce_inflow_k:,} CE</span>
+<span style="font-size: 0.72rem; color: #00F5A0; font-weight: 700;">({fmt_inr_qty(ce_inflow_qty)})</span>
 </div>
 </div>
-<div style="font-size: 0.72rem; color: #C9D1D9; margin-top: 6px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 4px;">
-↳ {p_mig_text}
+
+<div style="display: flex; align-items: center; justify-content: space-between; margin-top: 6px; font-family: 'JetBrains Mono', monospace; background: rgba(255, 184, 0, 0.05); border: 1px solid rgba(255, 184, 0, 0.22); padding: 6px 10px; border-radius: 6px;">
+<div>
+<span style="font-size: 0.65rem; color: #8B949E;">PRIMARY RESISTANCE:</span><br>
+<span style="font-size: 0.92rem; font-weight: 800; color: #FF3B69;">₹{quant_pkg['top1_ce_k'] if quant_pkg else ce_exit_k:,} CE</span>
 </div>
+<div style="font-size: 1.1rem; color: #FFB800; font-weight: 900;">➔</div>
+<div style="text-align: right;">
+<span style="font-size: 0.65rem; color: #8B949E;">EOR REVERSAL LEVEL:</span><br>
+<span style="font-size: 0.92rem; font-weight: 800; color: #FFB800;">₹{primary_eor_val:,.1f}</span>
+</div>
+</div>
+
+<div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.70rem; color: #8B949E; margin-top: 6px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 4px;">
+<span>Total Call Exits: <strong style="color: #FF3B69;">{fmt_inr_qty(tot_ce_exit)}</strong></span>
+<span>Total Call Inflows: <strong style="color: #00F5A0;">{fmt_inr_qty(tot_ce_inflow)}</strong></span>
+</div>
+<div style="font-size: 0.70rem; color: #C9D1D9; margin-top: 3px;">↳ {c_mig_text}</div>
+</div>
+
+<div style="background: rgba(0, 245, 160, 0.06); border: 1px solid rgba(0, 245, 160, 0.3); border-radius: 8px; padding: 10px 14px;">
+<div style="display: flex; justify-content: space-between; align-items: center;">
+<span style="font-size: 0.75rem; color: #00F5A0; font-weight: 800;">🟢 PUT WRITERS MIGRATION (SUPPORT & INFLOW/EXIT)</span>
+<div style="display: flex; gap: 4px;">
+<span class="{pe_v_badge}" style="font-size: 0.65rem;">{pe_verdict.split('->')[-1].strip()}</span>
+<span class="{p_mig_pill}" style="font-size: 0.65rem;">{quant_pkg['pe_mig_badge'] if quant_pkg else 'SUPPORT'}</span>
+</div>
+</div>
+
+<div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px; font-family: 'JetBrains Mono', monospace; background: rgba(0,0,0,0.22); padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.04);">
+<div>
+<span style="font-size: 0.65rem; color: #8B949E;">EXIT ZONE (UNWIND):</span><br>
+<span style="font-size: 0.92rem; font-weight: 800; color: #FF3B69;">₹{pe_exit_k:,} PE</span>
+<span style="font-size: 0.72rem; color: #FFB800; font-weight: 700;">({fmt_inr_qty(pe_exit_qty)})</span>
+</div>
+<div style="font-size: 1.1rem; color: #00D2FF; font-weight: 900;">➔</div>
+<div style="text-align: right;">
+<span style="font-size: 0.65rem; color: #8B949E;">SHIFT DESTINATION (INFLOW):</span><br>
+<span style="font-size: 0.92rem; font-weight: 800; color: #00F5A0;">₹{pe_inflow_k:,} PE</span>
+<span style="font-size: 0.72rem; color: #00F5A0; font-weight: 700;">({fmt_inr_qty(pe_inflow_qty)})</span>
+</div>
+</div>
+
+<div style="display: flex; align-items: center; justify-content: space-between; margin-top: 6px; font-family: 'JetBrains Mono', monospace; background: rgba(0, 245, 160, 0.05); border: 1px solid rgba(0, 245, 160, 0.22); padding: 6px 10px; border-radius: 6px;">
+<div>
+<span style="font-size: 0.65rem; color: #8B949E;">PRIMARY SUPPORT:</span><br>
+<span style="font-size: 0.92rem; font-weight: 800; color: #00F5A0;">₹{quant_pkg['top1_pe_k'] if quant_pkg else pe_exit_k:,} PE</span>
+</div>
+<div style="font-size: 1.1rem; color: #00D2FF; font-weight: 900;">➔</div>
+<div style="text-align: right;">
+<span style="font-size: 0.65rem; color: #8B949E;">EOS REVERSAL LEVEL:</span><br>
+<span style="font-size: 0.92rem; font-weight: 800; color: #00F5A0;">₹{primary_eos_val:,.1f}</span>
+</div>
+</div>
+
+<div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.70rem; color: #8B949E; margin-top: 6px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 4px;">
+<span>Total Put Exits: <strong style="color: #FF3B69;">{fmt_inr_qty(tot_pe_exit)}</strong></span>
+<span>Total Put Inflows: <strong style="color: #00F5A0;">{fmt_inr_qty(tot_pe_inflow)}</strong></span>
+</div>
+<div style="font-size: 0.70rem; color: #C9D1D9; margin-top: 3px;">↳ {p_mig_text}</div>
 </div>
 </div>
 
