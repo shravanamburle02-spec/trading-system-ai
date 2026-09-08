@@ -1044,21 +1044,19 @@ with sec2:
                 bias_narrative = f"Market strongly pinned inside Straddle cone with solid gamma cushioning around ₹{atm_k:,}."
                 bias_action = "HARVEST THETA (DELTA-NEUTRAL STRANGLE)"
 
-            trap_strip_html = ""
             if quant_pkg and quant_pkg.get('has_critical_trap'):
                 trap_alert = quant_pkg['top_trap']
-                trap_strip_html = f"""
-                <div style="background: rgba(255, 59, 105, 0.18); border: 1.5px solid #FF3B69; border-radius: 8px; padding: 8px 14px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 0 14px rgba(255,59,105,0.35);">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <span style="font-size: 1.1rem;">⚠️</span>
-                        <div>
-                            <strong style="color: #FF3B69; font-size: 0.88rem;">{trap_alert['title']}</strong>:
-                            <span style="color: #F0F4F8; font-size: 0.80rem;"> {trap_alert['detail']}</span>
-                        </div>
-                    </div>
-                    <span class="{trap_alert['pill']}" style="font-size: 0.75rem; padding: 4px 10px; font-weight: 800;">{trap_alert['action']}</span>
-                </div>
-                """
+                trap_strip_html = f"""<div style="background: rgba(255, 59, 105, 0.18); border: 1.5px solid #FF3B69; border-radius: 8px; padding: 8px 14px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 0 14px rgba(255,59,105,0.35);">
+<div style="display: flex; align-items: center; gap: 8px;">
+<span style="font-size: 1.1rem;">⚠️</span>
+<div>
+<strong style="color: #FF3B69; font-size: 0.88rem;">{trap_alert['title']}</strong>:
+<span style="color: #F0F4F8; font-size: 0.80rem;"> {trap_alert['detail']}</span>
+</div>
+</div>
+<span class="{trap_alert['pill']}" style="font-size: 0.75rem; padding: 4px 10px; font-weight: 800;">{trap_alert['action']}</span>
+</div>"""
+                st.markdown(trap_strip_html, unsafe_allow_html=True)
 
             c_mig_pill = quant_pkg['ce_mig_pill'] if quant_pkg else "glow-pill-gold"
             c_mig_text = quant_pkg['ce_mig_text'] if quant_pkg else ce_verdict
@@ -1081,84 +1079,75 @@ with sec2:
             ce_badge_txt = quant_pkg['ce_mig_badge'] if quant_pkg else 'RESISTANCE'
             pe_badge_txt = quant_pkg['pe_mig_badge'] if quant_pkg else 'SUPPORT'
 
-            hud_html = f"""
-            {trap_strip_html}
-            <div style="display: grid; grid-template-columns: 1.15fr 1.35fr 1.1fr; gap: 10px; margin-bottom: 10px;">
-                <!-- CARD 1: MARKET PULSE & BIAS -->
-                <div style="background: rgba(13, 17, 26, 0.9); border: 1px solid rgba(0, 210, 255, 0.25); border-left: 4px solid {bias_color}; border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; justify-content: space-between;">
-                    <div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 5px;">
-                            <span style="font-size: 0.70rem; color: #8B949E; font-weight: 800; letter-spacing: 0.5px;">🛰️ 1. MARKET BIAS</span>
-                            <span class="{bias_pill}" style="font-size: 0.65rem; font-weight: 800;">{bias_dir} ({bias_conf}%)</span>
-                        </div>
-                        <div style="margin-top: 6px;">
-                            <div style="font-size: 1.02rem; font-weight: 900; color: {bias_color};">{bias_title}</div>
-                            <div style="font-size: 0.72rem; color: #C9D1D9; margin-top: 3px; line-height: 1.35;">{bias_narrative}</div>
-                        </div>
-                    </div>
-                    <div style="margin-top: 8px; padding: 5px 8px; background: rgba(255,255,255,0.03); border-radius: 6px; display: flex; justify-content: space-between; align-items: center; font-size: 0.70rem;">
-                        <span style="color: #8B949E;">VERDICT:</span>
-                        <strong style="color: {bias_color}; font-size: 0.72rem;">{bias_action}</strong>
-                    </div>
-                </div>
-
-                <!-- CARD 2: BATTLEFIELD RUNWAY (Support ⟷ Spot ⟷ Resistance) -->
-                <div style="background: rgba(13, 17, 26, 0.9); border: 1px solid rgba(255, 184, 0, 0.25); border-left: 4px solid #FFB800; border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; justify-content: space-between;">
-                    <div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 5px;">
-                            <span style="font-size: 0.70rem; color: #8B949E; font-weight: 800; letter-spacing: 0.5px;">🧭 2. BATTLEFIELD RUNWAY (S&R)</span>
-                            <span class="glow-pill-gold" style="font-size: 0.65rem;">✨ ATM: ₹{atm_k:,}</span>
-                        </div>
-                        <!-- Visual Runway Box -->
-                        <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 6px; align-items: center; margin-top: 8px; font-family: 'JetBrains Mono', monospace;">
-                            <div style="background: rgba(0, 245, 160, 0.08); border: 1px solid rgba(0, 245, 160, 0.25); border-radius: 6px; padding: 5px 8px; text-align: left;">
-                                <span style="font-size: 0.62rem; color: #8B949E;">🛡️ SUPPORT (EOS)</span><br>
-                                <strong style="color: #00F5A0; font-size: 0.92rem;">₹{primary_eos_val:,.1f}</strong><br>
-                                <span style="font-size: 0.62rem; color: #8B949E;">Wall: ₹{top1_pe_k:,} PE</span>
-                            </div>
-                            <div style="text-align: center; padding: 0 2px;">
-                                <span style="font-size: 0.58rem; color: #00D2FF; font-weight: 700;">LIVE SPOT</span><br>
-                                <span style="font-size: 0.98rem; font-weight: 900; color: #FFFFFF; background: rgba(0,210,255,0.15); padding: 2px 6px; border-radius: 5px; border: 1px solid rgba(0,210,255,0.4);">₹{spot_s2:,.1f}</span>
-                            </div>
-                            <div style="background: rgba(255, 59, 105, 0.08); border: 1px solid rgba(255, 59, 105, 0.25); border-radius: 6px; padding: 5px 8px; text-align: right;">
-                                <span style="font-size: 0.62rem; color: #8B949E;">🔴 RESISTANCE (EOR)</span><br>
-                                <strong style="color: #FFB800; font-size: 0.92rem;">₹{primary_eor_val:,.1f}</strong><br>
-                                <span style="font-size: 0.62rem; color: #8B949E;">Wall: ₹{top1_ce_k:,} CE</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 0.68rem; margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 4px;">
-                        <span style="color: #00F5A0;">Sup: {pe_badge_txt}</span>
-                        <span style="color: #FFB800;">Magnet: ₹{mp_live:,}</span>
-                        <span style="color: #FF3B69;">Res: {ce_badge_txt}</span>
-                    </div>
-                </div>
-
-                <!-- CARD 3: SMART MONEY FLOW & EXPIRY CONE -->
-                <div style="background: rgba(13, 17, 26, 0.9); border: 1px solid rgba(157, 78, 221, 0.25); border-left: 4px solid #9D4EDD; border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; justify-content: space-between;">
-                    <div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 5px;">
-                            <span style="font-size: 0.70rem; color: #8B949E; font-weight: 800; letter-spacing: 0.5px;">🌊 3. FLOW & EXPIRY BOUNDS</span>
-                            <span class="{gex_pill}" style="font-size: 0.65rem;">GEX: {gex_short}</span>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; font-family: 'JetBrains Mono', monospace; font-size: 0.70rem;">
-                            <div style="background: rgba(255,255,255,0.02); padding: 4px 6px; border-radius: 5px;">
-                                <span style="color: #8B949E; font-size: 0.62rem;">CE EXIT ➔ INFLOW:</span><br>
-                                <span style="color: #FF3B69;">{fmt_inr_qty(ce_exit_qty)}</span> ➔ <span style="color: #00F5A0;">{fmt_inr_qty(ce_inflow_qty)}</span>
-                            </div>
-                            <div style="background: rgba(255,255,255,0.02); padding: 4px 6px; border-radius: 5px;">
-                                <span style="color: #8B949E; font-size: 0.62rem;">PE EXIT ➔ INFLOW:</span><br>
-                                <span style="color: #FF3B69;">{fmt_inr_qty(pe_exit_qty)}</span> ➔ <span style="color: #00F5A0;">{fmt_inr_qty(pe_inflow_qty)}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.05); font-size: 0.68rem;">
-                        <span style="color: #8B949E;">CONE: <strong style="color: #C77DFF;">₹{l_cone_val:,.0f} - ₹{u_cone_val:,.0f}</strong></span>
-                        <span style="color: #8B949E;">PCR VEL: <strong style="color: #00D2FF;">{pcr_v_badge}</strong></span>
-                    </div>
-                </div>
-            </div>
-            """
+            hud_html = f"""<div style="display: grid; grid-template-columns: 1.15fr 1.35fr 1.1fr; gap: 10px; margin-bottom: 10px;">
+<div style="background: rgba(13, 17, 26, 0.9); border: 1px solid rgba(0, 210, 255, 0.25); border-left: 4px solid {bias_color}; border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; justify-content: space-between;">
+<div>
+<div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 5px;">
+<span style="font-size: 0.70rem; color: #8B949E; font-weight: 800; letter-spacing: 0.5px;">🛰️ 1. MARKET BIAS</span>
+<span class="{bias_pill}" style="font-size: 0.65rem; font-weight: 800;">{bias_dir} ({bias_conf}%)</span>
+</div>
+<div style="margin-top: 6px;">
+<div style="font-size: 1.02rem; font-weight: 900; color: {bias_color};">{bias_title}</div>
+<div style="font-size: 0.72rem; color: #C9D1D9; margin-top: 3px; line-height: 1.35;">{bias_narrative}</div>
+</div>
+</div>
+<div style="margin-top: 8px; padding: 5px 8px; background: rgba(255,255,255,0.03); border-radius: 6px; display: flex; justify-content: space-between; align-items: center; font-size: 0.70rem;">
+<span style="color: #8B949E;">VERDICT:</span>
+<strong style="color: {bias_color}; font-size: 0.72rem;">{bias_action}</strong>
+</div>
+</div>
+<div style="background: rgba(13, 17, 26, 0.9); border: 1px solid rgba(255, 184, 0, 0.25); border-left: 4px solid #FFB800; border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; justify-content: space-between;">
+<div>
+<div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 5px;">
+<span style="font-size: 0.70rem; color: #8B949E; font-weight: 800; letter-spacing: 0.5px;">🧭 2. BATTLEFIELD RUNWAY (S&R)</span>
+<span class="glow-pill-gold" style="font-size: 0.65rem;">✨ ATM: ₹{atm_k:,}</span>
+</div>
+<div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 6px; align-items: center; margin-top: 8px; font-family: 'JetBrains Mono', monospace;">
+<div style="background: rgba(0, 245, 160, 0.08); border: 1px solid rgba(0, 245, 160, 0.25); border-radius: 6px; padding: 5px 8px; text-align: left;">
+<span style="font-size: 0.62rem; color: #8B949E;">🛡️ SUPPORT (EOS)</span><br>
+<strong style="color: #00F5A0; font-size: 0.92rem;">₹{primary_eos_val:,.1f}</strong><br>
+<span style="font-size: 0.62rem; color: #8B949E;">Wall: ₹{top1_pe_k:,} PE</span>
+</div>
+<div style="text-align: center; padding: 0 2px;">
+<span style="font-size: 0.58rem; color: #00D2FF; font-weight: 700;">LIVE SPOT</span><br>
+<span style="font-size: 0.98rem; font-weight: 900; color: #FFFFFF; background: rgba(0,210,255,0.15); padding: 2px 6px; border-radius: 5px; border: 1px solid rgba(0,210,255,0.4);">₹{spot_s2:,.1f}</span>
+</div>
+<div style="background: rgba(255, 59, 105, 0.08); border: 1px solid rgba(255, 59, 105, 0.25); border-radius: 6px; padding: 5px 8px; text-align: right;">
+<span style="font-size: 0.62rem; color: #8B949E;">🔴 RESISTANCE (EOR)</span><br>
+<strong style="color: #FFB800; font-size: 0.92rem;">₹{primary_eor_val:,.1f}</strong><br>
+<span style="font-size: 0.62rem; color: #8B949E;">Wall: ₹{top1_ce_k:,} CE</span>
+</div>
+</div>
+</div>
+<div style="display: flex; justify-content: space-between; font-size: 0.68rem; margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 4px;">
+<span style="color: #00F5A0;">Sup: {pe_badge_txt}</span>
+<span style="color: #FFB800;">Magnet: ₹{mp_live:,}</span>
+<span style="color: #FF3B69;">Res: {ce_badge_txt}</span>
+</div>
+</div>
+<div style="background: rgba(13, 17, 26, 0.9); border: 1px solid rgba(157, 78, 221, 0.25); border-left: 4px solid #9D4EDD; border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; justify-content: space-between;">
+<div>
+<div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 5px;">
+<span style="font-size: 0.70rem; color: #8B949E; font-weight: 800; letter-spacing: 0.5px;">🌊 3. FLOW & EXPIRY BOUNDS</span>
+<span class="{gex_pill}" style="font-size: 0.65rem;">GEX: {gex_short}</span>
+</div>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; font-family: 'JetBrains Mono', monospace; font-size: 0.70rem;">
+<div style="background: rgba(255,255,255,0.02); padding: 4px 6px; border-radius: 5px;">
+<span style="color: #8B949E; font-size: 0.62rem;">CE EXIT ➔ INFLOW:</span><br>
+<span style="color: #FF3B69;">{fmt_inr_qty(ce_exit_qty)}</span> ➔ <span style="color: #00F5A0;">{fmt_inr_qty(ce_inflow_qty)}</span>
+</div>
+<div style="background: rgba(255,255,255,0.02); padding: 4px 6px; border-radius: 5px;">
+<span style="color: #8B949E; font-size: 0.62rem;">PE EXIT ➔ INFLOW:</span><br>
+<span style="color: #FF3B69;">{fmt_inr_qty(pe_exit_qty)}</span> ➔ <span style="color: #00F5A0;">{fmt_inr_qty(pe_inflow_qty)}</span>
+</div>
+</div>
+</div>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.05); font-size: 0.68rem;">
+<span style="color: #8B949E;">CONE: <strong style="color: #C77DFF;">₹{l_cone_val:,.0f} - ₹{u_cone_val:,.0f}</strong></span>
+<span style="color: #8B949E;">PCR VEL: <strong style="color: #00D2FF;">{pcr_v_badge}</strong></span>
+</div>
+</div>
+</div>"""
             st.markdown(hud_html, unsafe_allow_html=True)
 
             # -------------------------------------------------------------
@@ -1170,35 +1159,34 @@ with sec2:
                 q_pill = q_sig['badge_class']
                 q_border = '#00F5A0' if q_dir == 'BULLISH' else '#FF3B69' if q_dir == 'BEARISH' else '#FFB800'
                 
-                st.markdown(f"""
-                <div class="cockpit-card" style="margin-bottom: 10px; border-left: 4px solid {q_border}; background: rgba(13, 17, 26, 0.85);">
-                    <div class="card-header" style="padding-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.06);">
-                        <span style="font-size: 0.88rem; font-weight: 800; color: #FFFFFF; display: flex; align-items: center; gap: 6px;">
-                            <span>⚡</span> 100% DATA-DRIVEN QUANT TRADE SIGNAL
-                        </span>
-                        <span class="{q_pill}" style="font-size: 0.75rem;">{q_dir} ({q_sig['confidence']}% CONFIDENCE)</span>
-                    </div>
-                    <div style="display: grid; grid-template-columns: 2.2fr 1fr 1fr 1.2fr; gap: 8px; margin-top: 8px; background: rgba(255,255,255,0.02); padding: 8px 12px; border-radius: 6px; font-family: 'JetBrains Mono', monospace;">
-                        <div>
-                            <span style="font-size: 0.65rem; color: #8B949E;">RECOMMENDED SETUP:</span><br>
-                            <strong style="color: #00D2FF; font-size: 0.88rem;">{q_sig['strategy_name']}</strong><br>
-                            <span style="font-size: 0.68rem; color: #C9D1D9;">{' • '.join(q_sig['rationale'][:2])}</span>
-                        </div>
-                        <div>
-                            <span style="font-size: 0.65rem; color: #8B949E;">ENTRY ZONE:</span><br>
-                            <strong style="color: #FFFFFF; font-size: 0.88rem;">{q_sig['entry_range']}</strong>
-                        </div>
-                        <div>
-                            <span style="font-size: 0.65rem; color: #8B949E;">STOP-LOSS:</span><br>
-                            <strong style="color: #FF3B69; font-size: 0.88rem;">₹{q_sig['sl']:.1f}</strong>
-                        </div>
-                        <div>
-                            <span style="font-size: 0.65rem; color: #8B949E;">TARGETS (T1 / T2):</span><br>
-                            <strong style="color: #00F5A0; font-size: 0.88rem;">₹{q_sig['target1']:.1f} / ₹{q_sig['target2']:.1f}</strong>
-                        </div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+                q_sig_html = f"""<div class="cockpit-card" style="margin-bottom: 10px; border-left: 4px solid {q_border}; background: rgba(13, 17, 26, 0.85);">
+<div class="card-header" style="padding-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.06);">
+<span style="font-size: 0.88rem; font-weight: 800; color: #FFFFFF; display: flex; align-items: center; gap: 6px;">
+<span>⚡</span> 100% DATA-DRIVEN QUANT TRADE SIGNAL
+</span>
+<span class="{q_pill}" style="font-size: 0.75rem;">{q_dir} ({q_sig['confidence']}% CONFIDENCE)</span>
+</div>
+<div style="display: grid; grid-template-columns: 2.2fr 1fr 1fr 1.2fr; gap: 8px; margin-top: 8px; background: rgba(255,255,255,0.02); padding: 8px 12px; border-radius: 6px; font-family: 'JetBrains Mono', monospace;">
+<div>
+<span style="font-size: 0.65rem; color: #8B949E;">RECOMMENDED SETUP:</span><br>
+<strong style="color: #00D2FF; font-size: 0.88rem;">{q_sig['strategy_name']}</strong><br>
+<span style="font-size: 0.68rem; color: #C9D1D9;">{' • '.join(q_sig['rationale'][:2])}</span>
+</div>
+<div>
+<span style="font-size: 0.65rem; color: #8B949E;">ENTRY ZONE:</span><br>
+<strong style="color: #FFFFFF; font-size: 0.88rem;">{q_sig['entry_range']}</strong>
+</div>
+<div>
+<span style="font-size: 0.65rem; color: #8B949E;">STOP-LOSS:</span><br>
+<strong style="color: #FF3B69; font-size: 0.88rem;">₹{q_sig['sl']:.1f}</strong>
+</div>
+<div>
+<span style="font-size: 0.65rem; color: #8B949E;">TARGETS (T1 / T2):</span><br>
+<strong style="color: #00F5A0; font-size: 0.88rem;">₹{q_sig['target1']:.1f} / ₹{q_sig['target2']:.1f}</strong>
+</div>
+</div>
+</div>"""
+                st.markdown(q_sig_html, unsafe_allow_html=True)
 
                 sig_btn_col1, sig_btn_col2 = st.columns([3.2, 6.8])
                 with sig_btn_col1:
