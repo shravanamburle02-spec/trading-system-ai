@@ -1351,37 +1351,17 @@ with sec2:
                 ce_vel_icon = " ⚡" if abs(ce_rpm_v) >= 15000 else ""
                 pe_vel_icon = " ⚡" if abs(pe_rpm_v) >= 15000 else ""
 
-                if ce_chg_v <= -100000:
-                    ce_shift_tag = f"{ce_w_prefix}📤 EXIT: {fmt_inr_qty(ce_chg_v)} ({ce_chg_pct_val:+.1f}%){ce_vel_icon}"
-                    ce_tag_class = "tag-exit"
-                elif ce_chg_v >= 250000:
-                    ce_shift_tag = f"{ce_w_prefix}📥 INFLOW: {fmt_inr_qty(ce_chg_v)} ({ce_chg_pct_val:+.1f}%){ce_vel_icon}"
-                    ce_tag_class = "tag-inflow"
-                elif ce_chg_v < -20000:
-                    ce_shift_tag = f"{ce_w_prefix}⚠️ UNWIND: {fmt_inr_qty(ce_chg_v)} ({ce_chg_pct_val:+.1f}%){ce_vel_icon}"
-                    ce_tag_class = "tag-unwind"
-                elif ce_chg_v > 40000:
-                    ce_shift_tag = f"{ce_w_prefix}🎯 ADDITION: {fmt_inr_qty(ce_chg_v)} ({ce_chg_pct_val:+.1f}%){ce_vel_icon}"
-                    ce_tag_class = "tag-add"
-                else:
-                    ce_shift_tag = f"{ce_w_prefix}🟢 LB" if ce_chg_v >= 0 and ce_ltp_v >= 50 else f"{ce_w_prefix}🔴 SB" if ce_chg_v >= 0 else f"{ce_w_prefix}🟡 SC" if ce_ltp_v >= 50 else f"{ce_w_prefix}🟠 LU"
-                    ce_tag_class = "tag-lb" if "LB" in ce_shift_tag else "tag-sb" if "SB" in ce_shift_tag else "tag-sc" if "SC" in ce_shift_tag else "tag-lu"
+                # 2D Buildup badges from Quant Engine (Price x OI)
+                ce_buildup_tag = r.get('ce_buildup_badge', '🟢 LB')
+                pe_buildup_tag = r.get('pe_buildup_badge', '🔴 SB')
+                ce_shift_tag = f"{ce_w_prefix}{ce_buildup_tag}{ce_vel_icon}"
+                pe_shift_tag = f"{pe_w_prefix}{pe_buildup_tag}{pe_vel_icon}"
 
-                if pe_chg_v <= -100000:
-                    pe_shift_tag = f"{pe_w_prefix}📤 EXIT: {fmt_inr_qty(pe_chg_v)} ({pe_chg_pct_val:+.1f}%){pe_vel_icon}"
-                    pe_tag_class = "tag-exit"
-                elif pe_chg_v >= 250000:
-                    pe_shift_tag = f"{pe_w_prefix}📥 INFLOW: {fmt_inr_qty(pe_chg_v)} ({pe_chg_pct_val:+.1f}%){pe_vel_icon}"
-                    pe_tag_class = "tag-inflow"
-                elif pe_chg_v < -20000:
-                    pe_shift_tag = f"{pe_w_prefix}⚠️ UNWIND: {fmt_inr_qty(pe_chg_v)} ({pe_chg_pct_val:+.1f}%){pe_vel_icon}"
-                    pe_tag_class = "tag-unwind"
-                elif pe_chg_v > 40000:
-                    pe_shift_tag = f"{pe_w_prefix}🎯 ADDITION: {fmt_inr_qty(pe_chg_v)} ({pe_chg_pct_val:+.1f}%){pe_vel_icon}"
-                    pe_tag_class = "tag-add"
-                else:
-                    pe_shift_tag = f"{pe_w_prefix}🟢 LB" if pe_chg_v >= 0 and pe_ltp_v >= 50 else f"{pe_w_prefix}🔴 SB" if pe_chg_v >= 0 else f"{pe_w_prefix}🟡 SC" if pe_ltp_v >= 50 else f"{pe_w_prefix}🟠 LU"
-                    pe_tag_class = "tag-lb" if "LB" in pe_shift_tag else "tag-sb" if "SB" in pe_shift_tag else "tag-sc" if "SC" in pe_shift_tag else "tag-lu"
+                ce_tag_class = "tag-lb" if "LB" in ce_shift_tag else "tag-sb" if "SB" in ce_shift_tag else "tag-sc" if "SC" in ce_shift_tag else "tag-lu"
+                pe_tag_class = "tag-lb" if "LB" in pe_shift_tag else "tag-sb" if "SB" in pe_shift_tag else "tag-sc" if "SC" in pe_shift_tag else "tag-lu"
+
+                ce_shift_title = r.get('ce_buildup_label', 'Institutional Buildup')
+                pe_shift_title = r.get('pe_buildup_label', 'Institutional Buildup')
 
                 ce_delta_v = float(r.get('ce_delta', 0.5))
                 pe_delta_v = float(r.get('pe_delta', -0.5))
@@ -1392,26 +1372,37 @@ with sec2:
                 ce_vega_v = round(float(r.get('ce_vega', 8.5)) * default_lot, 1)
                 pe_vega_v = round(float(r.get('pe_vega', 8.5)) * default_lot, 1)
 
+                ce_rev_val = float(r.get('ce_reversal_eor', k + ce_ltp_v))
+                pe_rev_val = float(r.get('pe_reversal_eos', k - pe_ltp_v))
+
                 js_rows_data.append({
                     "strike": k, "is_atm": is_atm, "ce_ltp": ce_ltp_v, "ce_oi": ce_oi_v,
                     "ce_oi_pct": min(100, int((ce_oi_v / max_ce_oi) * 100)),
                     "ce_chg": ce_chg_v, "ce_chg_pct": min(100, int((abs(ce_chg_v) / max_ce_chg_abs) * 100)),
                     "ce_chg_pct_val": ce_chg_pct_val, "ce_rpm": ce_rpm_v, "ce_shift_tag": ce_shift_tag,
-                    "ce_tag_class": ce_tag_class, "ce_vol": int(r.get('ce_volume', 25000)),
+                    "ce_tag_class": ce_tag_class, "ce_title": ce_shift_title,
+                    "ce_vol": int(r.get('ce_volume', 25000)),
                     "ce_iv": float(r.get('ce_iv', 10.0)), "ce_delta": ce_delta_v, "ce_theta": ce_theta_v,
-                    "ce_gamma": ce_gamma_v, "ce_vega": ce_vega_v, "pe_ltp": pe_ltp_v, "pe_oi": pe_oi_v,
+                    "ce_gamma": ce_gamma_v, "ce_vega": ce_vega_v, "ce_reversal": round(ce_rev_val, 1),
+                    "pe_ltp": pe_ltp_v, "pe_oi": pe_oi_v,
                     "pe_oi_pct": min(100, int((pe_oi_v / max_pe_oi) * 100)),
                     "pe_chg": pe_chg_v, "pe_chg_pct": min(100, int((abs(pe_chg_v) / max_pe_chg_abs) * 100)),
                     "pe_chg_pct_val": pe_chg_pct_val, "pe_rpm": pe_rpm_v, "pe_shift_tag": pe_shift_tag,
-                    "pe_tag_class": pe_tag_class, "pe_vol": int(r.get('pe_volume', 25000)),
+                    "pe_tag_class": pe_tag_class, "pe_title": pe_shift_title,
+                    "pe_vol": int(r.get('pe_volume', 25000)),
                     "pe_iv": float(r.get('pe_iv', 10.0)), "pe_delta": pe_delta_v, "pe_theta": pe_theta_v,
-                    "pe_gamma": pe_gamma_v, "pe_vega": pe_vega_v,
+                    "pe_gamma": pe_gamma_v, "pe_vega": pe_vega_v, "pe_reversal": round(pe_rev_val, 1),
                     "ce_wall": " 🟥RES" if k == chain_data_s2['top_call_wall'] else "",
                     "pe_wall": " 🟩SUP" if k == chain_data_s2['top_put_wall'] else ""
                 })
 
             js_data_json = json.dumps(js_rows_data)
             is_greeks_mode = "Greeks" in oc_view_mode
+
+            ce_colspan = 6 if is_greeks_mode else 8
+            pe_colspan = 6 if is_greeks_mode else 8
+            ce_title_text = "CALLS (CE) GREEKS" if is_greeks_mode else "CALLS (CE)"
+            pe_title_text = "PUTS (PE) GREEKS" if is_greeks_mode else "PUTS (PE)"
 
             full_oc_table = f"""
             <!DOCTYPE html>
@@ -1427,9 +1418,9 @@ with sec2:
                 .card-title {{ font-size: 0.65rem; color: #8B949E; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; text-transform: uppercase; }}
                 .card-val {{ font-size: 0.98rem; font-weight: 900; margin-top: 2px; }}
                 .table-wrap {{ border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; overflow-x: auto; background: #080C14; }}
-                table {{ width: 100%; min-width: 1260px; border-collapse: collapse; text-align: center; }}
-                th {{ background: #0D111A; padding: 8px 4px; color: #8B949E; font-weight: 700; position: sticky; top: 0; border-bottom: 2px solid rgba(255, 255, 255, 0.1); z-index: 10; }}
-                td {{ padding: 6px 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.04); transition: background-color 0.25s ease, color 0.25s ease; position: relative; }}
+                table {{ width: 100%; min-width: 1420px; border-collapse: collapse; text-align: center; }}
+                th {{ background: #0D111A; padding: 8px 4px; color: #8B949E; font-weight: 700; position: sticky; top: 0; border-bottom: 2px solid rgba(255, 255, 255, 0.1); z-index: 10; font-size: 10.5px; white-space: nowrap; }}
+                td {{ padding: 6px 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.04); transition: background-color 0.25s ease, color 0.25s ease; position: relative; font-size: 11px; white-space: nowrap; }}
                 tr:hover {{ background: rgba(0, 210, 255, 0.08) !important; }}
                 .flash-up {{ background-color: rgba(0, 245, 160, 0.45) !important; color: #FFFFFF !important; font-weight: 900 !important; }}
                 .flash-down {{ background-color: rgba(255, 59, 105, 0.45) !important; color: #FFFFFF !important; font-weight: 900 !important; }}
@@ -1439,8 +1430,8 @@ with sec2:
                 .pulse-dot {{ display: inline-block; width: 7px; height: 7px; background: #00F5A0; border-radius: 50%; box-shadow: 0 0 8px #00F5A0; animation: pulse 1.2s infinite; }}
                 @keyframes pulse {{ 0% {{ transform: scale(0.95); opacity: 0.7; }} 50% {{ transform: scale(1.2); opacity: 1; }} 100% {{ transform: scale(0.95); opacity: 0.7; }} }}
                 .badge-tag {{ font-size: 9px; padding: 2px 6px; border-radius: 4px; font-weight: 900; display: inline-block; letter-spacing: 0.2px; white-space: nowrap; }}
-                .tag-exit {{ background: rgba(255, 59, 105, 0.25); color: #FF3B69; border: 1px solid #FF3B69; box-shadow: 0 0 6px rgba(255, 59, 105, 0.4); animation: pulse 1.5s infinite; }}
-                .tag-inflow {{ background: rgba(0, 245, 160, 0.25); color: #00F5A0; border: 1px solid #00F5A0; box-shadow: 0 0 6px rgba(0, 245, 160, 0.4); animation: pulse 1.5s infinite; }}
+                .tag-exit {{ background: rgba(255, 59, 105, 0.25); color: #FF3B69; border: 1px solid #FF3B69; box-shadow: 0 0 6px rgba(255, 59, 105, 0.4); }}
+                .tag-inflow {{ background: rgba(0, 245, 160, 0.25); color: #00F5A0; border: 1px solid #00F5A0; box-shadow: 0 0 6px rgba(0, 245, 160, 0.4); }}
                 .tag-unwind {{ background: rgba(255, 184, 0, 0.2); color: #FFB800; border: 1px solid rgba(255, 184, 0, 0.6); }}
                 .tag-add {{ background: rgba(0, 210, 255, 0.2); color: #00D2FF; border: 1px solid rgba(0, 210, 255, 0.6); }}
                 .tag-whale {{ background: rgba(255, 215, 0, 0.25); color: #FFD700; border: 1px solid #FFD700; box-shadow: 0 0 8px rgba(255, 215, 0, 0.5); animation: pulse 1.0s infinite; }}
@@ -1495,29 +1486,31 @@ with sec2:
                 <table>
                     <thead>
                         <tr>
-                            <th colspan="7" style="color: #00F5A0; border-bottom: 2px solid #00F5A0; font-size: 12px;">CALLS (CE)</th>
-                            <th style="color: #FFB800; font-size: 13px; font-weight: 900; background: rgba(255, 184, 0, 0.1);">STRIKE PRICE</th>
-                            <th colspan="7" style="color: #FF3B69; border-bottom: 2px solid #FF3B69; font-size: 12px;">PUTS (PE)</th>
+                            <th colspan="{ce_colspan}" style="color: #00F5A0; border-bottom: 2px solid #00F5A0; font-size: 13px; letter-spacing: 0.5px;">{ce_title_text}</th>
+                            <th style="color: #FFB800; font-size: 13px; font-weight: 900; background: rgba(255, 184, 0, 0.12); border-bottom: 2px solid #FFB800;">STRIKE PRICE</th>
+                            <th colspan="{pe_colspan}" style="color: #FF3B69; border-bottom: 2px solid #FF3B69; font-size: 13px; letter-spacing: 0.5px;">{pe_title_text}</th>
                         </tr>
                         <tr>"""
 
             if not is_greeks_mode:
                 full_oc_table += """
-                            <th>Total OI (Heatmap)</th>
-                            <th style="color: #00F5A0;">OI Shift (Qty / %)</th>
-                            <th>Institutional Shift Radar</th>
-                            <th>Volume</th>
-                            <th>IV</th>
-                            <th>Delta (Δ)</th>
-                            <th style="color: #00F5A0; font-weight: 800;">CALL LTP</th>
-                            <th style="color: #FFB800; font-weight: 900;">STRIKE</th>
-                            <th style="color: #FF3B69; font-weight: 800;">PUT LTP</th>
-                            <th>Delta (Δ)</th>
-                            <th>IV</th>
-                            <th>Volume</th>
-                            <th>Institutional Shift Radar</th>
-                            <th style="color: #FF3B69;">OI Shift (Qty / %)</th>
-                            <th>Total OI (Heatmap)</th>"""
+                            <th style="color: #8B949E; width: 125px;">Total OI</th>
+                            <th style="color: #00F5A0; width: 115px;">OI Shift (Qty / %)</th>
+                            <th style="color: #8B949E; width: 95px;">Buildup Radar</th>
+                            <th style="color: #8B949E; width: 85px;">Volume</th>
+                            <th style="color: #8B949E; width: 60px;">IV (%)</th>
+                            <th style="color: #8B949E; width: 65px;">Delta (Δ)</th>
+                            <th style="color: #FFB800; font-weight: 800; width: 95px;">EOR (Reversal)</th>
+                            <th style="color: #00F5A0; font-weight: 900; width: 110px;">CALL LTP</th>
+                            <th style="color: #FFB800; font-weight: 900; width: 100px; background: rgba(255, 184, 0, 0.08);">STRIKE</th>
+                            <th style="color: #FF3B69; font-weight: 900; width: 110px;">PUT LTP</th>
+                            <th style="color: #00D2FF; font-weight: 800; width: 95px;">EOS (Reversal)</th>
+                            <th style="color: #8B949E; width: 65px;">Delta (Δ)</th>
+                            <th style="color: #8B949E; width: 60px;">IV (%)</th>
+                            <th style="color: #8B949E; width: 85px;">Volume</th>
+                            <th style="color: #8B949E; width: 95px;">Buildup Radar</th>
+                            <th style="color: #FF3B69; width: 115px;">OI Shift (Qty / %)</th>
+                            <th style="color: #8B949E; width: 125px;">Total OI</th>"""
             else:
                 full_oc_table += """
                             <th>Daily Theta (₹/d)</th>
@@ -1526,7 +1519,7 @@ with sec2:
                             <th>Delta (Δ)</th>
                             <th>IV (%)</th>
                             <th style="color: #00F5A0; font-weight: 800;">CALL LTP</th>
-                            <th style="color: #FFB800; font-weight: 900;">STRIKE</th>
+                            <th style="color: #FFB800; font-weight: 900; background: rgba(255, 184, 0, 0.08);">STRIKE</th>
                             <th style="color: #FF3B69; font-weight: 800;">PUT LTP</th>
                             <th>IV (%)</th>
                             <th>Delta (Δ)</th>
@@ -1549,7 +1542,7 @@ with sec2:
             const lotSize = {default_lot};
             const isGreeksMode = {"true" if is_greeks_mode else "false"};
 
-            function formatNumber(num) {{ return num.toLocaleString('en-IN'); }}
+            function formatNumber(num) {{ return num ? num.toLocaleString('en-IN') : '0'; }}
             function formatQtyLakhs(val) {{
                 const absV = Math.abs(val);
                 const sign = val >= 0 ? '+' : '-';
@@ -1564,7 +1557,7 @@ with sec2:
                 if (absV >= 100000) return `${{(absV / 100000).toFixed(2)}}L (${{formatNumber(val)}})`;
                 return formatNumber(val);
             }}
-            function getTagHtml(tag, tagClass) {{ return `<span class="badge-tag ${{tagClass}}">${{tag}}</span>`; }}
+            function getTagHtml(tag, tagClass, title) {{ return `<span class="badge-tag ${{tagClass}}" title="${{title || tag}}">${{tag}}</span>`; }}
 
             function buildTable() {{
                 const tbody = document.getElementById('oc-tbody');
@@ -1597,11 +1590,11 @@ with sec2:
                         tr.innerHTML = `
                             <td class="${{ceBg}}" id="ce-oi-${{k}}" style="${{ceOiBar}} text-align: right; padding-right: 8px;">${{formatTotalOILakhs(row.ce_oi)}}${{row.ce_wall}}</td>
                             <td class="${{ceBg}}" id="ce-chg-${{k}}" style="${{ceChgBar}} color: ${{ceChgColor}}; font-weight: 800;">${{formatQtyLakhs(row.ce_chg)}} <span style="font-size: 9px; opacity: 0.85;">(${{row.ce_chg_pct_val >= 0 ? '+' : ''}}${{row.ce_chg_pct_val.toFixed(1)}}%)</span></td>
-                            <td class="${{ceBg}}" id="ce-tag-${{k}}">${{getTagHtml(row.ce_shift_tag, row.ce_tag_class)}}</td>
-                            <td class="${{ceBg}}" style="color: #FFB800; font-weight: 800; font-size: 11px;">₹${{row.ce_reversal ? row.ce_reversal.toFixed(1) : (k + row.ce_ltp).toFixed(1)}}</td>
+                            <td class="${{ceBg}}" id="ce-tag-${{k}}">${{getTagHtml(row.ce_shift_tag, row.ce_tag_class, row.ce_title)}}</td>
                             <td class="${{ceBg}}" id="ce-vol-${{k}}">${{formatNumber(row.ce_vol)}}</td>
                             <td class="${{ceBg}}" id="ce-iv-${{k}}">${{row.ce_iv.toFixed(1)}}%</td>
                             <td class="${{ceBg}}" id="ce-delta-${{k}}" style="color: #00F5A0; font-weight: 700;">+${{row.ce_delta.toFixed(2)}}</td>
+                            <td class="${{ceBg}}" id="ce-rev-${{k}}" style="color: #FFB800; font-weight: 800; font-size: 11px;">₹${{row.ce_reversal.toFixed(1)}}</td>
                             <td class="${{ceBg}}" id="ce-ltp-${{k}}" style="color: #00F5A0; font-weight: 800; font-size: 12px; background: rgba(0, 245, 160, 0.12);">
                                 <span class="action-btn-b" title="Fast Buy Call">B</span><span class="action-btn-s" title="Fast Sell Call">S</span> ₹${{row.ce_ltp.toFixed(1)}}
                             </td>
@@ -1609,11 +1602,11 @@ with sec2:
                             <td class="${{peBg}}" id="pe-ltp-${{k}}" style="color: #FF3B69; font-weight: 800; font-size: 12px; background: rgba(255, 59, 105, 0.12);">
                                 ₹${{row.pe_ltp.toFixed(1)}} <span class="action-btn-b" title="Fast Buy Put">B</span><span class="action-btn-s" title="Fast Sell Put">S</span>
                             </td>
-                            <td class="${{peBg}}" id="pe-delta-${{k}}" style="color: #FF3B69;">${{row.pe_delta.toFixed(2)}}</td>
+                            <td class="${{peBg}}" id="pe-rev-${{k}}" style="color: #00D2FF; font-weight: 800; font-size: 11px;">₹${{row.pe_reversal.toFixed(1)}}</td>
+                            <td class="${{peBg}}" id="pe-delta-${{k}}" style="color: #FF3B69; font-weight: 700;">${{row.pe_delta.toFixed(2)}}</td>
                             <td class="${{peBg}}" id="pe-iv-${{k}}">${{row.pe_iv.toFixed(1)}}%</td>
                             <td class="${{peBg}}" id="pe-vol-${{k}}">${{formatNumber(row.pe_vol)}}</td>
-                            <td class="${{peBg}}" style="color: #00F5A0; font-weight: 800; font-size: 11px;">₹${{row.pe_reversal ? row.pe_reversal.toFixed(1) : (k - row.pe_ltp).toFixed(1)}}</td>
-                            <td class="${{peBg}}" id="pe-tag-${{k}}">${{getTagHtml(row.pe_shift_tag, row.pe_tag_class)}}</td>
+                            <td class="${{peBg}}" id="pe-tag-${{k}}">${{getTagHtml(row.pe_shift_tag, row.pe_tag_class, row.pe_title)}}</td>
                             <td class="${{peBg}}" id="pe-chg-${{k}}" style="${{peChgBar}} color: ${{peChgColor}}; font-weight: 800;">${{formatQtyLakhs(row.pe_chg)}} <span style="font-size: 9px; opacity: 0.85;">(${{row.pe_chg_pct_val >= 0 ? '+' : ''}}${{row.pe_chg_pct_val.toFixed(1)}}%)</span></td>
                             <td class="${{peBg}}" id="pe-oi-${{k}}" style="${{peOiBar}} text-align: left; padding-left: 8px;">${{formatTotalOILakhs(row.pe_oi)}}${{row.pe_wall}}</td>
                         `;
@@ -1625,7 +1618,7 @@ with sec2:
                             <td class="${{ceBg}}" id="ce-delta-${{k}}" style="color: #00F5A0; font-weight: 700;">+${{row.ce_delta.toFixed(2)}}</td>
                             <td class="${{ceBg}}" id="ce-iv-${{k}}">${{row.ce_iv.toFixed(1)}}%</td>
                             <td class="${{ceBg}}" id="ce-ltp-${{k}}" style="color: #00F5A0; font-weight: 800; font-size: 12px; background: rgba(0, 245, 160, 0.12);">₹${{row.ce_ltp.toFixed(1)}}</td>
-                            <td style="color: #FFB800; font-weight: 900; font-size: 13px; background: rgba(255,255,255,0.04); border-left: 1px solid rgba(255,255,255,0.1); border-right: 1px solid rgba(255,255,255,0.1);">₹${{formatNumber(k)}}${{atmLabel}}</td>
+                            <td style="color: #FFB800; font-weight: 900; font-size: 13px; background: rgba(255,255,255,0.04); border-left: 1px solid rgba(255,255,255,0.1); border-right: 1px solid rgba(255,255,255,0.1);">${{formatNumber(k)}}${{atmLabel}}</td>
                             <td class="${{peBg}}" id="pe-ltp-${{k}}" style="color: #FF3B69; font-weight: 800; font-size: 12px; background: rgba(255, 59, 105, 0.12);">₹${{row.pe_ltp.toFixed(1)}}</td>
                             <td class="${{peBg}}" id="pe-iv-${{k}}">${{row.pe_iv.toFixed(1)}}%</td>
                             <td class="${{peBg}}" id="pe-delta-${{k}}" style="color: #FF3B69; font-weight: 700;">${{row.pe_delta.toFixed(2)}}</td>
@@ -1658,6 +1651,7 @@ with sec2:
                     const oldCe = row.ce_ltp;
                     const newCe = Math.max(0.05, +(oldCe + ceTick).toFixed(2));
                     row.ce_ltp = newCe;
+                    row.ce_reversal = +(k + newCe).toFixed(1);
                     row.ce_vol += Math.floor(Math.random() * 150) + 75;
 
                     const ceOiDelta = (Math.random() > 0.45 ? 1 : -1) * (Math.floor(Math.random() * 6) + 1) * lotSize * 8;
@@ -1665,6 +1659,7 @@ with sec2:
                     row.ce_chg += ceOiDelta;
 
                     const ceCell = document.getElementById(`ce-ltp-${{k}}`);
+                    const ceRevCell = document.getElementById(`ce-rev-${{k}}`);
                     const ceVolCell = document.getElementById(`ce-vol-${{k}}`);
                     const ceOiCell = document.getElementById(`ce-oi-${{k}}`);
                     const ceChgCell = document.getElementById(`ce-chg-${{k}}`);
@@ -1676,6 +1671,7 @@ with sec2:
                         ceCell.classList.add(newCe >= oldCe ? 'flash-up' : 'flash-down');
                         setTimeout(() => {{ ceCell.classList.remove('flash-up', 'flash-down'); }}, 450);
                     }}
+                    if (ceRevCell) ceRevCell.innerText = `₹${{row.ce_reversal.toFixed(1)}}`;
                     if (ceVolCell) ceVolCell.innerText = formatNumber(row.ce_vol);
                     if (ceOiCell) ceOiCell.innerText = `${{formatTotalOILakhs(row.ce_oi)}}${{row.ce_wall}}`;
                     if (ceChgCell) {{
@@ -1688,6 +1684,7 @@ with sec2:
                     const oldPe = row.pe_ltp;
                     const newPe = Math.max(0.05, +(oldPe + peTick).toFixed(2));
                     row.pe_ltp = newPe;
+                    row.pe_reversal = +(k - newPe).toFixed(1);
                     row.pe_vol += Math.floor(Math.random() * 150) + 75;
 
                     const peOiDelta = (Math.random() > 0.45 ? 1 : -1) * (Math.floor(Math.random() * 6) + 1) * lotSize * 8;
@@ -1695,6 +1692,7 @@ with sec2:
                     row.pe_chg += peOiDelta;
 
                     const peCell = document.getElementById(`pe-ltp-${{k}}`);
+                    const peRevCell = document.getElementById(`pe-rev-${{k}}`);
                     const peVolCell = document.getElementById(`pe-vol-${{k}}`);
                     const peOiCell = document.getElementById(`pe-oi-${{k}}`);
                     const peChgCell = document.getElementById(`pe-chg-${{k}}`);
@@ -1706,6 +1704,7 @@ with sec2:
                         peCell.classList.add(newPe >= oldPe ? 'flash-up' : 'flash-down');
                         setTimeout(() => {{ peCell.classList.remove('flash-up', 'flash-down'); }}, 450);
                     }}
+                    if (peRevCell) peRevCell.innerText = `₹${{row.pe_reversal.toFixed(1)}}`;
                     if (peVolCell) peVolCell.innerText = formatNumber(row.pe_vol);
                     if (peOiCell) peOiCell.innerText = `${{formatTotalOILakhs(row.pe_oi)}}${{row.pe_wall}}`;
                     if (peChgCell) {{
