@@ -29,7 +29,14 @@ class DerivativesQuantEngine:
             return None
 
         symbol = quote.get('symbol', 'NIFTY')
-        spot = float(quote.get('current_price', 24000.0))
+        spot_q = float(quote.get('current_price', 0.0))
+        spot_c = float(chain_data.get('spot_price', 0.0))
+        if spot_c > 0 and (spot_q <= 0 or abs(spot_q - spot_c) > step * 0.8):
+            spot = spot_c
+        elif spot_q > 0:
+            spot = spot_q
+        else:
+            spot = 23674.0
         p_chg = float(quote.get('p_change', 0.0))
         df_raw = chain_data['chain_df'].copy()
 

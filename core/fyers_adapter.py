@@ -122,13 +122,15 @@ class FyersAdapter:
         try:
             data = {
                 "symbol": fyers_sym,
-                "strikecount": strikecount
+                "strikecount": min(50, max(5, strikecount)),
+                "timestamp": ""
             }
             response = self.fyers_model.optionchain(data=data)
-            if response.get("s") == "ok" and response.get("data"):
-                oc_data = response["data"]
-                self._oc_cache[cache_key] = (now, oc_data)
-                return oc_data
+            if response and (response.get("s") in ["ok", "OK"] or response.get("code") == 200 or ("data" in response and isinstance(response["data"], dict))):
+                oc_data = response.get("data")
+                if oc_data:
+                    self._oc_cache[cache_key] = (now, oc_data)
+                    return oc_data
         except Exception:
             return None
         return None

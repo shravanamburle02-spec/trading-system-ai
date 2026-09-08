@@ -104,7 +104,7 @@ class DataEngine:
     }
 
     _MARKET_STATE = {
-        'NIFTY': {'spot': 24055.80, 'prev': 24080.40, 'high': 24095.0, 'low': 24040.0, 'last_tick': time.time()},
+        'NIFTY': {'spot': 23674.00, 'prev': 23720.00, 'high': 23750.0, 'low': 23600.0, 'last_tick': time.time()},
         'BANKNIFTY': {'spot': 51240.50, 'prev': 51310.00, 'high': 51380.0, 'low': 51190.0, 'last_tick': time.time()},
         'SENSEX': {'spot': 79820.00, 'prev': 79950.00, 'high': 80050.0, 'low': 79760.0, 'last_tick': time.time()},
         'FINNIFTY': {'spot': 23410.00, 'prev': 23460.00, 'high': 23490.0, 'low': 23380.0, 'last_tick': time.time()},
@@ -121,12 +121,21 @@ class DataEngine:
         self.fyers = FyersGateway(fyers_app_id, fyers_access_token)
         self.upstox = UpstoxAdapter(upstox_api_key, upstox_secret_key, upstox_redirect_uri, upstox_access_token)
         self.market_states = {
-            'NIFTY': {'base': 24000.0, 'cur': 24055.8, 'high': 24100.0, 'low': 23980.0},
+            'NIFTY': {'base': 23650.0, 'cur': 23674.0, 'high': 23750.0, 'low': 23600.0},
             'BANKNIFTY': {'base': 51200.0, 'cur': 51240.5, 'high': 51380.0, 'low': 51190.0},
             'SENSEX': {'base': 79800.0, 'cur': 79820.0, 'high': 80050.0, 'low': 79760.0},
             'FINNIFTY': {'base': 23400.0, 'cur': 23410.0, 'high': 23490.0, 'low': 23380.0},
             'MIDCPNIFTY': {'base': 12850.0, 'cur': 12850.0, 'high': 12910.0, 'low': 12830.0}
         }
+
+    def _sync_market_state(self, sym_key, q):
+        if q and 'current_price' in q and sym_key in self.market_states:
+            cp = float(q['current_price'])
+            self.market_states[sym_key]['cur'] = cp
+            self.market_states[sym_key]['high'] = max(self.market_states[sym_key]['high'], cp)
+            self.market_states[sym_key]['low'] = min(self.market_states[sym_key]['low'], cp)
+            if sym_key in self._MARKET_STATE:
+                self._MARKET_STATE[sym_key]['spot'] = cp
 
     def get_market_quote(self, symbol='NIFTY'):
         """Fetches real-time price tick and OHLC with sub-millisecond memory caching."""
@@ -141,11 +150,13 @@ class DataEngine:
         if self.active_broker == 'UPSTOX' and self.upstox.is_connected():
             q = self.upstox.get_quote(symbol)
             if q is not None:
+                self._sync_market_state(sym_key, q)
                 self._quote_cache[sym_key] = (now, q)
                 return q
         elif self.active_broker == 'FYERS' and self.fyers.is_connected():
             q = self.fyers.get_quote(symbol)
             if q is not None:
+                self._sync_market_state(sym_key, q)
                 self._quote_cache[sym_key] = (now, q)
                 return q
 
@@ -153,11 +164,13 @@ class DataEngine:
         if self.fyers.is_connected():
             q = self.fyers.get_quote(symbol)
             if q is not None:
+                self._sync_market_state(sym_key, q)
                 self._quote_cache[sym_key] = (now, q)
                 return q
         elif self.upstox.is_connected():
             q = self.upstox.get_quote(symbol)
             if q is not None:
+                self._sync_market_state(sym_key, q)
                 self._quote_cache[sym_key] = (now, q)
                 return q
 
@@ -193,7 +206,7 @@ class DataEngine:
         self._quote_cache[sym_key] = (now, res)
         return res
 
-    def get_option_chain(self, symbol='NIFTY', days_to_expiry=6):
+    def get_option_chain(self, symbol='NIFTY', days_to_expiry=6, spot_override=None):
         """
         Ultra-Fast High-Frequency Option Chain Engine (Sub-5ms Execution).
         Features:
@@ -203,17 +216,21 @@ class DataEngine:
         - Real-Time Gamma Exposure (GEX in ₹ Cr) and 15-Minute OI Velocity
         """
         now = time.time()
-        cache_key = (symbol.upper(), days_to_expiry)
+        if spot_override is not None and float(spot_override) > 0:
+            spot = float(spot_override)
+        else:
+            quote = self.get_market_quote(symbol)
+            spot = float(quote['current_price'])
+
+        step = self.STRIKE_INTERVALS.get(symbol.upper(), 50)
+        atm_strike = int(round(spot / step) * step)
+        lot_size = self.LOT_SIZES.get(symbol.upper(), 75)
+
+        cache_key = (symbol.upper(), days_to_expiry, round(spot, 0))
         if cache_key in self._option_chain_cache:
             c_time, c_val = self._option_chain_cache[cache_key]
             if now - c_time < 1.2:
                 return c_val
-
-        quote = self.get_market_quote(symbol)
-        spot = quote['current_price']
-        step = self.STRIKE_INTERVALS.get(symbol.upper(), 50)
-        atm_strike = int(round(spot / step) * step)
-        lot_size = self.LOT_SIZES.get(symbol.upper(), 75)
 
                 # 1. LIVE UPSTOX API V2 DIRECT INGESTION (If active and connected)
         if self.active_broker == 'UPSTOX' and self.upstox.is_connected():
@@ -392,8 +409,8 @@ class DataEngine:
         ce_ltp = np.round(np.maximum(0.05, spot * nd1_ce - strikes * exp_rT * nd2_ce), 2)
         pe_ltp = np.round(np.maximum(0.05, strikes * exp_rT * n_neg_d2_pe - spot * n_neg_d1_pe), 2)
 
-        ce_delta = np.round(nd1_ce, 2)
-        pe_delta = np.round(nd1_pe - 1.0, 2)
+        ce_delta = np.round(np.clip(nd1_ce, 0.01, 1.0), 2)
+        pe_delta = np.round(np.clip(nd1_pe - 1.0, -1.0, -0.01), 2)
 
         ce_gamma = np.round(pdf_d1_ce / (spot * ce_iv_dec * sqrt_T), 5)
         pe_gamma = np.round(pdf_d1_pe / (spot * pe_iv_dec * sqrt_T), 5)

@@ -430,7 +430,7 @@ default_lot = DataEngine.LOT_SIZES.get(symbol, 75)
 def render_live_top_bar(selected_symbol):
     quote = data_eng.get_market_quote(selected_symbol)
     spot = quote['current_price']
-    chain_data = data_eng.get_option_chain(selected_symbol, days_to_expiry=dte)
+    chain_data = data_eng.get_option_chain(selected_symbol, days_to_expiry=dte, spot_override=spot)
     acc = paper_eng.get_account()
     pcr_v = chain_data['pcr']
 
@@ -515,7 +515,7 @@ with sec1:
                 'Open': prices - 1, 'High': prices + 2, 'Low': prices - 2, 'Close': prices,
                 'Volume': np.random.randint(5000, 25000, size=60)
             }, index=dates)
-        chain_data = data_eng.get_option_chain(selected_symbol, days_to_expiry=dte)
+        chain_data = data_eng.get_option_chain(selected_symbol, days_to_expiry=dte, spot_override=spot)
         fii_dii = data_eng.get_fii_dii_sentiment()
 
         ind_res = IndicatorEngine.analyze(df_candles)
@@ -893,9 +893,12 @@ with sec2:
         "🧭 Expiry Lifecycle: Event-by-Event S&R Shift Journal"
     ])
 
-    chain_data_s2 = data_eng.get_option_chain(symbol, days_to_expiry=dte)
     quote_s2 = data_eng.get_market_quote(symbol)
-    spot_s2 = quote_s2['current_price']
+    spot_s2 = float(quote_s2['current_price'])
+    chain_data_s2 = data_eng.get_option_chain(symbol, days_to_expiry=dte, spot_override=spot_s2)
+    if chain_data_s2 and 'spot_price' in chain_data_s2:
+        spot_s2 = float(chain_data_s2['spot_price'])
+        quote_s2['current_price'] = spot_s2
     
     # -------------------------------------------------------------
     # CENTRAL DERIVATIVES QUANT ENGINE (LTP, AOC, GEX & SIGNALS)
@@ -922,12 +925,15 @@ with sec2:
     straddle_p = round(atm_ce_p + atm_pe_p, 1)
     lower_exp_be = round(spot_s2 - straddle_p, 1)
     upper_exp_be = round(spot_s2 + straddle_p, 1)
-    if getattr(data_eng, 'active_broker', 'FYERS') == 'UPSTOX' and data_eng.upstox.is_connected():
+    feed_src = chain_data_s2.get('feed_source', '') if chain_data_s2 else ''
+    if 'LIVE_UPSTOX' in feed_src:
         source_label = "🟠 LIVE UPSTOX BROKER FEED"
-    elif data_eng.fyers.is_connected():
+    elif 'LIVE_FYERS' in feed_src:
         source_label = "🟢 LIVE FYERS BROKER FEED"
-    elif data_eng.upstox.is_connected():
-        source_label = "🟠 LIVE UPSTOX BROKER FEED"
+    elif getattr(data_eng, 'active_broker', 'FYERS') == 'UPSTOX' and data_eng.upstox.is_connected():
+        source_label = "🟠 LIVE UPSTOX (SPOT) + QUANT CHAIN"
+    elif data_eng.fyers.is_connected():
+        source_label = "🟢 LIVE FYERS (SPOT) + QUANT CHAIN"
     else:
         source_label = "⚡ REAL-TIME QUANT ENGINE (300ms High-Frequency)"
 
@@ -1673,7 +1679,7 @@ with sec2:
                             <td class="${{ceBg}}" id="ce-tag-${{k}}" style="border-right: 1px solid rgba(255,255,255,0.08);">${{getTagHtml(row.ce_shift_tag, row.ce_tag_class, row.ce_title)}}</td>
                             <td class="${{ceBg}}" id="ce-vol-${{k}}" style="text-align: right;">${{formatNumber(row.ce_vol)}}</td>
                             <td class="${{ceBg}}" id="ce-iv-${{k}}">${{row.ce_iv.toFixed(1)}}%</td>
-                            <td class="${{ceBg}}" id="ce-delta-${{k}}" style="color: #00F5A0; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.08);">+${{row.ce_delta.toFixed(2)}}</td>
+                            <td class="${{ceBg}}" id="ce-delta-${{k}}" style="color: #00F5A0; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.08);">${{row.ce_delta >= 0 ? '+' : ''}}${{row.ce_delta.toFixed(2)}}</td>
                             <td class="${{ceBg}}" id="ce-rev-${{k}}" style="color: #FFB800; font-weight: 800; font-size: 11px; text-align: right;">₹${{row.ce_reversal.toFixed(1)}}</td>
                             <td class="${{ceBg}}" id="ce-ltp-${{k}}" style="color: #00F5A0; font-weight: 800; font-size: 12px; background: rgba(0, 245, 160, 0.12); border-right: 2px solid rgba(255,184,0,0.3);">
                                 <span class="action-btn-b" title="Fast Buy Call">B</span><span class="action-btn-s" title="Fast Sell Call">S</span> ₹${{row.ce_ltp.toFixed(1)}}
@@ -1695,7 +1701,7 @@ with sec2:
                             <td class="${{ceBg}}" id="ce-theta-${{k}}" style="color: #FFB800; font-weight: 700;">-₹${{Math.abs(row.ce_theta).toFixed(0)}}</td>
                             <td class="${{ceBg}}" id="ce-vega-${{k}}" style="color: #00D2FF;">+₹${{row.ce_vega.toFixed(0)}}</td>
                             <td class="${{ceBg}}" id="ce-gamma-${{k}}" style="color: #8B949E;">${{row.ce_gamma.toFixed(4)}}</td>
-                            <td class="${{ceBg}}" id="ce-delta-${{k}}" style="color: #00F5A0; font-weight: 700;">+${{row.ce_delta.toFixed(2)}}</td>
+                            <td class="${{ceBg}}" id="ce-delta-${{k}}" style="color: #00F5A0; font-weight: 700;">${{row.ce_delta >= 0 ? '+' : ''}}${{row.ce_delta.toFixed(2)}}</td>
                             <td class="${{ceBg}}" id="ce-iv-${{k}}">${{row.ce_iv.toFixed(1)}}%</td>
                             <td class="${{ceBg}}" id="ce-ltp-${{k}}" style="color: #00F5A0; font-weight: 800; font-size: 12px; background: rgba(0, 245, 160, 0.12);">₹${{row.ce_ltp.toFixed(1)}}</td>
                             <td style="color: #FFB800; font-weight: 900; font-size: 13px; background: rgba(255,255,255,0.04); border-left: 1px solid rgba(255,255,255,0.1); border-right: 1px solid rgba(255,255,255,0.1);">${{formatNumber(k)}}${{atmLabel}}</td>
@@ -2272,8 +2278,8 @@ with sec3:
     </div>
     """, unsafe_allow_html=True)
 
-    chain_data_s3 = data_eng.get_option_chain(symbol, days_to_expiry=dte)
-    spot_s3 = data_eng.get_market_quote(symbol)['current_price']
+    spot_s3 = float(data_eng.get_market_quote(symbol)['current_price'])
+    chain_data_s3 = data_eng.get_option_chain(symbol, days_to_expiry=dte, spot_override=spot_s3)
     acc_s3 = paper_eng.get_account()
 
     all_strats = [

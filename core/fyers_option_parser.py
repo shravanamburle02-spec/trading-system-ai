@@ -24,10 +24,10 @@ class FyersOptionChainParser:
         vega = (S * pdf_d1 * sqrt_T) / 100.0
 
         if option_type.upper() in ['CE', 'CALL']:
-            delta = norm.cdf(d1)
+            delta = min(1.0, max(0.01, float(norm.cdf(d1))))
             theta = (- (S * pdf_d1 * sigma) / (2 * sqrt_T) - r * K * math.exp(-r * T) * norm.cdf(d2)) / 365.0
         else:
-            delta = norm.cdf(d1) - 1.0
+            delta = max(-1.0, min(-0.01, float(norm.cdf(d1) - 1.0)))
             theta = (- (S * pdf_d1 * sigma) / (2 * sqrt_T) + r * K * math.exp(-r * T) * norm.cdf(-d2)) / 365.0
 
         return {
@@ -123,15 +123,22 @@ class FyersOptionChainParser:
 
             # Flat dictionary list format
             else:
-                opt_type = str(item.get('option_type', item.get('optionType', item.get('symbol', 'CE')))).upper()
-                ltp = cls._extract_val(item, ['ltp', 'lp', 'close'], 0.05)
+                raw_opt = item.get('option_type') or item.get('optionType') or item.get('opt_type') or ''
+                raw_sym = str(item.get('symbol', '')).upper()
+                is_ce = False
+                if raw_opt:
+                    is_ce = str(raw_opt).upper() in ['CE', 'CALL']
+                elif raw_sym:
+                    is_ce = raw_sym.endswith('CE') or raw_sym.endswith('C') or 'CE' in raw_sym[-4:] or 'CALL' in raw_sym
+
+                ltp = cls._extract_val(item, ['ltp', 'lp', 'last_price', 'lastPrice', 'close'], 0.05)
                 oi = cls._extract_val(item, ['oi', 'open_interest'], 0)
                 oi_chg = cls._extract_val(item, ['oich', 'oichng', 'oi_change', 'change_oi'], 0)
                 vol = cls._extract_val(item, ['volume', 'v', 'vol'], 0)
-                iv = cls._extract_val(item, ['iv', 'implied_volatility'], 10.0)
-                greeks = cls.calculate_greeks(spot_price, strike, T, r, iv/100.0, 'CE' if 'CE' in opt_type else 'PE')
+                iv = cls._extract_val(item, ['iv', 'implied_volatility'], 10.5)
+                greeks = cls.calculate_greeks(spot_price, strike, T, r, iv/100.0, 'CE' if is_ce else 'PE')
 
-                if 'CE' in opt_type or 'CALL' in opt_type:
+                if is_ce:
                     parsed_rows[strike]['ce_ltp'] = round(max(0.05, ltp), 2)
                     parsed_rows[strike]['ce_oi'] = oi
                     parsed_rows[strike]['ce_change_oi'] = oi_chg
