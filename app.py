@@ -1046,7 +1046,7 @@ with sec2:
 
             if quant_pkg and quant_pkg.get('has_critical_trap'):
                 trap_alert = quant_pkg['top_trap']
-                trap_strip_html = f"""<div style="background: rgba(255, 59, 105, 0.18); border: 1.5px solid #FF3B69; border-radius: 8px; padding: 8px 14px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 0 14px rgba(255,59,105,0.35);">
+                trap_strip_html = f"""<div style="background: rgba(255, 59, 105, 0.16); border: 1.5px solid #FF3B69; border-radius: 8px; padding: 8px 14px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 0 14px rgba(255,59,105,0.3);">
 <div style="display: flex; align-items: center; gap: 8px;">
 <span style="font-size: 1.1rem;">⚠️</span>
 <div>
@@ -1079,80 +1079,133 @@ with sec2:
             ce_badge_txt = quant_pkg['ce_mig_badge'] if quant_pkg else 'RESISTANCE'
             pe_badge_txt = quant_pkg['pe_mig_badge'] if quant_pkg else 'SUPPORT'
 
-            hud_html = f"""<div style="display: grid; grid-template-columns: 1.15fr 1.35fr 1.1fr; gap: 10px; margin-bottom: 10px;">
-<div style="background: rgba(13, 17, 26, 0.9); border: 1px solid rgba(0, 210, 255, 0.25); border-left: 4px solid {bias_color}; border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; justify-content: space-between;">
+            radar_cockpit_html = f"""<div style="display: grid; grid-template-columns: 1.18fr 0.92fr; gap: 10px; margin-bottom: 10px;">
+<div style="background: rgba(13, 17, 26, 0.92); border: 1px solid rgba(0, 210, 255, 0.22); border-left: 4px solid #00D2FF; border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; justify-content: space-between;">
 <div>
-<div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 5px;">
-<span style="font-size: 0.70rem; color: #8B949E; font-weight: 800; letter-spacing: 0.5px;">🛰️ 1. MARKET BIAS</span>
-<span class="{bias_pill}" style="font-size: 0.65rem; font-weight: 800;">{bias_dir} ({bias_conf}%)</span>
+<div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 6px;">
+<div style="display: flex; align-items: center; gap: 6px;">
+<span style="font-size: 1.05rem;">🧭</span>
+<strong style="color: #00D2FF; font-size: 0.85rem; letter-spacing: 0.5px;">SMART MONEY INFLOW/EXIT RADAR & S&R DOCK</strong>
 </div>
-<div style="margin-top: 6px;">
-<div style="font-size: 1.02rem; font-weight: 900; color: {bias_color};">{bias_title}</div>
-<div style="font-size: 0.72rem; color: #C9D1D9; margin-top: 3px; line-height: 1.35;">{bias_narrative}</div>
-</div>
-</div>
-<div style="margin-top: 8px; padding: 5px 8px; background: rgba(255,255,255,0.03); border-radius: 6px; display: flex; justify-content: space-between; align-items: center; font-size: 0.70rem;">
-<span style="color: #8B949E;">VERDICT:</span>
-<strong style="color: {bias_color}; font-size: 0.72rem;">{bias_action}</strong>
-</div>
-</div>
-<div style="background: rgba(13, 17, 26, 0.9); border: 1px solid rgba(255, 184, 0, 0.25); border-left: 4px solid #FFB800; border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; justify-content: space-between;">
-<div>
-<div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 5px;">
-<span style="font-size: 0.70rem; color: #8B949E; font-weight: 800; letter-spacing: 0.5px;">🧭 2. BATTLEFIELD RUNWAY (S&R)</span>
+<div style="display: flex; gap: 5px;">
 <span class="glow-pill-gold" style="font-size: 0.65rem;">✨ ATM: ₹{atm_k:,}</span>
-</div>
-<div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 6px; align-items: center; margin-top: 8px; font-family: 'JetBrains Mono', monospace;">
-<div style="background: rgba(0, 245, 160, 0.08); border: 1px solid rgba(0, 245, 160, 0.25); border-radius: 6px; padding: 5px 8px; text-align: left;">
-<span style="font-size: 0.62rem; color: #8B949E;">🛡️ SUPPORT (EOS)</span><br>
-<strong style="color: #00F5A0; font-size: 0.92rem;">₹{primary_eos_val:,.1f}</strong><br>
-<span style="font-size: 0.62rem; color: #8B949E;">Wall: ₹{top1_pe_k:,} PE</span>
-</div>
-<div style="text-align: center; padding: 0 2px;">
-<span style="font-size: 0.58rem; color: #00D2FF; font-weight: 700;">LIVE SPOT</span><br>
-<span style="font-size: 0.98rem; font-weight: 900; color: #FFFFFF; background: rgba(0,210,255,0.15); padding: 2px 6px; border-radius: 5px; border: 1px solid rgba(0,210,255,0.4);">₹{spot_s2:,.1f}</span>
-</div>
-<div style="background: rgba(255, 59, 105, 0.08); border: 1px solid rgba(255, 59, 105, 0.25); border-radius: 6px; padding: 5px 8px; text-align: right;">
-<span style="font-size: 0.62rem; color: #8B949E;">🔴 RESISTANCE (EOR)</span><br>
-<strong style="color: #FFB800; font-size: 0.92rem;">₹{primary_eor_val:,.1f}</strong><br>
-<span style="font-size: 0.62rem; color: #8B949E;">Wall: ₹{top1_ce_k:,} CE</span>
+<span class="{pcr_v_pill}" style="font-size: 0.65rem;">PCR: {chain_data_s2['pcr']:.2f} ({pcr_v_badge})</span>
 </div>
 </div>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;">
+<div style="background: rgba(255, 59, 105, 0.05); border: 1px solid rgba(255, 59, 105, 0.22); border-radius: 8px; padding: 8px 10px;">
+<div style="display: flex; justify-content: space-between; align-items: center;">
+<span style="font-size: 0.70rem; color: #FF3B69; font-weight: 800;">🔴 CALL WRITERS MIGRATION</span>
+<span class="{c_mig_pill}" style="font-size: 0.62rem;">{ce_badge_txt}</span>
 </div>
-<div style="display: flex; justify-content: space-between; font-size: 0.68rem; margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 4px;">
-<span style="color: #00F5A0;">Sup: {pe_badge_txt}</span>
-<span style="color: #FFB800;">Magnet: ₹{mp_live:,}</span>
-<span style="color: #FF3B69;">Res: {ce_badge_txt}</span>
-</div>
-</div>
-<div style="background: rgba(13, 17, 26, 0.9); border: 1px solid rgba(157, 78, 221, 0.25); border-left: 4px solid #9D4EDD; border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; justify-content: space-between;">
+<div style="display: flex; align-items: center; justify-content: space-between; margin-top: 6px; font-family: 'JetBrains Mono', monospace; background: rgba(0,0,0,0.25); padding: 5px 8px; border-radius: 5px;">
 <div>
-<div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 5px;">
-<span style="font-size: 0.70rem; color: #8B949E; font-weight: 800; letter-spacing: 0.5px;">🌊 3. FLOW & EXPIRY BOUNDS</span>
+<span style="font-size: 0.60rem; color: #8B949E;">EXIT (UNWIND):</span><br>
+<span style="font-size: 0.85rem; font-weight: 800; color: #FF3B69;">₹{ce_exit_k:,} CE</span> <span style="font-size: 0.68rem; color: #FFB800;">({fmt_inr_qty(ce_exit_qty)})</span>
+</div>
+<div style="font-size: 0.95rem; color: #00D2FF; font-weight: 900;">➔</div>
+<div style="text-align: right;">
+<span style="font-size: 0.60rem; color: #8B949E;">INFLOW SHIFT:</span><br>
+<span style="font-size: 0.85rem; font-weight: 800; color: #00F5A0;">₹{ce_inflow_k:,} CE</span> <span style="font-size: 0.68rem; color: #00F5A0;">({fmt_inr_qty(ce_inflow_qty)})</span>
+</div>
+</div>
+<div style="display: flex; align-items: center; justify-content: space-between; margin-top: 5px; font-family: 'JetBrains Mono', monospace; background: rgba(255, 184, 0, 0.05); border: 1px solid rgba(255, 184, 0, 0.2); padding: 5px 8px; border-radius: 5px;">
+<div>
+<span style="font-size: 0.60rem; color: #8B949E;">RESISTANCE:</span><br>
+<span style="font-size: 0.85rem; font-weight: 800; color: #FF3B69;">₹{top1_ce_k:,} CE</span>
+</div>
+<div style="font-size: 0.95rem; color: #FFB800; font-weight: 900;">➔</div>
+<div style="text-align: right;">
+<span style="font-size: 0.60rem; color: #8B949E;">EOR REVERSAL:</span><br>
+<span style="font-size: 0.85rem; font-weight: 800; color: #FFB800;">₹{primary_eor_val:,.1f}</span>
+</div>
+</div>
+<div style="display: flex; justify-content: space-between; font-size: 0.66rem; color: #8B949E; margin-top: 5px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 3px;">
+<span>Exits: <strong style="color: #FF3B69;">{fmt_inr_qty(tot_ce_exit)}</strong></span>
+<span>Inflows: <strong style="color: #00F5A0;">{fmt_inr_qty(tot_ce_inflow)}</strong></span>
+</div>
+<div style="font-size: 0.66rem; color: #C9D1D9; margin-top: 2px;">↳ {c_mig_text}</div>
+</div>
+<div style="background: rgba(0, 245, 160, 0.05); border: 1px solid rgba(0, 245, 160, 0.22); border-radius: 8px; padding: 8px 10px;">
+<div style="display: flex; justify-content: space-between; align-items: center;">
+<span style="font-size: 0.70rem; color: #00F5A0; font-weight: 800;">🟢 PUT WRITERS MIGRATION</span>
+<span class="{p_mig_pill}" style="font-size: 0.62rem;">{pe_badge_txt}</span>
+</div>
+<div style="display: flex; align-items: center; justify-content: space-between; margin-top: 6px; font-family: 'JetBrains Mono', monospace; background: rgba(0,0,0,0.25); padding: 5px 8px; border-radius: 5px;">
+<div>
+<span style="font-size: 0.60rem; color: #8B949E;">EXIT (UNWIND):</span><br>
+<span style="font-size: 0.85rem; font-weight: 800; color: #FF3B69;">₹{pe_exit_k:,} PE</span> <span style="font-size: 0.68rem; color: #FFB800;">({fmt_inr_qty(pe_exit_qty)})</span>
+</div>
+<div style="font-size: 0.95rem; color: #00D2FF; font-weight: 900;">➔</div>
+<div style="text-align: right;">
+<span style="font-size: 0.60rem; color: #8B949E;">INFLOW SHIFT:</span><br>
+<span style="font-size: 0.85rem; font-weight: 800; color: #00F5A0;">₹{pe_inflow_k:,} PE</span> <span style="font-size: 0.68rem; color: #00F5A0;">({fmt_inr_qty(pe_inflow_qty)})</span>
+</div>
+</div>
+<div style="display: flex; align-items: center; justify-content: space-between; margin-top: 5px; font-family: 'JetBrains Mono', monospace; background: rgba(0, 245, 160, 0.05); border: 1px solid rgba(0, 245, 160, 0.2); padding: 5px 8px; border-radius: 5px;">
+<div>
+<span style="font-size: 0.60rem; color: #8B949E;">SUPPORT:</span><br>
+<span style="font-size: 0.85rem; font-weight: 800; color: #00F5A0;">₹{top1_pe_k:,} PE</span>
+</div>
+<div style="font-size: 0.95rem; color: #00D2FF; font-weight: 900;">➔</div>
+<div style="text-align: right;">
+<span style="font-size: 0.60rem; color: #8B949E;">EOS REVERSAL:</span><br>
+<span style="font-size: 0.85rem; font-weight: 800; color: #00F5A0;">₹{primary_eos_val:,.1f}</span>
+</div>
+</div>
+<div style="display: flex; justify-content: space-between; font-size: 0.66rem; color: #8B949E; margin-top: 5px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 3px;">
+<span>Exits: <strong style="color: #FF3B69;">{fmt_inr_qty(tot_pe_exit)}</strong></span>
+<span>Inflows: <strong style="color: #00F5A0;">{fmt_inr_qty(tot_pe_inflow)}</strong></span>
+</div>
+<div style="font-size: 0.66rem; color: #C9D1D9; margin-top: 2px;">↳ {p_mig_text}</div>
+</div>
+</div>
+</div>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.06); font-size: 0.68rem;">
+<span style="color: #8B949E;">BIAS: <strong style="color: {bias_color};">{bias_title}</strong></span>
+<span style="color: #8B949E;">ACTION: <strong style="color: #FFFFFF;">{bias_action}</strong></span>
+</div>
+</div>
+<div style="background: rgba(13, 17, 26, 0.92); border: 1px solid rgba(255, 184, 0, 0.22); border-left: 4px solid #FFB800; border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; justify-content: space-between;">
+<div>
+<div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 6px;">
+<div style="display: flex; align-items: center; gap: 6px;">
+<span style="font-size: 1.05rem;">🎯</span>
+<strong style="color: #FFB800; font-size: 0.85rem; letter-spacing: 0.5px;">MARKET GRAVITY & STRADDLE CONE</strong>
+</div>
+<div style="display: flex; gap: 5px;">
 <span class="{gex_pill}" style="font-size: 0.65rem;">GEX: {gex_short}</span>
+<span class="badge-tag" style="background: rgba(255,184,0,0.18); color: #FFB800; font-size: 0.65rem;">{mp_shift_pts:+d} Pts Drift</span>
+</div>
 </div>
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; font-family: 'JetBrains Mono', monospace; font-size: 0.70rem;">
-<div style="background: rgba(255,255,255,0.02); padding: 4px 6px; border-radius: 5px;">
-<span style="color: #8B949E; font-size: 0.62rem;">CE EXIT ➔ INFLOW:</span><br>
-<span style="color: #FF3B69;">{fmt_inr_qty(ce_exit_qty)}</span> ➔ <span style="color: #00F5A0;">{fmt_inr_qty(ce_inflow_qty)}</span>
+<div style="background: rgba(255, 184, 0, 0.05); border: 1px solid rgba(255, 184, 0, 0.2); border-radius: 6px; padding: 6px 8px;">
+<span style="color: #8B949E; font-size: 0.60rem;">MAX PAIN GRAVITY:</span><br>
+<span style="color: #8B949E;">Open: ₹{mp_morning:,}</span> ➔ <strong style="color: #00F5A0; font-size: 0.85rem;">₹{mp_live:,}</strong>
 </div>
-<div style="background: rgba(255,255,255,0.02); padding: 4px 6px; border-radius: 5px;">
-<span style="color: #8B949E; font-size: 0.62rem;">PE EXIT ➔ INFLOW:</span><br>
-<span style="color: #FF3B69;">{fmt_inr_qty(pe_exit_qty)}</span> ➔ <span style="color: #00F5A0;">{fmt_inr_qty(pe_inflow_qty)}</span>
+<div style="background: rgba(157, 78, 221, 0.06); border: 1px solid rgba(157, 78, 221, 0.2); border-radius: 6px; padding: 6px 8px;">
+<span style="color: #8B949E; font-size: 0.60rem;">STRADDLE CONE (0 DTE):</span><br>
+<strong style="color: #C77DFF; font-size: 0.82rem;">₹{l_cone_val:,.0f} - ₹{u_cone_val:,.0f}</strong>
+</div>
+<div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 6px; padding: 6px 8px;">
+<span style="color: #8B949E; font-size: 0.60rem;">SAFE STRANGLE:</span><br>
+<strong style="color: #00F5A0; font-size: 0.75rem;">₹{quant_pkg['safe_strangle_pe'] if quant_pkg else atm_k-100:,} PE / ₹{quant_pkg['safe_strangle_ce'] if quant_pkg else atm_k+100:,} CE</strong>
+</div>
+<div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 6px; padding: 6px 8px;">
+<span style="color: #8B949E; font-size: 0.60rem;">ZERO GAMMA (VOL PIVOT):</span><br>
+<strong style="color: #FFB800; font-size: 0.82rem;">₹{zg_val:,}</strong>
 </div>
 </div>
 </div>
-<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.05); font-size: 0.68rem;">
-<span style="color: #8B949E;">CONE: <strong style="color: #C77DFF;">₹{l_cone_val:,.0f} - ₹{u_cone_val:,.0f}</strong></span>
-<span style="color: #8B949E;">PCR VEL: <strong style="color: #00D2FF;">{pcr_v_badge}</strong></span>
+<div style="margin-top: 6px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: space-between; align-items: center; font-size: 0.68rem;">
+<span style="color: #8B949E;">Spot: <strong style="color: #FFFFFF;">₹{spot_s2:,.1f}</strong></span>
+<span style="color: #8B949E;">Sup Wall: <strong style="color: #00F5A0;">₹{top1_pe_k:,} PE</strong></span>
+<span style="color: #8B949E;">Res Wall: <strong style="color: #FF3B69;">₹{top1_ce_k:,} CE</strong></span>
 </div>
 </div>
 </div>"""
-            st.markdown(hud_html, unsafe_allow_html=True)
+            st.markdown(radar_cockpit_html, unsafe_allow_html=True)
 
-            # -------------------------------------------------------------
-            # TIER 2: ⚡ ACTIONABLE QUANT TRADE SIGNAL DOCK
-            # -------------------------------------------------------------
             if quant_pkg and quant_pkg.get('primary_signal'):
                 q_sig = quant_pkg['primary_signal']
                 q_dir = q_sig['direction']
@@ -1214,16 +1267,12 @@ with sec2:
                 with sig_btn_col2:
                     st.caption("🔒 100% Data-Driven Execution: Stop-Loss & Reversal Targets auto-calculated by Quant Engine.")
 
-            # -------------------------------------------------------------
-            # TIER 3: 🎛️ SMART VIEW MODE SWITCHER & FILTERS
-            # -------------------------------------------------------------
             ctrl_col1, ctrl_col2, ctrl_col3 = st.columns([4.8, 3.2, 2.0])
             with ctrl_col1:
                 oc_view_mode = st.radio(
                     "Chain Display Mode",
                     [
-                        "🟢 Simple Trader View (9 Core Columns)",
-                        "🔬 Pro Institutional View (Full 17 Columns)",
+                        "📊 Full Institutional Option Chain (17 Columns)",
                         "⚡ Full Greeks Matrix (Δ, Θ, Γ, V)",
                         "📈 Sensibull OI Distribution Chart",
                         "🧪 GEX Profile"
@@ -1420,27 +1469,19 @@ with sec2:
             js_data_json = json.dumps(js_rows_data)
             is_greeks_mode = "Greeks" in oc_view_mode
 
-            is_simple_mode = "Simple Trader" in oc_view_mode
             is_greeks_mode = "Greeks" in oc_view_mode
-            is_pro_mode = not is_simple_mode and not is_greeks_mode
 
-            if is_simple_mode:
-                ce_colspan = 4
-                pe_colspan = 4
-                ce_title_text = "CALLS (CE)"
-                pe_title_text = "PUTS (PE)"
-                table_min_width = "1020px"
-            elif is_greeks_mode:
+            if is_greeks_mode:
                 ce_colspan = 6
                 pe_colspan = 6
-                ce_title_text = "CALLS (CE) GREEKS"
-                pe_title_text = "PUTS (PE) GREEKS"
-                table_min_width = "1180px"
+                ce_title_text = "CALLS (CE) GREEKS MATRIX"
+                pe_title_text = "PUTS (PE) GREEKS MATRIX"
+                table_min_width = "1200px"
             else:
                 ce_colspan = 8
                 pe_colspan = 8
-                ce_title_text = "CALLS (CE) PRO DESK"
-                pe_title_text = "PUTS (PE) PRO DESK"
+                ce_title_text = "CALLS (CE) • RESISTANCE & INFLOW DESK"
+                pe_title_text = "PUTS (PE) • SUPPORT & INFLOW DESK"
                 table_min_width = "1420px"
 
             full_oc_table = f"""
@@ -1531,36 +1572,25 @@ with sec2:
                         </tr>
                         <tr>"""
 
-            if is_simple_mode:
+            if not is_greeks_mode:
                 full_oc_table += """
-                            <th style="color: #8B949E; width: 140px;">Total OI (Bar)</th>
-                            <th style="color: #8B949E; width: 100px;">Buildup</th>
-                            <th style="color: #FFB800; font-weight: 800; width: 110px;">EOR (Reversal)</th>
-                            <th style="color: #00F5A0; font-weight: 900; width: 120px;">CALL LTP</th>
-                            <th style="color: #FFB800; font-weight: 900; width: 110px; background: rgba(255, 184, 0, 0.08);">STRIKE</th>
-                            <th style="color: #FF3B69; font-weight: 900; width: 120px;">PUT LTP</th>
-                            <th style="color: #00D2FF; font-weight: 800; width: 110px;">EOS (Reversal)</th>
-                            <th style="color: #8B949E; width: 100px;">Buildup</th>
-                            <th style="color: #8B949E; width: 140px;">Total OI (Bar)</th>"""
-            elif not is_greeks_mode:
-                full_oc_table += """
-                            <th style="color: #8B949E; width: 125px;">Total OI</th>
+                            <th style="color: #8B949E; width: 120px;">Total OI</th>
                             <th style="color: #00F5A0; width: 115px;">OI Shift (Qty / %)</th>
-                            <th style="color: #8B949E; width: 95px;">Buildup Radar</th>
-                            <th style="color: #8B949E; width: 85px;">Volume</th>
-                            <th style="color: #8B949E; width: 60px;">IV (%)</th>
-                            <th style="color: #8B949E; width: 65px;">Delta (Δ)</th>
+                            <th style="color: #8B949E; width: 95px; border-right: 1px solid rgba(255,255,255,0.08);">Buildup</th>
+                            <th style="color: #8B949E; width: 80px;">Volume</th>
+                            <th style="color: #8B949E; width: 55px;">IV</th>
+                            <th style="color: #8B949E; width: 60px; border-right: 1px solid rgba(255,255,255,0.08);">Delta (Δ)</th>
                             <th style="color: #FFB800; font-weight: 800; width: 95px;">EOR (Reversal)</th>
-                            <th style="color: #00F5A0; font-weight: 900; width: 110px;">CALL LTP</th>
-                            <th style="color: #FFB800; font-weight: 900; width: 100px; background: rgba(255, 184, 0, 0.08);">STRIKE</th>
+                            <th style="color: #00F5A0; font-weight: 900; width: 110px; border-right: 2px solid rgba(255,184,0,0.3);">CALL LTP</th>
+                            <th style="color: #FFB800; font-weight: 900; width: 105px; background: rgba(255, 184, 0, 0.08); border-right: 2px solid rgba(255,184,0,0.3);">STRIKE</th>
                             <th style="color: #FF3B69; font-weight: 900; width: 110px;">PUT LTP</th>
-                            <th style="color: #00D2FF; font-weight: 800; width: 95px;">EOS (Reversal)</th>
-                            <th style="color: #8B949E; width: 65px;">Delta (Δ)</th>
-                            <th style="color: #8B949E; width: 60px;">IV (%)</th>
-                            <th style="color: #8B949E; width: 85px;">Volume</th>
-                            <th style="color: #8B949E; width: 95px;">Buildup Radar</th>
+                            <th style="color: #00D2FF; font-weight: 800; width: 95px; border-right: 1px solid rgba(255,255,255,0.08);">EOS (Reversal)</th>
+                            <th style="color: #8B949E; width: 60px;">Delta (Δ)</th>
+                            <th style="color: #8B949E; width: 55px;">IV</th>
+                            <th style="color: #8B949E; width: 80px; border-right: 1px solid rgba(255,255,255,0.08);">Volume</th>
+                            <th style="color: #8B949E; width: 95px;">Buildup</th>
                             <th style="color: #FF3B69; width: 115px;">OI Shift (Qty / %)</th>
-                            <th style="color: #8B949E; width: 125px;">Total OI</th>"""
+                            <th style="color: #8B949E; width: 120px;">Total OI</th>"""
             else:
                 full_oc_table += """
                             <th>Daily Theta (₹/d)</th>
@@ -1590,7 +1620,6 @@ with sec2:
             let currentSpot = {spot_s2};
             const atmStrike = {atm_k};
             const lotSize = {default_lot};
-            const isSimpleMode = {"true" if is_simple_mode else "false"};
             const isGreeksMode = {"true" if is_greeks_mode else "false"};
 
             function formatNumber(num) {{ return num ? num.toLocaleString('en-IN') : '0'; }}
@@ -1637,44 +1666,28 @@ with sec2:
                     const atmHighlight = isAtm ? 'background: rgba(255,184,0,0.32); border-left: 2px solid #FFB800; border-right: 2px solid #FFB800;' : 'background: rgba(255,255,255,0.04); border-left: 1px solid rgba(255,255,255,0.1); border-right: 1px solid rgba(255,255,255,0.1);';
                     const atmTagStr = isAtm ? ' <span style="font-size:9px; color:#00F5A0; font-weight:900;">✨IMAGINARY</span>' : '';
 
-                    if (isSimpleMode) {{
+                    if (!isGreeksMode) {{
                         tr.innerHTML = `
                             <td class="${{ceBg}}" id="ce-oi-${{k}}" style="${{ceOiBar}} text-align: right; padding-right: 8px;">${{formatTotalOILakhs(row.ce_oi)}}${{row.ce_wall}}</td>
-                            <td class="${{ceBg}}" id="ce-tag-${{k}}">${{getTagHtml(row.ce_shift_tag, row.ce_tag_class, row.ce_title)}}</td>
-                            <td class="${{ceBg}}" id="ce-rev-${{k}}" style="color: #FFB800; font-weight: 800; font-size: 11px;">₹${{row.ce_reversal.toFixed(1)}}</td>
-                            <td class="${{ceBg}}" id="ce-ltp-${{k}}" style="color: #00F5A0; font-weight: 800; font-size: 12px; background: rgba(0, 245, 160, 0.12);">
-                                <span class="action-btn-b" title="Fast Buy Call">B</span><span class="action-btn-s" title="Fast Sell Call">S</span> ₹${{row.ce_ltp.toFixed(1)}}
-                            </td>
-                            <td style="color: ${{isAtm ? '#FFB800' : '#FFFFFF'}}; font-weight: 900; font-size: 13px; ${{atmHighlight}}">₹${{formatNumber(k)}}${{atmTagStr}}</td>
-                            <td class="${{peBg}}" id="pe-ltp-${{k}}" style="color: #FF3B69; font-weight: 800; font-size: 12px; background: rgba(255, 59, 105, 0.12);">
-                                ₹${{row.pe_ltp.toFixed(1)}} <span class="action-btn-b" title="Fast Buy Put">B</span><span class="action-btn-s" title="Fast Sell Put">S</span>
-                            </td>
-                            <td class="${{peBg}}" id="pe-rev-${{k}}" style="color: #00D2FF; font-weight: 800; font-size: 11px;">₹${{row.pe_reversal.toFixed(1)}}</td>
-                            <td class="${{peBg}}" id="pe-tag-${{k}}">${{getTagHtml(row.pe_shift_tag, row.pe_tag_class, row.pe_title)}}</td>
-                            <td class="${{peBg}}" id="pe-oi-${{k}}" style="${{peOiBar}} text-align: left; padding-left: 8px;">${{formatTotalOILakhs(row.pe_oi)}}${{row.pe_wall}}</td>
-                        `;
-                    }} else if (!isGreeksMode) {{
-                        tr.innerHTML = `
-                            <td class="${{ceBg}}" id="ce-oi-${{k}}" style="${{ceOiBar}} text-align: right; padding-right: 8px;">${{formatTotalOILakhs(row.ce_oi)}}${{row.ce_wall}}</td>
-                            <td class="${{ceBg}}" id="ce-chg-${{k}}" style="${{ceChgBar}} color: ${{ceChgColor}}; font-weight: 800;">${{formatQtyLakhs(row.ce_chg)}} <span style="font-size: 9px; opacity: 0.85;">(${{row.ce_chg_pct_val >= 0 ? '+' : ''}}${{row.ce_chg_pct_val.toFixed(1)}}%)</span></td>
-                            <td class="${{ceBg}}" id="ce-tag-${{k}}">${{getTagHtml(row.ce_shift_tag, row.ce_tag_class, row.ce_title)}}</td>
-                            <td class="${{ceBg}}" id="ce-vol-${{k}}">${{formatNumber(row.ce_vol)}}</td>
+                            <td class="${{ceBg}}" id="ce-chg-${{k}}" style="${{ceChgBar}} text-align: right; color: ${{ceChgColor}}; font-weight: 800;">${{formatQtyLakhs(row.ce_chg)}} <span style="font-size: 9px; opacity: 0.85;">(${{row.ce_chg_pct_val >= 0 ? '+' : ''}}${{row.ce_chg_pct_val.toFixed(1)}}%)</span></td>
+                            <td class="${{ceBg}}" id="ce-tag-${{k}}" style="border-right: 1px solid rgba(255,255,255,0.08);">${{getTagHtml(row.ce_shift_tag, row.ce_tag_class, row.ce_title)}}</td>
+                            <td class="${{ceBg}}" id="ce-vol-${{k}}" style="text-align: right;">${{formatNumber(row.ce_vol)}}</td>
                             <td class="${{ceBg}}" id="ce-iv-${{k}}">${{row.ce_iv.toFixed(1)}}%</td>
-                            <td class="${{ceBg}}" id="ce-delta-${{k}}" style="color: #00F5A0; font-weight: 700;">+${{row.ce_delta.toFixed(2)}}</td>
-                            <td class="${{ceBg}}" id="ce-rev-${{k}}" style="color: #FFB800; font-weight: 800; font-size: 11px;">₹${{row.ce_reversal.toFixed(1)}}</td>
-                            <td class="${{ceBg}}" id="ce-ltp-${{k}}" style="color: #00F5A0; font-weight: 800; font-size: 12px; background: rgba(0, 245, 160, 0.12);">
+                            <td class="${{ceBg}}" id="ce-delta-${{k}}" style="color: #00F5A0; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.08);">+${{row.ce_delta.toFixed(2)}}</td>
+                            <td class="${{ceBg}}" id="ce-rev-${{k}}" style="color: #FFB800; font-weight: 800; font-size: 11px; text-align: right;">₹${{row.ce_reversal.toFixed(1)}}</td>
+                            <td class="${{ceBg}}" id="ce-ltp-${{k}}" style="color: #00F5A0; font-weight: 800; font-size: 12px; background: rgba(0, 245, 160, 0.12); border-right: 2px solid rgba(255,184,0,0.3);">
                                 <span class="action-btn-b" title="Fast Buy Call">B</span><span class="action-btn-s" title="Fast Sell Call">S</span> ₹${{row.ce_ltp.toFixed(1)}}
                             </td>
-                            <td style="color: ${{isAtm ? '#FFB800' : '#FFFFFF'}}; font-weight: 900; font-size: 13px; ${{atmHighlight}}">₹${{formatNumber(k)}}${{atmTagStr}}</td>
+                            <td style="color: ${{isAtm ? '#FFB800' : '#FFFFFF'}}; font-weight: 900; font-size: 13px; border-right: 2px solid rgba(255,184,0,0.3); ${{atmHighlight}}">₹${{formatNumber(k)}}${{atmTagStr}}</td>
                             <td class="${{peBg}}" id="pe-ltp-${{k}}" style="color: #FF3B69; font-weight: 800; font-size: 12px; background: rgba(255, 59, 105, 0.12);">
                                 ₹${{row.pe_ltp.toFixed(1)}} <span class="action-btn-b" title="Fast Buy Put">B</span><span class="action-btn-s" title="Fast Sell Put">S</span>
                             </td>
-                            <td class="${{peBg}}" id="pe-rev-${{k}}" style="color: #00D2FF; font-weight: 800; font-size: 11px;">₹${{row.pe_reversal.toFixed(1)}}</td>
+                            <td class="${{peBg}}" id="pe-rev-${{k}}" style="color: #00D2FF; font-weight: 800; font-size: 11px; text-align: left; border-right: 1px solid rgba(255,255,255,0.08);">₹${{row.pe_reversal.toFixed(1)}}</td>
                             <td class="${{peBg}}" id="pe-delta-${{k}}" style="color: #FF3B69; font-weight: 700;">${{row.pe_delta.toFixed(2)}}</td>
                             <td class="${{peBg}}" id="pe-iv-${{k}}">${{row.pe_iv.toFixed(1)}}%</td>
-                            <td class="${{peBg}}" id="pe-vol-${{k}}">${{formatNumber(row.pe_vol)}}</td>
+                            <td class="${{peBg}}" id="pe-vol-${{k}}" style="text-align: left; border-right: 1px solid rgba(255,255,255,0.08);">${{formatNumber(row.pe_vol)}}</td>
                             <td class="${{peBg}}" id="pe-tag-${{k}}">${{getTagHtml(row.pe_shift_tag, row.pe_tag_class, row.pe_title)}}</td>
-                            <td class="${{peBg}}" id="pe-chg-${{k}}" style="${{peChgBar}} color: ${{peChgColor}}; font-weight: 800;">${{formatQtyLakhs(row.pe_chg)}} <span style="font-size: 9px; opacity: 0.85;">(${{row.pe_chg_pct_val >= 0 ? '+' : ''}}${{row.pe_chg_pct_val.toFixed(1)}}%)</span></td>
+                            <td class="${{peBg}}" id="pe-chg-${{k}}" style="${{peChgBar}} text-align: left; color: ${{peChgColor}}; font-weight: 800;">${{formatQtyLakhs(row.pe_chg)}} <span style="font-size: 9px; opacity: 0.85;">(${{row.pe_chg_pct_val >= 0 ? '+' : ''}}${{row.pe_chg_pct_val.toFixed(1)}}%)</span></td>
                             <td class="${{peBg}}" id="pe-oi-${{k}}" style="${{peOiBar}} text-align: left; padding-left: 8px;">${{formatTotalOILakhs(row.pe_oi)}}${{row.pe_wall}}</td>
                         `;
                     }} else {{
