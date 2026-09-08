@@ -148,6 +148,25 @@ class PaperTradingEngine:
         return {'balance': 300000.0, 'initial_capital': 300000.0, 'realized_pnl': 0.0, 'return_pct': 0.0}
 
     @classmethod
+    def place_order(cls, symbol, strategy_name, legs, spot=None, sl_pts=15.0, target_pts=30.0, confluence_pct=90.0, **kwargs):
+        """Universal order placement method mapping cleanly to active positions."""
+        cls.init_db()
+        lot_size = legs[0].get('lots', 1) if legs else 1
+        entry_price = float(legs[0].get('entry_price', 0.0)) if legs else 0.0
+        if spot is None:
+            spot = entry_price if entry_price > 0 else 24000.0
+
+        strategy_dict = {
+            'strategy_name': strategy_name,
+            'type': 'Directional' if ('BUY' in strategy_name or 'SELL' in strategy_name or 'SQUEEZE' in strategy_name) else 'Non-Directional',
+            'legs': legs,
+            'entry_price': entry_price,
+            'stop_loss': max(0.0, entry_price - sl_pts) if 'BUY' in strategy_name else entry_price + sl_pts,
+            'target_1': entry_price + target_pts if 'BUY' in strategy_name else max(0.0, entry_price - target_pts)
+        }
+        return cls.execute_paper_trade(symbol, strategy_dict, spot=spot, confluence_pct=confluence_pct, lot_size=lot_size)
+
+    @classmethod
     def execute_paper_trade(cls, symbol, strategy_dict, spot, confluence_pct=80.0, lot_size=25):
         """Executes a virtual trade and adds to active positions."""
         cls.init_db()
