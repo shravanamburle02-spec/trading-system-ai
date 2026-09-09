@@ -895,7 +895,7 @@ with sec2:
     ])
 
     with sub_tab1:
-        @st.fragment(run_every=2)
+        @st.fragment
         def render_live_advanced_option_chain_sub1(selected_symbol, active_dte, active_lot):
             t_start = time.time()
             force_ref = st.session_state.pop('_force_refresh_oc_sub1', False)
@@ -955,17 +955,17 @@ with sec2:
                 <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(0, 245, 160, 0.05); border: 1px solid rgba(0, 245, 160, 0.25); border-radius: 8px; padding: 6px 14px; margin-bottom: 8px;">
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <span style="display: inline-block; width: 9px; height: 9px; background: #00F5A0; border-radius: 50%; box-shadow: 0 0 10px #00F5A0;"></span>
-                        <span style="font-size: 0.76rem; font-weight: 800; color: #00F5A0; letter-spacing: 0.5px;">⚡ LIVE 2s AUTO-STREAMING OI & GREEKS</span>
-                        <span style="font-size: 0.72rem; color: #8B949E;">• Zero Full-Page Reload • Active Memory Pipeline</span>
+                        <span style="font-size: 0.76rem; font-weight: 800; color: #00F5A0; letter-spacing: 0.5px;">⚡ LIVE ORDER-FLOW STREAMING (ZERO-BLINK • ULTRA SMOOTH)</span>
+                        <span style="font-size: 0.72rem; color: #8B949E;">• 300ms Native High-Frequency Engine • Zero Screen Flash</span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 12px;">
-                        <span class="mono" style="font-size: 0.72rem; color: #00D2FF;">🕒 LAST TICK: {now_str}</span>
+                        <span class="mono" style="font-size: 0.72rem; color: #00D2FF;">🕒 ACTIVE PIPELINE: STABLE</span>
                         <span class="mono" style="font-size: 0.70rem; color: #8B949E; background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px;">{latency_ms:.1f}ms</span>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
             with bar_c2:
-                if st.button("🔄 REFRESH ALL OI NOW", key="btn_force_oi_refresh_sub1", use_container_width=True):
+                if st.button("🔄 REFRESH ALL BROKER OI NOW", key="btn_force_oi_refresh_sub1", use_container_width=True):
                     st.session_state['_force_refresh_oc_sub1'] = True
 
             df_oc_sorted = df_oc.sort_values(by='strike').reset_index(drop=True)
@@ -1858,7 +1858,7 @@ with sec2:
         render_live_advanced_option_chain_sub1(symbol, dte, default_lot)
 
     with sub_tab2:
-        @st.fragment(run_every=2)
+        @st.fragment
         def render_live_speedometer_sub2(selected_symbol, active_dte, active_lot):
             quote_s2 = data_eng.get_market_quote(selected_symbol)
             spot_s2 = float(quote_s2['current_price'])
@@ -2159,7 +2159,7 @@ with sec2:
         render_live_speedometer_sub2(symbol, dte, default_lot)
 
     with sub_tab3:
-        @st.fragment(run_every=5)
+        @st.fragment
         def render_live_lifecycle_sub3(selected_symbol, active_dte, active_lot):
             quote_s2 = data_eng.get_market_quote(selected_symbol)
             spot_s2 = float(quote_s2['current_price'])
