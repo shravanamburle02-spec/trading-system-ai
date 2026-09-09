@@ -20,7 +20,7 @@ class DerivativesQuantEngine:
     _cache = {}
 
     @classmethod
-    def analyze(cls, quote, chain_data, days_to_expiry=1, lot_size=75, step=50):
+    def analyze(cls, quote, chain_data, days_to_expiry=1, lot_size=75, step=50, force_refresh=False):
         """
         Executes complete institutional quant analysis on raw option chain.
         Returns standardized QuantIntelligencePackage in <3ms.
@@ -45,9 +45,9 @@ class DerivativesQuantEngine:
 
         cache_key = (symbol, round(spot, 1), len(df_raw))
         now = time.time()
-        if cache_key in cls._cache:
+        if not force_refresh and cache_key in cls._cache:
             c_time, c_pkg = cls._cache[cache_key]
-            if now - c_time < 0.8:
+            if now - c_time < 0.5:
                 return c_pkg
 
         # Sort strikes strictly ascending

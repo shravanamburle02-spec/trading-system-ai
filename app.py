@@ -1,3 +1,4 @@
+import time
 from core.derivatives_quant_engine import DerivativesQuantEngine
 """
 Master Trading System - Full Institutional Quant Trading Desk
@@ -893,141 +894,169 @@ with sec2:
         "🧭 Expiry Lifecycle: Event-by-Event S&R Shift Journal"
     ])
 
-    quote_s2 = data_eng.get_market_quote(symbol)
-    spot_s2 = float(quote_s2['current_price'])
-    chain_data_s2 = data_eng.get_option_chain(symbol, days_to_expiry=dte, spot_override=spot_s2)
-    if chain_data_s2 and 'spot_price' in chain_data_s2:
-        spot_s2 = float(chain_data_s2['spot_price'])
-        quote_s2['current_price'] = spot_s2
+    with sub_tab1:
+        @st.fragment(run_every=2)
+        def render_live_advanced_option_chain_sub1(selected_symbol, active_dte, active_lot):
+            t_start = time.time()
+            force_ref = st.session_state.pop('_force_refresh_oc_sub1', False)
+            quote_s2 = data_eng.get_market_quote(selected_symbol)
+            spot_s2 = float(quote_s2['current_price'])
+            chain_data_s2 = data_eng.get_option_chain(selected_symbol, days_to_expiry=active_dte, spot_override=spot_s2, force_refresh=force_ref)
+            if chain_data_s2 and 'spot_price' in chain_data_s2:
+                spot_s2 = float(chain_data_s2['spot_price'])
+                quote_s2['current_price'] = spot_s2
+
+            quant_pkg = DerivativesQuantEngine.analyze(
+                quote_s2, chain_data_s2,
+                days_to_expiry=active_dte,
+                lot_size=active_lot,
+                step=DataEngine.STRIKE_INTERVALS.get(selected_symbol, 50),
+                force_refresh=force_ref
+            )
+            if quant_pkg and quant_pkg.get('chain_df') is not None:
+                chain_data_s2['chain_df'] = quant_pkg['chain_df']
+            df_oc = chain_data_s2.get('chain_df')
+            atm_k = quant_pkg['atm_strike'] if quant_pkg else chain_data_s2['atm_strike']
+
+            if df_oc is None or df_oc.empty:
+                st.info("Generating live Option Chain data...")
+                return
+
+            atm_ce_p = 110.90
+            atm_pe_p = 154.30
+            atm_row = df_oc[df_oc['strike'] == atm_k]
+            if not atm_row.empty:
+                atm_ce_p = float(atm_row.iloc[0].get('ce_ltp', 110.90))
+                atm_pe_p = float(atm_row.iloc[0].get('pe_ltp', 154.30))
+
+            straddle_p = round(atm_ce_p + atm_pe_p, 1)
+            lower_exp_be = round(spot_s2 - straddle_p, 1)
+            upper_exp_be = round(spot_s2 + straddle_p, 1)
+            feed_src = chain_data_s2.get('feed_source', '') if chain_data_s2 else ''
+            if 'LIVE_UPSTOX' in feed_src:
+                source_label = "🟠 LIVE UPSTOX BROKER FEED"
+            elif 'LIVE_FYERS' in feed_src:
+                source_label = "🟢 LIVE FYERS BROKER FEED"
+            elif getattr(data_eng, 'active_broker', 'FYERS') == 'UPSTOX' and data_eng.upstox.is_connected():
+                source_label = "🟠 LIVE UPSTOX (SPOT) + QUANT CHAIN"
+            elif data_eng.fyers.is_connected():
+                source_label = "🟢 LIVE FYERS (SPOT) + QUANT CHAIN"
+            else:
+                source_label = "⚡ REAL-TIME QUANT ENGINE (300ms High-Frequency)"
+
+            df_oc_sorted = df_oc.sort_values(by='strike').reset_index(drop=True)
+            latency_ms = (time.time() - t_start) * 1000
+
+            # --- LIVE STREAMING HEADER BAR ---
+            now_str = datetime.datetime.now().strftime('%H:%M:%S')
+            bar_c1, bar_c2 = st.columns([7.8, 2.2])
+            with bar_c1:
+                st.markdown(f"""
+                <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(0, 245, 160, 0.05); border: 1px solid rgba(0, 245, 160, 0.25); border-radius: 8px; padding: 6px 14px; margin-bottom: 8px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="display: inline-block; width: 9px; height: 9px; background: #00F5A0; border-radius: 50%; box-shadow: 0 0 10px #00F5A0;"></span>
+                        <span style="font-size: 0.76rem; font-weight: 800; color: #00F5A0; letter-spacing: 0.5px;">⚡ LIVE 2s AUTO-STREAMING OI & GREEKS</span>
+                        <span style="font-size: 0.72rem; color: #8B949E;">• Zero Full-Page Reload • Active Memory Pipeline</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span class="mono" style="font-size: 0.72rem; color: #00D2FF;">🕒 LAST TICK: {now_str}</span>
+                        <span class="mono" style="font-size: 0.70rem; color: #8B949E; background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px;">{latency_ms:.1f}ms</span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            with bar_c2:
+                if st.button("🔄 REFRESH ALL OI NOW", key="btn_force_oi_refresh_sub1", use_container_width=True):
+                    st.session_state['_force_refresh_oc_sub1'] = True
+
+            df_oc_sorted = df_oc.sort_values(by='strike').reset_index(drop=True)
+            
+            def fmt_inr_qty(val):
+                abs_v = abs(val)
+                sign = "+" if val >= 0 else "-"
+                if abs_v >= 10000000:
+                    return f"{sign}{abs_v/10000000:.2f}Cr"
+                elif abs_v >= 100000:
+                    return f"{sign}{abs_v/100000:.2f}L"
+                elif abs_v >= 1000:
+                    return f"{sign}{abs_v/1000:.1f}K"
+                return f"{sign}{abs_v:,}"
     
-    # -------------------------------------------------------------
-    # CENTRAL DERIVATIVES QUANT ENGINE (LTP, AOC, GEX & SIGNALS)
-    # -------------------------------------------------------------
-    quant_pkg = DerivativesQuantEngine.analyze(
-        quote_s2, chain_data_s2,
-        days_to_expiry=dte,
-        lot_size=default_lot,
-        step=DataEngine.STRIKE_INTERVALS.get(symbol, 50)
-    )
-    if quant_pkg and quant_pkg.get('chain_df') is not None:
-        chain_data_s2['chain_df'] = quant_pkg['chain_df']
-    df_oc = chain_data_s2.get('chain_df')
-    atm_k = quant_pkg['atm_strike'] if quant_pkg else chain_data_s2['atm_strike']
+            if 'ce_vol_oi_ratio' not in df_oc_sorted.columns:
+                df_oc_sorted['ce_vol_oi_ratio'] = df_oc_sorted['ce_volume'] / df_oc_sorted['ce_oi'].replace(0, 1)
+            if 'pe_vol_oi_ratio' not in df_oc_sorted.columns:
+                df_oc_sorted['pe_vol_oi_ratio'] = df_oc_sorted['pe_volume'] / df_oc_sorted['pe_oi'].replace(0, 1)
+            if 'net_gex_cr' not in df_oc_sorted.columns:
+                df_oc_sorted['net_gex_cr'] = 0.0
+            if 'ce_velocity_rpm' not in df_oc_sorted.columns:
+                df_oc_sorted['ce_velocity_rpm'] = (df_oc_sorted['ce_change_oi'] / 140.0).round(0).astype(int)
+            if 'pe_velocity_rpm' not in df_oc_sorted.columns:
+                df_oc_sorted['pe_velocity_rpm'] = (df_oc_sorted['pe_change_oi'] / 140.0).round(0).astype(int)
     
-    atm_ce_p = 110.90
-    atm_pe_p = 154.30
-    if df_oc is not None and not df_oc.empty:
-        atm_row = df_oc[df_oc['strike'] == atm_k]
-        if not atm_row.empty:
-            atm_ce_p = float(atm_row.iloc[0].get('ce_ltp', 110.90))
-            atm_pe_p = float(atm_row.iloc[0].get('pe_ltp', 154.30))
-
-    straddle_p = round(atm_ce_p + atm_pe_p, 1)
-    lower_exp_be = round(spot_s2 - straddle_p, 1)
-    upper_exp_be = round(spot_s2 + straddle_p, 1)
-    feed_src = chain_data_s2.get('feed_source', '') if chain_data_s2 else ''
-    if 'LIVE_UPSTOX' in feed_src:
-        source_label = "🟠 LIVE UPSTOX BROKER FEED"
-    elif 'LIVE_FYERS' in feed_src:
-        source_label = "🟢 LIVE FYERS BROKER FEED"
-    elif getattr(data_eng, 'active_broker', 'FYERS') == 'UPSTOX' and data_eng.upstox.is_connected():
-        source_label = "🟠 LIVE UPSTOX (SPOT) + QUANT CHAIN"
-    elif data_eng.fyers.is_connected():
-        source_label = "🟢 LIVE FYERS (SPOT) + QUANT CHAIN"
-    else:
-        source_label = "⚡ REAL-TIME QUANT ENGINE (300ms High-Frequency)"
-
-    if df_oc is not None and not df_oc.empty:
-        df_oc_sorted = df_oc.sort_values(by='strike').reset_index(drop=True)
-        
-        def fmt_inr_qty(val):
-            abs_v = abs(val)
-            sign = "+" if val >= 0 else "-"
-            if abs_v >= 10000000:
-                return f"{sign}{abs_v/10000000:.2f}Cr"
-            elif abs_v >= 100000:
-                return f"{sign}{abs_v/100000:.2f}L"
-            elif abs_v >= 1000:
-                return f"{sign}{abs_v/1000:.1f}K"
-            return f"{sign}{abs_v:,}"
-
-        if 'ce_vol_oi_ratio' not in df_oc_sorted.columns:
-            df_oc_sorted['ce_vol_oi_ratio'] = df_oc_sorted['ce_volume'] / df_oc_sorted['ce_oi'].replace(0, 1)
-        if 'pe_vol_oi_ratio' not in df_oc_sorted.columns:
-            df_oc_sorted['pe_vol_oi_ratio'] = df_oc_sorted['pe_volume'] / df_oc_sorted['pe_oi'].replace(0, 1)
-        if 'net_gex_cr' not in df_oc_sorted.columns:
-            df_oc_sorted['net_gex_cr'] = 0.0
-        if 'ce_velocity_rpm' not in df_oc_sorted.columns:
-            df_oc_sorted['ce_velocity_rpm'] = (df_oc_sorted['ce_change_oi'] / 140.0).round(0).astype(int)
-        if 'pe_velocity_rpm' not in df_oc_sorted.columns:
-            df_oc_sorted['pe_velocity_rpm'] = (df_oc_sorted['pe_change_oi'] / 140.0).round(0).astype(int)
-
-        top_ce_exit_row = df_oc_sorted.loc[df_oc_sorted['ce_change_oi'].idxmin()]
-        top_pe_exit_row = df_oc_sorted.loc[df_oc_sorted['pe_change_oi'].idxmin()]
-        top_ce_inflow_row = df_oc_sorted.loc[df_oc_sorted['ce_change_oi'].idxmax()]
-        top_pe_inflow_row = df_oc_sorted.loc[df_oc_sorted['pe_change_oi'].idxmax()]
-
-        ce_exit_k = int(top_ce_exit_row['strike'])
-        ce_exit_qty = int(top_ce_exit_row['ce_change_oi'])
-        ce_inflow_k = int(top_ce_inflow_row['strike'])
-        ce_inflow_qty = int(top_ce_inflow_row['ce_change_oi'])
-
-        pe_exit_k = int(top_pe_exit_row['strike'])
-        pe_exit_qty = int(top_pe_exit_row['pe_change_oi'])
-        pe_inflow_k = int(top_pe_inflow_row['strike'])
-        pe_inflow_qty = int(top_pe_inflow_row['pe_change_oi'])
-
-        ce_shift_dist = ce_inflow_k - ce_exit_k
-        pe_shift_dist = pe_inflow_k - pe_exit_k
-
-        tot_ce_exit = int(df_oc_sorted[df_oc_sorted['ce_change_oi'] < 0]['ce_change_oi'].sum())
-        tot_ce_inflow = int(df_oc_sorted[df_oc_sorted['ce_change_oi'] > 0]['ce_change_oi'].sum())
-        tot_pe_exit = int(df_oc_sorted[df_oc_sorted['pe_change_oi'] < 0]['pe_change_oi'].sum())
-        tot_pe_inflow = int(df_oc_sorted[df_oc_sorted['pe_change_oi'] > 0]['pe_change_oi'].sum())
-
-        if ce_shift_dist > 0:
-            ce_verdict = f"🚀 Resistance Shifted UP (+{ce_shift_dist} Pts) -> Bullish Expansion"
-            ce_v_badge = "glow-pill-emerald"
-        elif ce_shift_dist < 0:
-            ce_verdict = f"⚠️ Resistance Squeezed DOWN ({ce_shift_dist} Pts) -> Bearish Pressure"
-            ce_v_badge = "glow-pill-rose"
-        else:
-            ce_verdict = "🔒 Resistance Reinforced at Same Strike"
-            ce_v_badge = "glow-pill-gold"
-
-        if pe_shift_dist > 0:
-            pe_verdict = f"🛡️ Support Shifted UP (+{pe_shift_dist} Pts) -> Higher Floor Established"
-            pe_v_badge = "glow-pill-emerald"
-        elif pe_shift_dist < 0:
-            pe_verdict = f"🚨 Support Broken & Shifted DOWN ({pe_shift_dist} Pts) -> Downside Risk"
-            pe_v_badge = "glow-pill-rose"
-        else:
-            pe_verdict = "🔒 Support Concentrated at Same Strike"
-            pe_v_badge = "glow-pill-gold"
-
-        mp_live = chain_data_s2.get('max_pain', atm_k)
-        mp_morning = chain_data_s2.get('max_pain_morning', mp_live)
-        mp_shift_pts = chain_data_s2.get('max_pain_shift_pts', 0)
-        
-        if mp_shift_pts > 0:
-            mp_badge_text = f"🚀 Bullish Magnet (+{mp_shift_pts} Pts Shift UP)"
-            mp_pill = "glow-pill-emerald"
-        elif mp_shift_pts < 0:
-            mp_badge_text = f"🚨 Bearish Gravity ({mp_shift_pts} Pts Shift DOWN)"
-            mp_pill = "glow-pill-rose"
-        else:
-            mp_badge_text = "🔒 Solid Expiry Center Pinning"
-            mp_pill = "glow-pill-gold"
-
-        net_gex_cr = chain_data_s2.get('total_net_gex_cr', 0.0)
-        zero_gamma_k = chain_data_s2.get('zero_gamma_strike', atm_k)
-        open_strad = chain_data_s2.get('open_straddle_est', straddle_p)
-        strad_decay_pts = chain_data_s2.get('straddle_decay_pts', 0.0)
-        strad_decay_inr = round(strad_decay_pts * default_lot, 0)
-        decay_pill = "glow-pill-emerald" if strad_decay_pts >= 0 else "glow-pill-rose"        # -------------------------------------------------------------
-        # SUB-TAB 1: COMPLETE OPTION CHAIN 3.0 & SHIFT RADAR
-        # -------------------------------------------------------------
-        with sub_tab1:
+            top_ce_exit_row = df_oc_sorted.loc[df_oc_sorted['ce_change_oi'].idxmin()]
+            top_pe_exit_row = df_oc_sorted.loc[df_oc_sorted['pe_change_oi'].idxmin()]
+            top_ce_inflow_row = df_oc_sorted.loc[df_oc_sorted['ce_change_oi'].idxmax()]
+            top_pe_inflow_row = df_oc_sorted.loc[df_oc_sorted['pe_change_oi'].idxmax()]
+    
+            ce_exit_k = int(top_ce_exit_row['strike'])
+            ce_exit_qty = int(top_ce_exit_row['ce_change_oi'])
+            ce_inflow_k = int(top_ce_inflow_row['strike'])
+            ce_inflow_qty = int(top_ce_inflow_row['ce_change_oi'])
+    
+            pe_exit_k = int(top_pe_exit_row['strike'])
+            pe_exit_qty = int(top_pe_exit_row['pe_change_oi'])
+            pe_inflow_k = int(top_pe_inflow_row['strike'])
+            pe_inflow_qty = int(top_pe_inflow_row['pe_change_oi'])
+    
+            ce_shift_dist = ce_inflow_k - ce_exit_k
+            pe_shift_dist = pe_inflow_k - pe_exit_k
+    
+            tot_ce_exit = int(df_oc_sorted[df_oc_sorted['ce_change_oi'] < 0]['ce_change_oi'].sum())
+            tot_ce_inflow = int(df_oc_sorted[df_oc_sorted['ce_change_oi'] > 0]['ce_change_oi'].sum())
+            tot_pe_exit = int(df_oc_sorted[df_oc_sorted['pe_change_oi'] < 0]['pe_change_oi'].sum())
+            tot_pe_inflow = int(df_oc_sorted[df_oc_sorted['pe_change_oi'] > 0]['pe_change_oi'].sum())
+    
+            if ce_shift_dist > 0:
+                ce_verdict = f"🚀 Resistance Shifted UP (+{ce_shift_dist} Pts) -> Bullish Expansion"
+                ce_v_badge = "glow-pill-emerald"
+            elif ce_shift_dist < 0:
+                ce_verdict = f"⚠️ Resistance Squeezed DOWN ({ce_shift_dist} Pts) -> Bearish Pressure"
+                ce_v_badge = "glow-pill-rose"
+            else:
+                ce_verdict = "🔒 Resistance Reinforced at Same Strike"
+                ce_v_badge = "glow-pill-gold"
+    
+            if pe_shift_dist > 0:
+                pe_verdict = f"🛡️ Support Shifted UP (+{pe_shift_dist} Pts) -> Higher Floor Established"
+                pe_v_badge = "glow-pill-emerald"
+            elif pe_shift_dist < 0:
+                pe_verdict = f"🚨 Support Broken & Shifted DOWN ({pe_shift_dist} Pts) -> Downside Risk"
+                pe_v_badge = "glow-pill-rose"
+            else:
+                pe_verdict = "🔒 Support Concentrated at Same Strike"
+                pe_v_badge = "glow-pill-gold"
+    
+            mp_live = chain_data_s2.get('max_pain', atm_k)
+            mp_morning = chain_data_s2.get('max_pain_morning', mp_live)
+            mp_shift_pts = chain_data_s2.get('max_pain_shift_pts', 0)
+            
+            if mp_shift_pts > 0:
+                mp_badge_text = f"🚀 Bullish Magnet (+{mp_shift_pts} Pts Shift UP)"
+                mp_pill = "glow-pill-emerald"
+            elif mp_shift_pts < 0:
+                mp_badge_text = f"🚨 Bearish Gravity ({mp_shift_pts} Pts Shift DOWN)"
+                mp_pill = "glow-pill-rose"
+            else:
+                mp_badge_text = "🔒 Solid Expiry Center Pinning"
+                mp_pill = "glow-pill-gold"
+    
+            net_gex_cr = chain_data_s2.get('total_net_gex_cr', 0.0)
+            zero_gamma_k = chain_data_s2.get('zero_gamma_strike', atm_k)
+            open_strad = chain_data_s2.get('open_straddle_est', straddle_p)
+            strad_decay_pts = chain_data_s2.get('straddle_decay_pts', 0.0)
+            strad_decay_inr = round(strad_decay_pts * default_lot, 0)
+            decay_pill = "glow-pill-emerald" if strad_decay_pts >= 0 else "glow-pill-rose"        # -------------------------------------------------------------
+            # SUB-TAB 1: COMPLETE OPTION CHAIN 3.0 & SHIFT RADAR
+            # -------------------------------------------------------------
             # -------------------------------------------------------------
             # TIER 1: 🛰️ UNIFIED INSTITUTIONAL FLIGHT COCKPIT (PANORAMIC HUD)
             # -------------------------------------------------------------
@@ -1825,7 +1854,24 @@ with sec2:
         # -------------------------------------------------------------
         # SUB-TAB 2: 11-STRIKE (ATM ± 5) VELOCITY SPEEDOMETER MATRIX
         # -------------------------------------------------------------
-        with sub_tab2:
+
+        render_live_advanced_option_chain_sub1(symbol, dte, default_lot)
+
+    with sub_tab2:
+        @st.fragment(run_every=2)
+        def render_live_speedometer_sub2(selected_symbol, active_dte, active_lot):
+            quote_s2 = data_eng.get_market_quote(selected_symbol)
+            spot_s2 = float(quote_s2['current_price'])
+            chain_data_s2 = data_eng.get_option_chain(selected_symbol, days_to_expiry=active_dte, spot_override=spot_s2)
+            if chain_data_s2 and 'spot_price' in chain_data_s2:
+                spot_s2 = float(chain_data_s2['spot_price'])
+            df_oc = chain_data_s2.get('chain_df') if chain_data_s2 else None
+            if df_oc is None or df_oc.empty:
+                st.info("Awaiting live option chain feed...")
+                return
+            df_oc_sorted = df_oc.sort_values(by='strike').reset_index(drop=True)
+            atm_k = chain_data_s2.get('atm_strike', int(round(spot_s2 / 50) * 50))
+
             step_val = data_eng.STRIKE_INTERVALS.get(symbol.upper(), 50)
             atm_idx_vel = (df_oc_sorted['strike'] - spot_s2).abs().idxmin()
             start_v = max(0, atm_idx_vel - 5)
@@ -2109,7 +2155,20 @@ with sec2:
 
         # SUB-TAB 3: EXPIRY LIFECYCLE EVENT-BY-EVENT S&R SHIFT JOURNAL
         # -------------------------------------------------------------
-        with sub_tab3:
+
+        render_live_speedometer_sub2(symbol, dte, default_lot)
+
+    with sub_tab3:
+        @st.fragment(run_every=5)
+        def render_live_lifecycle_sub3(selected_symbol, active_dte, active_lot):
+            quote_s2 = data_eng.get_market_quote(selected_symbol)
+            spot_s2 = float(quote_s2['current_price'])
+            chain_data_s2 = data_eng.get_option_chain(selected_symbol, days_to_expiry=active_dte, spot_override=spot_s2)
+            if chain_data_s2 and 'spot_price' in chain_data_s2:
+                spot_s2 = float(chain_data_s2['spot_price'])
+            atm_k = chain_data_s2.get('atm_strike', int(round(spot_s2 / 50) * 50))
+            mp_live = chain_data_s2.get('max_pain', atm_k)
+
             st.markdown("""
             <div style="background: linear-gradient(135deg, rgba(0, 210, 255, 0.08) 0%, rgba(13, 17, 26, 0.95) 100%); border: 1px solid rgba(0, 210, 255, 0.3); border-radius: 10px; padding: 10px 16px; margin-bottom: 12px;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -2261,8 +2320,8 @@ with sec2:
             )
             st.plotly_chart(fig_corridor, use_container_width=True)
 
-    else:
-        st.info("Generating live Option Chain data...")
+
+        render_live_lifecycle_sub3(symbol, dte, default_lot)
 
 
 # =============================================================

@@ -106,16 +106,16 @@ class FyersAdapter:
             return None
         return None
 
-    def get_option_chain(self, symbol="NIFTY", strikecount=30):
+    def get_option_chain(self, symbol="NIFTY", strikecount=30, force_refresh=False):
         """Fetches 100% Real-Time Live Option Chain via Fyers API v3."""
         if not self.is_connected():
             return None
 
         now = time.time()
         cache_key = (symbol.upper(), strikecount)
-        if cache_key in self._oc_cache:
+        if not force_refresh and cache_key in self._oc_cache:
             c_time, c_val = self._oc_cache[cache_key]
-            if now - c_time < 1.5:
+            if now - c_time < 0.8:
                 return c_val
 
         fyers_sym = self.FYERS_SYMBOLS.get(symbol.upper(), 'NSE:NIFTY50-INDEX')
