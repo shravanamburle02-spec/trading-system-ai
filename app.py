@@ -53,331 +53,789 @@ if "gemini_messages" not in st.session_state:
     ]
 
 # -------------------------------------------------------------
-# DENSE BLOOMBERG QUANT CSS & GLASSMORPHISM
+# DYNAMIC DUAL-THEME ENGINE (OMNI.POP 3D vs OMNI STUDIO EDITORIAL)
 # -------------------------------------------------------------
-st.markdown("""
-<link rel="preconnect" href="https://fonts.gstatic.com">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+if "theme_choice" not in st.session_state:
+    st.session_state.theme_choice = "⚡ Omni.Pop (Neo-Brutalist 3D)"
 
-<style>
-    #MainMenu, footer, header { visibility: hidden !important; height: 0px !important; }
-    .stDeployButton { display: none !important; }
-    .block-container { padding-top: 0.5rem !important; padding-bottom: 1.5rem !important; padding-left: 1.2rem !important; padding-right: 1.2rem !important; }
+is_pop_theme = "Omni.Pop" in st.session_state.get("theme_choice", "Omni.Pop")
 
-    :root {
-        --bg-obsidian: #05070B;
-        --bg-card: rgba(13, 17, 26, 0.88);
-        --glass-border: rgba(255, 255, 255, 0.08);
-        --neon-emerald: #00F5A0;
-        --neon-cyan: #00D2FF;
-        --neon-rose: #FF3B69;
-        --neon-gold: #FFB800;
-        --neon-purple: #9D4EDD;
-        --text-primary: #F0F4F8;
-        --text-muted: #8B949E;
-    }
+if is_pop_theme:
+    # ---------------------------------------------------------
+    # 1. NEO-BRUTALIST 3D THEME (OMNI.POP)
+    # ---------------------------------------------------------
+    st.markdown("""
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        #MainMenu, footer, header { visibility: hidden !important; height: 0px !important; }
+        .stDeployButton { display: none !important; }
+        .block-container { padding-top: 0.3rem !important; padding-bottom: 1.5rem !important; padding-left: 1rem !important; padding-right: 1rem !important; }
 
-    body, .stApp {
-        background: radial-gradient(circle at 50% -20%, #0d1527 0%, #05070B 80%) !important;
-        font-family: 'Plus Jakarta Sans', sans-serif !important;
-        color: var(--text-primary) !important;
-    }
+        :root {
+            --bg-main: #0d0e17;
+            --bg-card: #161822;
+            --bg-surface: #1f212d;
+            --border-dark: #000000;
+            --accent-yellow: #ffe600;
+            --accent-pink: #ff3366;
+            --accent-cyan: #00f5d4;
+            --accent-purple: #9d4edd;
+            --accent-gold: #ffaa00;
+            --text-main: #ffffff;
+            --text-muted: #94a3b8;
+        }
 
-    .mono {
-        font-family: 'JetBrains Mono', monospace !important;
-    }
+        body, .stApp {
+            background: #0d0e17 !important;
+            font-family: 'Plus Jakarta Sans', sans-serif !important;
+            color: #ffffff !important;
+        }
 
-    .cockpit-card {
-        background: var(--bg-card);
-        border: 1px solid var(--glass-border);
-        border-radius: 12px;
-        padding: 12px 14px;
-        margin-bottom: 10px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-    }
-    .cockpit-card:hover {
-        border-color: rgba(0, 210, 255, 0.3);
-    }
+        ::selection {
+            background: #ffe600 !important;
+            color: #000000 !important;
+        }
 
-    .card-header {
-        font-size: 0.8rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-        color: #FFFFFF;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 8px;
-        padding-bottom: 4px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    }
+        .mono {
+            font-family: 'JetBrains Mono', monospace !important;
+        }
 
-    .glow-pill-emerald {
-        background: rgba(0, 245, 160, 0.12);
-        color: var(--neon-emerald);
-        border: 1px solid rgba(0, 245, 160, 0.35);
-        padding: 2px 8px;
-        border-radius: 14px;
-        font-size: 0.72rem;
-        font-weight: 700;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-    }
-    .glow-pill-rose {
-        background: rgba(255, 59, 105, 0.12);
-        color: var(--neon-rose);
-        border: 1px solid rgba(255, 59, 105, 0.35);
-        padding: 2px 8px;
-        border-radius: 14px;
-        font-size: 0.72rem;
-        font-weight: 700;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-    }
-    .glow-pill-cyan {
-        background: rgba(0, 210, 255, 0.12);
-        color: var(--neon-cyan);
-        border: 1px solid rgba(0, 210, 255, 0.35);
-        padding: 2px 8px;
-        border-radius: 14px;
-        font-size: 0.72rem;
-        font-weight: 700;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-    }
-    .glow-pill-gold {
-        background: rgba(255, 184, 0, 0.12);
-        color: var(--neon-gold);
-        border: 1px solid rgba(255, 184, 0, 0.35);
-        padding: 2px 8px;
-        border-radius: 14px;
-        font-size: 0.72rem;
-        font-weight: 700;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-    }
-    .glow-pill-purple {
-        background: rgba(157, 78, 221, 0.15);
-        color: #C77DFF;
-        border: 1px solid rgba(157, 78, 221, 0.4);
-        padding: 2px 8px;
-        border-radius: 14px;
-        font-size: 0.72rem;
-        font-weight: 700;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-    }
+        /* 3D Neo-Brutalist Cards */
+        .cockpit-card {
+            background: #161822;
+            border: 2.5px solid #000000;
+            border-radius: 14px;
+            padding: 12px 14px;
+            margin-bottom: 10px;
+            box-shadow: 4px 4px 0px 0px #ffe600;
+            transition: all 0.15s ease;
+        }
+        .cockpit-card:hover {
+            transform: translate(-1px, -1px);
+            box-shadow: 5px 5px 0px 0px #00f5d4;
+        }
 
-    .badge-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 6px;
-    }
-    .badge-cell {
-        background: rgba(255, 255, 255, 0.025);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        border-radius: 8px;
-        padding: 6px 10px;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-    }
-    .badge-cell-label {
-        font-size: 0.68rem;
-        color: var(--text-muted);
-        font-weight: 600;
-        text-transform: uppercase;
-    }
-    .badge-cell-val {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.82rem;
-        font-weight: 700;
-        color: #FFFFFF;
-        margin-top: 2px;
-    }
+        .card-header {
+            font-size: 0.82rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: #FFFFFF;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 2px solid #000000;
+        }
 
-    .ratio-bar-wrapper {
-        background: rgba(255, 59, 105, 0.3);
-        height: 10px;
-        border-radius: 10px;
-        overflow: hidden;
-        display: flex;
-        margin: 6px 0;
-    }
-    .ratio-bar-put {
-        background: #00F5A0;
-        height: 100%;
-        box-shadow: 0 0 8px #00F5A0;
-    }
-    .ratio-bar-call {
-        background: #FF3B69;
-        height: 100%;
-        box-shadow: 0 0 8px #FF3B69;
-    }
+        /* Playful Sticker Badges */
+        .glow-pill-emerald {
+            background: #00f5d4;
+            color: #000000;
+            border: 2px solid #000000;
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-size: 0.72rem;
+            font-weight: 900;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            box-shadow: 2px 2px 0px 0px #000000;
+        }
+        .glow-pill-rose {
+            background: #ff3366;
+            color: #ffffff;
+            border: 2px solid #000000;
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-size: 0.72rem;
+            font-weight: 900;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            box-shadow: 2px 2px 0px 0px #000000;
+        }
+        .glow-pill-cyan {
+            background: #ffe600;
+            color: #000000;
+            border: 2px solid #000000;
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-size: 0.72rem;
+            font-weight: 900;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            box-shadow: 2px 2px 0px 0px #000000;
+        }
+        .glow-pill-gold {
+            background: #ffaa00;
+            color: #000000;
+            border: 2px solid #000000;
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-size: 0.72rem;
+            font-weight: 900;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            box-shadow: 2px 2px 0px 0px #000000;
+        }
+        .glow-pill-purple {
+            background: #9d4edd;
+            color: #ffffff;
+            border: 2px solid #000000;
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-size: 0.72rem;
+            font-weight: 900;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            box-shadow: 2px 2px 0px 0px #000000;
+        }
 
-    .stButton > button {
-        background: linear-gradient(135deg, #00D2FF 0%, #00F5A0 100%) !important;
-        color: #05070B !important;
-        font-weight: 900 !important;
-        font-size: 0.85rem !important;
-        border: none !important;
-        border-radius: 8px !important;
-        padding: 6px 14px !important;
-        box-shadow: 0 0 15px rgba(0, 245, 160, 0.25) !important;
-        transition: all 0.2s ease !important;
-    }
-    .stButton > button:hover {
-        transform: translateY(-1px) !important;
-        box-shadow: 0 0 25px rgba(0, 245, 160, 0.5) !important;
-    }
+        .badge-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+        }
+        .badge-cell {
+            background: #1f212d;
+            border: 2px solid #000000;
+            border-radius: 10px;
+            padding: 6px 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 2px 2px 0px 0px rgba(0, 0, 0, 0.8);
+        }
+        .badge-cell-label {
+            font-size: 0.68rem;
+            color: #94a3b8;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+        .badge-cell-val {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.88rem;
+            font-weight: 900;
+            color: #FFFFFF;
+            margin-top: 2px;
+        }
 
-    .chat-msg-u {
-        background: rgba(0, 210, 255, 0.12);
-        border: 1px solid rgba(0, 210, 255, 0.3);
-        border-radius: 8px;
-        padding: 6px 10px;
-        margin-bottom: 6px;
-        font-size: 0.82rem;
-        color: #FFFFFF;
-    }
-    .chat-msg-a {
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(0, 245, 160, 0.2);
-        border-radius: 8px;
-        padding: 8px 12px;
-        margin-bottom: 6px;
-        font-size: 0.82rem;
-        line-height: 1.4;
-        color: #F0F4F8;
-    }
-</style>
-""", unsafe_allow_html=True)
+        /* 3D Offset Ratio Bar */
+        .ratio-bar-wrapper {
+            background: #ff3366;
+            height: 12px;
+            border-radius: 6px;
+            border: 2px solid #000000;
+            overflow: hidden;
+            display: flex;
+            margin: 6px 0;
+            box-shadow: 2px 2px 0px 0px #000000;
+        }
+        .ratio-bar-put {
+            background: #00f5d4;
+            height: 100%;
+        }
+        .ratio-bar-call {
+            background: #ff3366;
+            height: 100%;
+        }
 
-# -------------------------------------------------------------
-# REAL-TIME LIVE TICKING TOP TICKER BAR
-# -------------------------------------------------------------
-clock_html = """
-<div id="top-bloomberg-ticker" style="
-    background: linear-gradient(135deg, rgba(13, 17, 26, 0.98) 0%, rgba(6, 8, 13, 0.98) 100%);
-    border: 1px solid rgba(0, 210, 255, 0.25);
-    border-radius: 10px;
-    padding: 6px 16px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 10px;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    color: #F0F4F8;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-    margin-bottom: 6px;
-">
-    <div style="display: flex; align-items: center; gap: 12px;">
-        <span style="font-weight: 900; font-size: 0.95rem; color: #FFFFFF; display: flex; align-items: center; gap: 6px;">
-            <span style="display: inline-block; width: 7px; height: 7px; background: #00F5A0; border-radius: 50%; box-shadow: 0 0 8px #00F5A0;"></span>
-            QUANT CORE
-        </span>
-        <span id="live-date" style="color: #8B949E; font-size: 0.8rem; font-weight: 600;">--</span>
-        <span id="live-time" style="font-family: 'Consolas', monospace; color: #00D2FF; font-weight: 800; font-size: 0.95rem;">--:--:-- --</span>
+        /* Chunky Tactile Buttons */
+        .stButton > button {
+            background: #ffe600 !important;
+            color: #000000 !important;
+            font-family: 'Plus Jakarta Sans', sans-serif !important;
+            font-weight: 900 !important;
+            font-size: 0.85rem !important;
+            border: 2.5px solid #000000 !important;
+            border-radius: 12px !important;
+            padding: 7px 16px !important;
+            box-shadow: 4px 4px 0px 0px #ffffff !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.5px !important;
+            transition: all 0.12s ease !important;
+        }
+        .stButton > button:hover {
+            transform: translate(2px, 2px) !important;
+            box-shadow: 2px 2px 0px 0px #ffffff !important;
+            background: #ffea33 !important;
+        }
+        .stButton > button:active {
+            transform: translate(4px, 4px) !important;
+            box-shadow: 0px 0px 0px 0px #ffffff !important;
+        }
+
+        /* 3D Gumdrop Tabs */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 8px;
+            background: transparent;
+            padding-bottom: 6px;
+        }
+        .stTabs [data-baseweb="tab"] {
+            background: #161822 !important;
+            border: 2px solid #000000 !important;
+            border-radius: 10px !important;
+            color: #ffffff !important;
+            font-weight: 800 !important;
+            font-size: 0.82rem !important;
+            padding: 6px 14px !important;
+            box-shadow: 3px 3px 0px 0px #000000 !important;
+            transition: all 0.15s ease !important;
+        }
+        .stTabs [data-baseweb="tab"]:hover {
+            transform: translate(-1px, -1px) !important;
+            box-shadow: 4px 4px 0px 0px #ffe600 !important;
+            color: #ffe600 !important;
+        }
+        .stTabs [aria-selected="true"] {
+            background: #ffe600 !important;
+            color: #000000 !important;
+            border: 2px solid #000000 !important;
+            box-shadow: 4px 4px 0px 0px #ffffff !important;
+            transform: translate(-1px, -1px) !important;
+        }
+
+        .top-metric-card {
+            background: #161822;
+            border: 2.2px solid #000000;
+            border-radius: 10px;
+            padding: 4px 10px;
+            height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 2px 2px 0px 0px #000000;
+        }
+
+        /* Neo-Pop Selectboxes */
+        div[data-baseweb="select"] > div {
+            background-color: #161822 !important;
+            border: 2px solid #000000 !important;
+            border-radius: 10px !important;
+            box-shadow: 3px 3px 0px 0px #ffe600 !important;
+            color: #ffffff !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # ---------------------------------------------------------
+    # REAL-TIME NEO-POP MARQUEE & 3D TICKER BAR
+    # ---------------------------------------------------------
+    clock_html = """
+    <div style="margin-bottom: 6px; font-family: 'Plus Jakarta Sans', sans-serif;">
+        <!-- Yellow Marquee Ribbon -->
+        <div style="background: #ffe600; color: #000000; border: 2.5px solid #000000; border-radius: 10px 10px 0 0; padding: 4px 12px; overflow: hidden; white-space: nowrap; font-weight: 900; font-size: 11px; letter-spacing: 0.8px; box-shadow: 3px 3px 0px #000;">
+            <div style="display: inline-block; white-space: nowrap; animation: marquee 22s linear infinite;">
+                <span>★ 100% IN-BROWSER QUANT DESK</span>&nbsp;&nbsp;&nbsp;&nbsp;
+                <span>⚡ ZERO CLOUD UPLOAD MANDATE</span>&nbsp;&nbsp;&nbsp;&nbsp;
+                <span>🔥 60+ STRIKES HIGH FREQUENCY FEED</span>&nbsp;&nbsp;&nbsp;&nbsp;
+                <span>🚀 300MS ZERO-BLINK DERIVATIVES ENGINE</span>&nbsp;&nbsp;&nbsp;&nbsp;
+                <span>★ OMNI.POP QUANT OS</span>&nbsp;&nbsp;&nbsp;&nbsp;
+                <span>⚡ ZERO CLOUD UPLOAD MANDATE</span>&nbsp;&nbsp;&nbsp;&nbsp;
+                <span>🔥 60+ STRIKES HIGH FREQUENCY FEED</span>
+            </div>
+        </div>
+        <!-- Main 3D Offset Bar -->
+        <div id="top-bloomberg-ticker" style="
+            background: #13141c;
+            border: 2.5px solid #000000;
+            border-top: none;
+            border-radius: 0 0 12px 12px;
+            padding: 8px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            color: #ffffff;
+            box-shadow: 4px 4px 0px 0px #ffe600;
+        ">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="background: #ffe600; color: #000000; border: 2px solid #000000; padding: 2px 8px; border-radius: 8px; font-weight: 900; font-size: 0.85rem; box-shadow: 2px 2px 0px #ffffff; display: flex; align-items: center; gap: 6px;">
+                    ⚡ OMNI.POP
+                </span>
+                <span id="live-date" style="color: #94a3b8; font-size: 0.82rem; font-weight: 800;">--</span>
+                <span id="live-time" style="font-family: 'JetBrains Mono', monospace; color: #ffe600; font-weight: 900; font-size: 1rem;">--:--:-- --</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span id="market-status-pill" style="padding: 3px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: 900; border: 2px solid #000000; box-shadow: 2px 2px 0px #000;">CHECKING...</span>
+                <span id="live-countdown" style="font-family: 'JetBrains Mono', monospace; color: #00f5d4; font-weight: 800; font-size: 0.82rem;">⏳ --</span>
+            </div>
+        </div>
     </div>
-    <div style="display: flex; align-items: center; gap: 10px;">
-        <span id="market-status-pill" style="padding: 2px 10px; border-radius: 14px; font-size: 0.72rem; font-weight: 800;">CHECKING...</span>
-        <span id="live-countdown" style="font-family: 'Consolas', monospace; color: #FFB800; font-weight: 700; font-size: 0.8rem;">⏳ --</span>
-    </div>
-</div>
-
-<script>
-function updateClock() {
-    const now = new Date();
-    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-    const ist = new Date(utc + (3600000 * 5.5));
-
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-    const dayName = days[ist.getDay()];
-    const dateNum = String(ist.getDate()).padStart(2, '0');
-    const monthName = months[ist.getMonth()];
-    const year = ist.getFullYear();
-
-    let hours = ist.getHours();
-    const minutes = String(ist.getMinutes()).padStart(2, '0');
-    const seconds = String(ist.getSeconds()).padStart(2, '0');
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    const displayHours = String(hours % 12 || 12).padStart(2, '0');
-
-    document.getElementById('live-date').innerText = `📅 ${dayName}, ${dateNum} ${monthName} ${year}`;
-    document.getElementById('live-time').innerText = `⏰ ${displayHours}:${minutes}:${seconds} ${ampm} IST`;
-
-    const weekday = ist.getDay();
-    const totalMinutes = ist.getHours() * 60 + ist.getMinutes();
-    const totalSeconds = totalMinutes * 60 + ist.getSeconds();
-
-    const pill = document.getElementById('market-status-pill');
-    const countdown = document.getElementById('live-countdown');
-
-    if (weekday === 0 || weekday === 6) {
-        pill.innerText = '● WEEKEND CLOSED';
-        pill.style.background = 'rgba(255, 59, 105, 0.15)';
-        pill.style.color = '#FF3B69';
-        pill.style.border = '1px solid rgba(255, 59, 105, 0.4)';
-        countdown.innerText = '⏳ Opens Mon 09:15:00 AM';
-    } else if (totalMinutes < 540) {
-        pill.innerText = '● MARKET CLOSED';
-        pill.style.background = 'rgba(255, 59, 105, 0.15)';
-        pill.style.color = '#FF3B69';
-        pill.style.border = '1px solid rgba(255, 59, 105, 0.4)';
-        
-        const targetSec = 9 * 3600 + 15 * 60;
-        const diffSec = targetSec - totalSeconds;
-        const h = Math.floor(diffSec / 3600);
-        const m = Math.floor((diffSec % 3600) / 60);
-        const s = diffSec % 60;
-        countdown.innerText = `⏳ Opens in ${String(h).padStart(2,'0')}h ${String(m).padStart(2,'0')}m ${String(s).padStart(2,'0')}s`;
-    } else if (totalMinutes >= 540 && totalMinutes < 555) {
-        pill.innerText = '● PRE-OPEN';
-        pill.style.background = 'rgba(255, 184, 0, 0.15)';
-        pill.style.color = '#FFB800';
-        pill.style.border = '1px solid rgba(255, 184, 0, 0.4)';
-        
-        const targetSec = 9 * 3600 + 15 * 60;
-        const diffSec = targetSec - totalSeconds;
-        const m = Math.floor(diffSec / 60);
-        const s = diffSec % 60;
-        countdown.innerText = `⏳ Live in ${String(m).padStart(2,'0')}m ${String(s).padStart(2,'0')}s`;
-    } else if (totalMinutes >= 555 && totalMinutes < 930) {
-        pill.innerText = '● MARKET LIVE';
-        pill.style.background = 'rgba(0, 245, 160, 0.15)';
-        pill.style.color = '#00F5A0';
-        pill.style.border = '1px solid rgba(0, 245, 160, 0.4)';
-        
-        const targetSec = 15 * 3600 + 30 * 60;
-        const diffSec = targetSec - totalSeconds;
-        const h = Math.floor(diffSec / 3600);
-        const m = Math.floor((diffSec % 3600) / 60);
-        const s = diffSec % 60;
-        countdown.innerText = `⏳ Closes in ${String(h).padStart(2,'0')}h ${String(m).padStart(2,'0')}s`;
-    } else {
-        pill.innerText = '● MARKET CLOSED';
-        pill.style.background = 'rgba(255, 59, 105, 0.15)';
-        pill.style.color = '#FF3B69';
-        pill.style.border = '1px solid rgba(255, 59, 105, 0.4)';
-        countdown.innerText = '⏳ Opens Tomorrow 09:15:00 AM';
+    <style>
+    @keyframes marquee {
+        0% { transform: translateX(0%); }
+        100% { transform: translateX(-50%); }
     }
-}
+    </style>
+    <script>
+    function updateClock() {
+        const now = new Date();
+        const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+        const ist = new Date(utc + (3600000 * 5.5));
 
-updateClock();
-setInterval(updateClock, 1000);
-</script>
-"""
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-components.html(clock_html, height=48)
+        const dayName = days[ist.getDay()];
+        const dateNum = String(ist.getDate()).padStart(2, '0');
+        const monthName = months[ist.getMonth()];
+        const year = ist.getFullYear();
+
+        let hours = ist.getHours();
+        const minutes = String(ist.getMinutes()).padStart(2, '0');
+        const seconds = String(ist.getSeconds()).padStart(2, '0');
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        const displayHours = String(hours % 12 || 12).padStart(2, '0');
+
+        document.getElementById('live-date').innerText = `📅 ${dayName}, ${dateNum} ${monthName} ${year}`;
+        document.getElementById('live-time').innerText = `⏰ ${displayHours}:${minutes}:${seconds} ${ampm} IST`;
+
+        const weekday = ist.getDay();
+        const totalMinutes = ist.getHours() * 60 + ist.getMinutes();
+        const totalSeconds = totalMinutes * 60 + ist.getSeconds();
+
+        const pill = document.getElementById('market-status-pill');
+        const countdown = document.getElementById('live-countdown');
+
+        if (weekday === 0 || weekday === 6) {
+            pill.innerText = '● WEEKEND CLOSED';
+            pill.style.background = '#ff3366';
+            pill.style.color = '#ffffff';
+            countdown.innerText = '⏳ Opens Mon 09:15:00 AM';
+        } else if (totalMinutes < 540) {
+            pill.innerText = '● MARKET CLOSED';
+            pill.style.background = '#ff3366';
+            pill.style.color = '#ffffff';
+            const targetSec = 9 * 3600 + 15 * 60;
+            const diffSec = targetSec - totalSeconds;
+            const h = Math.floor(diffSec / 3600);
+            const m = Math.floor((diffSec % 3600) / 60);
+            const s = diffSec % 60;
+            countdown.innerText = `⏳ Opens in ${String(h).padStart(2,'0')}h ${String(m).padStart(2,'0')}m ${String(s).padStart(2,'0')}s`;
+        } else if (totalMinutes >= 540 && totalMinutes < 555) {
+            pill.innerText = '● PRE-OPEN';
+            pill.style.background = '#ffe600';
+            pill.style.color = '#000000';
+            const targetSec = 9 * 3600 + 15 * 60;
+            const diffSec = targetSec - totalSeconds;
+            const m = Math.floor(diffSec / 60);
+            const s = diffSec % 60;
+            countdown.innerText = `⏳ Live in ${String(m).padStart(2,'0')}m ${String(s).padStart(2,'0')}s`;
+        } else if (totalMinutes >= 555 && totalMinutes < 930) {
+            pill.innerText = '● MARKET LIVE';
+            pill.style.background = '#00f5d4';
+            pill.style.color = '#000000';
+            const targetSec = 15 * 3600 + 30 * 60;
+            const diffSec = targetSec - totalSeconds;
+            const h = Math.floor(diffSec / 3600);
+            const m = Math.floor((diffSec % 3600) / 60);
+            const s = diffSec % 60;
+            countdown.innerText = `⏳ Closes in ${String(h).padStart(2,'0')}h ${String(m).padStart(2,'0')}s`;
+        } else {
+            pill.innerText = '● MARKET CLOSED';
+            pill.style.background = '#ff3366';
+            pill.style.color = '#ffffff';
+            countdown.innerText = '⏳ Opens Tomorrow 09:15:00 AM';
+        }
+    }
+
+    updateClock();
+    setInterval(updateClock, 1000);
+    </script>
+    """
+    components.html(clock_html, height=76)
+
+else:
+    # ---------------------------------------------------------
+    # 2. SWISS EDITORIAL QUANT THEME (OMNI STUDIO)
+    # ---------------------------------------------------------
+    st.markdown("""
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        #MainMenu, footer, header { visibility: hidden !important; height: 0px !important; }
+        .stDeployButton { display: none !important; }
+        .block-container { padding-top: 0.3rem !important; padding-bottom: 1.5rem !important; padding-left: 1rem !important; padding-right: 1rem !important; }
+
+        :root {
+            --bg-obsidian: #0a0b0d;
+            --bg-card: #0f1115;
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --accent-lime: #d4ff00;
+            --neon-rose: #ff3b69;
+            --neon-cyan: #00f0ff;
+            --neon-gold: #ffb800;
+            --neon-purple: #c77dff;
+            --text-primary: #f0f4f8;
+            --text-muted: #64748b;
+        }
+
+        body, .stApp {
+            background: #0a0b0d !important;
+            background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px) !important;
+            background-size: 24px 24px !important;
+            font-family: 'Plus Jakarta Sans', sans-serif !important;
+            color: var(--text-primary) !important;
+        }
+
+        ::selection {
+            background: #d4ff00 !important;
+            color: #000000 !important;
+        }
+
+        .mono {
+            font-family: 'JetBrains Mono', monospace !important;
+        }
+
+        /* Swiss Architectural Minimalist Cards */
+        .cockpit-card {
+            background: #0f1115;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 12px 14px;
+            margin-bottom: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .cockpit-card:hover {
+            border-color: #d4ff00;
+            box-shadow: 0 0 15px rgba(212, 255, 0, 0.15);
+        }
+
+        .card-header {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: #FFFFFF;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .glow-pill-emerald {
+            background: rgba(212, 255, 0, 0.12);
+            color: #d4ff00;
+            border: 1px solid rgba(212, 255, 0, 0.4);
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.70rem;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .glow-pill-rose {
+            background: rgba(255, 59, 105, 0.12);
+            color: #ff3b69;
+            border: 1px solid rgba(255, 59, 105, 0.4);
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.70rem;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .glow-pill-cyan {
+            background: rgba(0, 240, 255, 0.12);
+            color: #00f0ff;
+            border: 1px solid rgba(0, 240, 255, 0.4);
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.70rem;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .glow-pill-gold {
+            background: rgba(255, 184, 0, 0.12);
+            color: #ffb800;
+            border: 1px solid rgba(255, 184, 0, 0.4);
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.70rem;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .glow-pill-purple {
+            background: rgba(157, 78, 221, 0.15);
+            color: #c77dff;
+            border: 1px solid rgba(157, 78, 221, 0.4);
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.70rem;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .badge-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+        }
+        .badge-cell {
+            background: #14171d;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 6px;
+            padding: 6px 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .badge-cell-label {
+            font-size: 0.66rem;
+            color: #64748b;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .badge-cell-val {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            font-weight: 800;
+            color: #FFFFFF;
+            margin-top: 2px;
+        }
+
+        .ratio-bar-wrapper {
+            background: rgba(255, 59, 105, 0.25);
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            display: flex;
+            margin: 6px 0;
+        }
+        .ratio-bar-put {
+            background: #d4ff00;
+            height: 100%;
+            box-shadow: 0 0 8px #d4ff00;
+        }
+        .ratio-bar-call {
+            background: #ff3b69;
+            height: 100%;
+            box-shadow: 0 0 8px #ff3b69;
+        }
+
+        /* Architectural Buttons */
+        .stButton > button {
+            background: #d4ff00 !important;
+            color: #000000 !important;
+            font-family: 'JetBrains Mono', monospace !important;
+            font-weight: 800 !important;
+            font-size: 0.82rem !important;
+            border: 1px solid #d4ff00 !important;
+            border-radius: 6px !important;
+            padding: 7px 16px !important;
+            box-shadow: 0 0 15px rgba(212, 255, 0, 0.25) !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.8px !important;
+            transition: all 0.2s ease !important;
+        }
+        .stButton > button:hover {
+            background: #bce000 !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 0 25px rgba(212, 255, 0, 0.5) !important;
+        }
+
+        /* Minimalist Swiss Tabs */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 4px;
+            background: transparent;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 2px;
+        }
+        .stTabs [data-baseweb="tab"] {
+            background: transparent !important;
+            border: 1px solid transparent !important;
+            border-radius: 6px 6px 0 0 !important;
+            color: #94a3b8 !important;
+            font-family: 'JetBrains Mono', monospace !important;
+            font-weight: 700 !important;
+            font-size: 0.8rem !important;
+            padding: 6px 12px !important;
+            transition: all 0.2s ease !important;
+        }
+        .stTabs [data-baseweb="tab"]:hover {
+            color: #ffffff !important;
+            border-color: rgba(255, 255, 255, 0.1) !important;
+        }
+        .stTabs [aria-selected="true"] {
+            background: #0f1115 !important;
+            color: #d4ff00 !important;
+            border: 1px solid rgba(255, 255, 255, 0.12) !important;
+            border-bottom: 2px solid #d4ff00 !important;
+        }
+
+        .top-metric-card {
+            background: #0f1115;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 4px 10px;
+            height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* Swiss Selectboxes */
+        div[data-baseweb="select"] > div {
+            background-color: #0f1115 !important;
+            border: 1px solid rgba(255, 255, 255, 0.12) !important;
+            border-radius: 6px !important;
+            color: #ffffff !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # ---------------------------------------------------------
+    # REAL-TIME SWISS EDITORIAL CLOCK TICKER
+    # ---------------------------------------------------------
+    clock_html = """
+    <div style="margin-bottom: 6px; font-family: 'JetBrains Mono', monospace;">
+        <!-- Swiss Editorial Top Strip -->
+        <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 3px 10px; display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: #64748b; background: #0a0b0d;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="color: #d4ff00; font-weight: 800;">OMNI SUITE // QUANT DESK V3.2</span>
+                <span>•</span>
+                <span style="color: #94a3b8;">100% PRIVATE RAM INFERENCE</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="display: inline-block; width: 6px; height: 6px; background: #d4ff00; border-radius: 50%; box-shadow: 0 0 8px #d4ff00;"></span>
+                <span style="color: #d4ff00; font-weight: 700;">SYSTEM ARMED</span>
+            </div>
+        </div>
+        <!-- Main Editorial Bar -->
+        <div id="top-bloomberg-ticker" style="
+            background: #0f1115;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 0 0 8px 8px;
+            padding: 6px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            color: #f0f4f8;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+        ">
+            <div style="display: flex; align-items: center; gap: 14px;">
+                <span style="font-weight: 800; font-size: 0.92rem; color: #ffffff; letter-spacing: 1px; display: flex; align-items: center; gap: 8px;">
+                    <span style="color: #d4ff00;">OMNI</span><span style="font-style: italic; color: #94a3b8; font-weight: 400;">.STUDIO</span>
+                </span>
+                <span id="live-date" style="color: #64748b; font-size: 0.78rem; font-weight: 600;">--</span>
+                <span id="live-time" style="font-family: 'JetBrains Mono', monospace; color: #d4ff00; font-weight: 800; font-size: 0.95rem;">--:--:-- --</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span id="market-status-pill" style="padding: 2px 10px; border-radius: 4px; font-size: 0.70rem; font-weight: 800; font-family: 'JetBrains Mono';">CHECKING...</span>
+                <span id="live-countdown" style="font-family: 'JetBrains Mono', monospace; color: #00f0ff; font-weight: 700; font-size: 0.78rem;">⏳ --</span>
+            </div>
+        </div>
+    </div>
+    <script>
+    function updateClock() {
+        const now = new Date();
+        const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+        const ist = new Date(utc + (3600000 * 5.5));
+
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+        const dayName = days[ist.getDay()];
+        const dateNum = String(ist.getDate()).padStart(2, '0');
+        const monthName = months[ist.getMonth()];
+        const year = ist.getFullYear();
+
+        let hours = ist.getHours();
+        const minutes = String(ist.getMinutes()).padStart(2, '0');
+        const seconds = String(ist.getSeconds()).padStart(2, '0');
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        const displayHours = String(hours % 12 || 12).padStart(2, '0');
+
+        document.getElementById('live-date').innerText = `📅 ${dayName}, ${dateNum} ${monthName} ${year}`;
+        document.getElementById('live-time').innerText = `⏰ ${displayHours}:${minutes}:${seconds} ${ampm} IST`;
+
+        const weekday = ist.getDay();
+        const totalMinutes = ist.getHours() * 60 + ist.getMinutes();
+        const totalSeconds = totalMinutes * 60 + ist.getSeconds();
+
+        const pill = document.getElementById('market-status-pill');
+        const countdown = document.getElementById('live-countdown');
+
+        if (weekday === 0 || weekday === 6) {
+            pill.innerText = '● WEEKEND CLOSED';
+            pill.style.background = 'rgba(255, 59, 105, 0.15)';
+            pill.style.color = '#FF3B69';
+            pill.style.border = '1px solid rgba(255, 59, 105, 0.4)';
+            countdown.innerText = '⏳ Opens Mon 09:15:00 AM';
+        } else if (totalMinutes < 540) {
+            pill.innerText = '● MARKET CLOSED';
+            pill.style.background = 'rgba(255, 59, 105, 0.15)';
+            pill.style.color = '#FF3B69';
+            pill.style.border = '1px solid rgba(255, 59, 105, 0.4)';
+            const targetSec = 9 * 3600 + 15 * 60;
+            const diffSec = targetSec - totalSeconds;
+            const h = Math.floor(diffSec / 3600);
+            const m = Math.floor((diffSec % 3600) / 60);
+            const s = diffSec % 60;
+            countdown.innerText = `⏳ Opens in ${String(h).padStart(2,'0')}h ${String(m).padStart(2,'0')}m ${String(s).padStart(2,'0')}s`;
+        } else if (totalMinutes >= 540 && totalMinutes < 555) {
+            pill.innerText = '● PRE-OPEN';
+            pill.style.background = 'rgba(255, 184, 0, 0.15)';
+            pill.style.color = '#FFB800';
+            pill.style.border = '1px solid rgba(255, 184, 0, 0.4)';
+            const targetSec = 9 * 3600 + 15 * 60;
+            const diffSec = targetSec - totalSeconds;
+            const m = Math.floor(diffSec / 60);
+            const s = diffSec % 60;
+            countdown.innerText = `⏳ Live in ${String(m).padStart(2,'0')}m ${String(s).padStart(2,'0')}s`;
+        } else if (totalMinutes >= 555 && totalMinutes < 930) {
+            pill.innerText = '● MARKET LIVE';
+            pill.style.background = 'rgba(212, 255, 0, 0.15)';
+            pill.style.color = '#d4ff00';
+            pill.style.border = '1px solid rgba(212, 255, 0, 0.4)';
+            const targetSec = 15 * 3600 + 30 * 60;
+            const diffSec = targetSec - totalSeconds;
+            const h = Math.floor(diffSec / 3600);
+            const m = Math.floor((diffSec % 3600) / 60);
+            const s = diffSec % 60;
+            countdown.innerText = `⏳ Closes in ${String(h).padStart(2,'0')}h ${String(m).padStart(2,'0')}s`;
+        } else {
+            pill.innerText = '● MARKET CLOSED';
+            pill.style.background = 'rgba(255, 59, 105, 0.15)';
+            pill.style.color = '#FF3B69';
+            pill.style.border = '1px solid rgba(255, 59, 105, 0.4)';
+            countdown.innerText = '⏳ Opens Tomorrow 09:15:00 AM';
+        }
+    }
+
+    updateClock();
+    setInterval(updateClock, 1000);
+    </script>
+    """
+    components.html(clock_html, height=64)
+
 
 # -------------------------------------------------------------
 # GLOBAL INGESTION & DATA ENGINE
@@ -406,8 +864,22 @@ if "paper_eng" not in st.session_state:
     st.session_state.paper_eng = pe
 paper_eng = st.session_state.paper_eng
 
-# Global Asset Selector (Persistent)
-col_asset, col_space = st.columns([2.2, 7.8])
+# Persistent Global Controls (Asset Selector + Theme Switcher)
+col_theme, col_asset, col_space = st.columns([2.6, 2.0, 5.4])
+with col_theme:
+    def on_theme_switch_cb():
+        st.session_state.theme_choice = st.session_state._theme_switcher_sel
+
+    curr_theme_idx = 0 if "Omni.Pop" in st.session_state.get("theme_choice", "Omni.Pop") else 1
+    st.selectbox(
+        "THEME AESTHETIC",
+        ["⚡ Omni.Pop (Neo-Brutalist 3D)", "📐 Omni Studio (Swiss Editorial)"],
+        index=curr_theme_idx,
+        key="_theme_switcher_sel",
+        on_change=on_theme_switch_cb,
+        label_visibility="collapsed"
+    )
+
 with col_asset:
     symbol = st.selectbox(
         "Asset Selection",
@@ -441,7 +913,7 @@ def render_live_top_bar(selected_symbol):
         chg_c = "#00F5A0" if quote['p_change'] >= 0 else "#FF3B69"
         chg_sign = "+" if quote['p_change'] >= 0 else ""
         st.markdown(f"""
-        <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 8px; padding: 4px 10px; height: 38px; display: flex; align-items: center; justify-content: space-between;">
+        <div class="top-metric-card">
             <span style="font-size: 0.75rem; color: #8B949E; font-weight: 700;">{selected_symbol}</span>
             <span class="mono" style="font-size: 0.95rem; font-weight: 800; color: #FFFFFF;">₹{spot:,.1f}</span>
             <span class="mono" style="font-size: 0.75rem; font-weight: 700; color: {chg_c};">{chg_sign}{quote['p_change']:.2f}%</span>
@@ -450,7 +922,7 @@ def render_live_top_bar(selected_symbol):
 
     with t_col2:
         st.markdown(f"""
-        <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 8px; padding: 4px 10px; height: 38px; display: flex; align-items: center; justify-content: space-between;">
+        <div class="top-metric-card">
             <span style="font-size: 0.72rem; color: #8B949E; font-weight: 600;">EXPIRY</span>
             <span class="mono" style="font-size: 0.8rem; font-weight: 800; color: #00D2FF;">{exp_info['dte_badge']}</span>
         </div>
@@ -460,7 +932,7 @@ def render_live_top_bar(selected_symbol):
         pcr_c = "#00F5A0" if pcr_v >= 1.0 else "#FF3B69"
         api_badge = "🟢 FYERS LIVE" if data_eng.fyers.is_connected() else "🔴 REAL-TIME TICK"
         st.markdown(f"""
-        <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 8px; padding: 4px 10px; height: 38px; display: flex; align-items: center; justify-content: space-between;">
+        <div class="top-metric-card">
             <span style="font-size: 0.72rem; color: #8B949E; font-weight: 600;">FEED / PCR</span>
             <span class="mono" style="font-size: 0.75rem; font-weight: 800; color: #00D2FF;">{api_badge}</span>
             <span class="mono" style="font-size: 0.82rem; font-weight: 800; color: {pcr_c};">{pcr_v:.2f}</span>
@@ -469,7 +941,7 @@ def render_live_top_bar(selected_symbol):
 
     with t_col4:
         st.markdown(f"""
-        <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 8px; padding: 4px 10px; height: 38px; display: flex; align-items: center; justify-content: space-between;">
+        <div class="top-metric-card">
             <span style="font-size: 0.72rem; color: #8B949E; font-weight: 600;">CAPITAL</span>
             <span class="mono" style="font-size: 0.82rem; font-weight: 800; color: #00F5A0;">₹{acc['balance']:,.0f}</span>
         </div>
@@ -1519,6 +1991,22 @@ with sec2:
                 pe_title_text = "PUTS (PE) • SUPPORT & INFLOW DESK"
                 table_min_width = "1420px"
 
+            is_pop_oc = "Omni.Pop" in st.session_state.get("theme_choice", "Omni.Pop")
+            oc_tbl_bg = "#0d0e17" if is_pop_oc else "#0a0b0d"
+            oc_tbl_font = "'Plus Jakarta Sans', sans-serif" if is_pop_oc else "'JetBrains Mono', monospace"
+            oc_card_bg = "#161822" if is_pop_oc else "#0f1115"
+            oc_card_border = "2.2px solid #000000" if is_pop_oc else "1px solid rgba(255,255,255,0.1)"
+            oc_card_shadow = "box-shadow: 2px 2px 0px 0px #000000;" if is_pop_oc else "box-shadow: 0 4px 12px rgba(0,0,0,0.5);"
+            oc_wrap_border = "2.5px solid #000000" if is_pop_oc else "1px solid rgba(255,255,255,0.12)"
+            oc_wrap_shadow = "box-shadow: 4px 4px 0px 0px #000000;" if is_pop_oc else "box-shadow: 0 4px 20px rgba(0,0,0,0.6);"
+            oc_wrap_bg = "#13141c" if is_pop_oc else "#080c14"
+            oc_th_bg = "#1a1c28" if is_pop_oc else "#0d111a"
+            oc_th_border = "2.5px solid #000000" if is_pop_oc else "2px solid rgba(255,255,255,0.1)"
+            oc_ce_head_col = "#00f5d4" if is_pop_oc else "#d4ff00"
+            oc_pe_head_col = "#ff3366" if is_pop_oc else "#ff3b69"
+            oc_badge_border = "1.5px solid #000000;" if is_pop_oc else "1px solid rgba(255,255,255,0.15);"
+            oc_badge_shadow = "box-shadow: 1px 1px 0px #000000;" if is_pop_oc else ""
+
             full_oc_table = f"""
             <!DOCTYPE html>
             <html>
@@ -1527,14 +2015,14 @@ with sec2:
             <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@600;700;800;900&display=swap" rel="stylesheet">
             <style>
                 * {{ box-sizing: border-box; }}
-                body {{ margin: 0; padding: 4px; background: #05070B; color: #F0F4F8; font-family: 'JetBrains Mono', monospace; font-size: 11px; }}
+                body {{ margin: 0; padding: 4px; background: {oc_tbl_bg}; color: #F0F4F8; font-family: {oc_tbl_font}; font-size: 11px; }}
                 .top-cards {{ display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; text-align: center; margin-bottom: 8px; }}
-                .card-cell {{ border-radius: 8px; padding: 6px 8px; border: 1px solid rgba(255, 255, 255, 0.08); }}
+                .card-cell {{ border-radius: 8px; padding: 6px 8px; border: {oc_card_border}; {oc_card_shadow} }}
                 .card-title {{ font-size: 0.65rem; color: #8B949E; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; text-transform: uppercase; }}
                 .card-val {{ font-size: 0.98rem; font-weight: 900; margin-top: 2px; }}
-                .table-wrap {{ border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; overflow-x: auto; background: #080C14; }}
+                .table-wrap {{ border: {oc_wrap_border}; border-radius: 10px; overflow-x: auto; background: {oc_wrap_bg}; {oc_wrap_shadow} }}
                 table {{ width: 100%; min-width: {table_min_width}; border-collapse: collapse; text-align: center; }}
-                th {{ background: #0D111A; padding: 8px 4px; color: #8B949E; font-weight: 700; position: sticky; top: 0; border-bottom: 2px solid rgba(255, 255, 255, 0.1); z-index: 10; font-size: 10.5px; white-space: nowrap; }}
+                th {{ background: {oc_th_bg}; padding: 8px 4px; color: #8B949E; font-weight: 800; position: sticky; top: 0; border-bottom: {oc_th_border}; z-index: 10; font-size: 10.5px; white-space: nowrap; }}
                 td {{ padding: 6px 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.04); transition: background-color 0.25s ease, color 0.25s ease; position: relative; font-size: 11px; white-space: nowrap; }}
                 tr:hover {{ background: rgba(0, 210, 255, 0.08) !important; }}
                 .flash-up {{ background-color: rgba(0, 245, 160, 0.45) !important; color: #FFFFFF !important; font-weight: 900 !important; }}
@@ -1542,30 +2030,30 @@ with sec2:
                 .itm-ce {{ background: rgba(0, 245, 160, 0.05); }}
                 .itm-pe {{ background: rgba(255, 59, 105, 0.05); }}
                 .atm-row {{ background: rgba(255, 184, 0, 0.16) !important; font-weight: 800; border-top: 1px solid #FFB800; border-bottom: 1px solid #FFB800; }}
-                .pulse-dot {{ display: inline-block; width: 7px; height: 7px; background: #00F5A0; border-radius: 50%; box-shadow: 0 0 8px #00F5A0; animation: pulse 1.2s infinite; }}
+                .pulse-dot {{ display: inline-block; width: 7px; height: 7px; background: {oc_ce_head_col}; border-radius: 50%; box-shadow: 0 0 8px {oc_ce_head_col}; animation: pulse 1.2s infinite; }}
                 @keyframes pulse {{ 0% {{ transform: scale(0.95); opacity: 0.7; }} 50% {{ transform: scale(1.2); opacity: 1; }} 100% {{ transform: scale(0.95); opacity: 0.7; }} }}
-                .badge-tag {{ font-size: 9px; padding: 2px 6px; border-radius: 4px; font-weight: 900; display: inline-block; letter-spacing: 0.2px; white-space: nowrap; }}
-                .tag-exit {{ background: rgba(255, 59, 105, 0.25); color: #FF3B69; border: 1px solid #FF3B69; box-shadow: 0 0 6px rgba(255, 59, 105, 0.4); }}
-                .tag-inflow {{ background: rgba(0, 245, 160, 0.25); color: #00F5A0; border: 1px solid #00F5A0; box-shadow: 0 0 6px rgba(0, 245, 160, 0.4); }}
-                .tag-unwind {{ background: rgba(255, 184, 0, 0.2); color: #FFB800; border: 1px solid rgba(255, 184, 0, 0.6); }}
-                .tag-add {{ background: rgba(0, 210, 255, 0.2); color: #00D2FF; border: 1px solid rgba(0, 210, 255, 0.6); }}
-                .tag-whale {{ background: rgba(255, 215, 0, 0.25); color: #FFD700; border: 1px solid #FFD700; box-shadow: 0 0 8px rgba(255, 215, 0, 0.5); animation: pulse 1.0s infinite; }}
-                .tag-lb {{ background: rgba(0, 245, 160, 0.12); color: #00F5A0; border: 1px solid rgba(0, 245, 160, 0.3); }}
-                .tag-sb {{ background: rgba(255, 59, 105, 0.12); color: #FF3B69; border: 1px solid rgba(255, 59, 105, 0.3); }}
-                .tag-sc {{ background: rgba(255, 184, 0, 0.12); color: #FFB800; border: 1px solid rgba(255, 184, 0, 0.3); }}
-                .tag-lu {{ background: rgba(0, 210, 255, 0.12); color: #00D2FF; border: 1px solid rgba(0, 210, 255, 0.3); }}
+                .badge-tag {{ font-size: 9px; padding: 2px 6px; border-radius: 5px; font-weight: 900; display: inline-block; letter-spacing: 0.2px; white-space: nowrap; border: {oc_badge_border} {oc_badge_shadow} }}
+                .tag-exit {{ background: rgba(255, 59, 105, 0.3); color: #FF3B69; }}
+                .tag-inflow {{ background: rgba(0, 245, 160, 0.3); color: #00F5A0; }}
+                .tag-unwind {{ background: rgba(255, 184, 0, 0.3); color: #FFB800; }}
+                .tag-add {{ background: rgba(0, 210, 255, 0.3); color: #00D2FF; }}
+                .tag-whale {{ background: rgba(255, 215, 0, 0.35); color: #FFD700; animation: pulse 1.0s infinite; }}
+                .tag-lb {{ background: rgba(0, 245, 160, 0.15); color: #00F5A0; }}
+                .tag-sb {{ background: rgba(255, 59, 105, 0.15); color: #FF3B69; }}
+                .tag-sc {{ background: rgba(255, 184, 0, 0.15); color: #FFB800; }}
+                .tag-lu {{ background: rgba(0, 210, 255, 0.15); color: #00D2FF; }}
                 .action-btn-b {{ background: rgba(0, 245, 160, 0.2); color: #00F5A0; border: 1px solid #00F5A0; padding: 1px 4px; border-radius: 3px; font-size: 8px; font-weight: 900; cursor: pointer; margin-right: 2px; }}
                 .action-btn-s {{ background: rgba(255, 59, 105, 0.2); color: #FF3B69; border: 1px solid #FF3B69; padding: 1px 4px; border-radius: 3px; font-size: 8px; font-weight: 900; cursor: pointer; }}
             </style>
             </head>
             <body>
-            <div style="background: rgba(13, 17, 26, 0.95); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 8px 12px; margin-bottom: 8px;">
+            <div style="background: {oc_card_bg}; border: {oc_card_border}; {oc_card_shadow} border-radius: 10px; padding: 8px 12px; margin-bottom: 8px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                     <span style="font-weight: 800; font-size: 0.82rem; color: #FFFFFF; display: flex; align-items: center; gap: 6px;">
                         <span class="pulse-dot"></span>
                         📊 {symbol} INSTITUTIONAL OPTION CHAIN ({exp_info['expiry_date_str']})
                     </span>
-                    <span style="font-size: 0.72rem; color: #00F5A0; font-weight: 700; background: rgba(0,245,160,0.12); padding: 2px 8px; border-radius: 12px; border: 1px solid rgba(0,245,160,0.3);">
+                    <span style="font-size: 0.72rem; color: {oc_ce_head_col}; font-weight: 800; background: rgba(0,245,160,0.12); padding: 2px 8px; border-radius: 12px; border: 1px solid rgba(0,245,160,0.3);">
                         {source_label} | SPOT: <span id="header-spot">₹{spot_s2:,.2f}</span>
                     </span>
                 </div>
@@ -1576,11 +2064,11 @@ with sec2:
                     </div>
                     <div class="card-cell" style="background: rgba(0, 245, 160, 0.08); border-color: rgba(0, 245, 160, 0.3);">
                         <div class="card-title">CALL PREMIUM (LTP)</div>
-                        <div class="card-val" id="card-ce-ltp" style="color: #00F5A0;">₹{atm_ce_p:.1f}</div>
+                        <div class="card-val" id="card-ce-ltp" style="color: {oc_ce_head_col};">₹{atm_ce_p:.1f}</div>
                     </div>
                     <div class="card-cell" style="background: rgba(255, 59, 105, 0.08); border-color: rgba(255, 59, 105, 0.3);">
                         <div class="card-title">PUT PREMIUM (LTP)</div>
-                        <div class="card-val" id="card-pe-ltp" style="color: #FF3B69;">₹{atm_pe_p:.1f}</div>
+                        <div class="card-val" id="card-pe-ltp" style="color: {oc_pe_head_col};">₹{atm_pe_p:.1f}</div>
                     </div>
                     <div class="card-cell" style="background: rgba(0, 210, 255, 0.08); border-color: rgba(0, 210, 255, 0.3);">
                         <div class="card-title">⚡ STRADDLE COST</div>
@@ -1601,9 +2089,9 @@ with sec2:
                 <table>
                     <thead>
                         <tr>
-                            <th colspan="{ce_colspan}" style="color: #00F5A0; border-bottom: 2px solid #00F5A0; font-size: 13px; letter-spacing: 0.5px;">{ce_title_text}</th>
+                            <th colspan="{ce_colspan}" style="color: {oc_ce_head_col}; border-bottom: 2px solid {oc_ce_head_col}; font-size: 13px; letter-spacing: 0.5px;">{ce_title_text}</th>
                             <th style="color: #FFB800; font-size: 13px; font-weight: 900; background: rgba(255, 184, 0, 0.12); border-bottom: 2px solid #FFB800;">STRIKE PRICE</th>
-                            <th colspan="{pe_colspan}" style="color: #FF3B69; border-bottom: 2px solid #FF3B69; font-size: 13px; letter-spacing: 0.5px;">{pe_title_text}</th>
+                            <th colspan="{pe_colspan}" style="color: {oc_pe_head_col}; border-bottom: 2px solid {oc_pe_head_col}; font-size: 13px; letter-spacing: 0.5px;">{pe_title_text}</th>
                         </tr>
                         <tr>"""
 
